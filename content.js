@@ -1,4 +1,4 @@
-// content.js — Synology Magnet Sender + Torrent Handler
+// content.js — NAS Download helper + Torrent Handler
 
 (function () {
   "use strict";

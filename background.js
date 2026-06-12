@@ -1,4 +1,4 @@
-// background.js — Synology Magnet Sender
+// background.js — NAS Download helper
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
 const DEFAULT_SETTINGS = {

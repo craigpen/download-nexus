@@ -1,4 +1,4 @@
-# NAS Download Helper
+# NAS Download helper
 
 A browser extension project for Edge/Chrome that helps with downloading files from NAS devices.
 
@@ -21,4 +21,4 @@ A browser extension project for Edge/Chrome that helps with downloading files fr
 
 ## Notes
 
-- This repository was initialized from the current workspace under `c:\Users\craig\Documents\Git\nas-download-helper`.
+- This repository was initialized from the current workspace and is ready for development.
