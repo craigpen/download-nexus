@@ -245,6 +245,36 @@
       font-size: 11px;
       color: #5a6880;
     }
+    #connStatus {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: #2a3045;
+      color: #8898b8;
+      white-space: nowrap;
+    }
+    #connStatus.ok { color: #4caf7d; background: rgba(76, 175, 125, 0.15); }
+    #connStatus.error { color: #ff7b72; background: rgba(255, 123, 114, 0.15); }
+    .error-container {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(255, 123, 114, 0.1);
+      border: 1px solid rgba(255, 123, 114, 0.3);
+      border-radius: 4px;
+      margin: 4px;
+    }
+    .error-container.show { display: flex; }
+    .error-text { color: #ff7b72; font-size: 11px; font-weight: 500; }
+    .error-detail { color: #8898b8; font-size: 10px; }
+    .retry-btn {
+      background: #1a4f8a; color: #7eb8f7;
+      border: none; border-radius: 3px; padding: 4px 8px;
+      font-size: 10px; font-weight: 600;
+      cursor: pointer; align-self: flex-start;
+    }
+    .retry-btn:hover { background: #1e5fa0; }
 
     /* loading spinner */
     .spinner {
@@ -268,6 +298,7 @@
       Download Station
     </div>
     <div class="header-right">
+      <span id="connStatus" title="Connection status">●</span>
       <span class="status-msg" id="statusMsg"></span>
       <button class="icon-btn" id="refreshBtn" title="Refresh">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -305,6 +336,12 @@
     <button class="tab" data-filter="finished">Done <span class="tab-count" id="cnt-finished">0</span></button>
     <button class="tab" data-filter="error">Error <span class="tab-count" id="cnt-error">0</span></button>
     <button class="tab" data-filter="all">All <span class="tab-count" id="cnt-all">0</span></button>
+  </div>
+
+  <div class="error-container" id="errorContainer">
+    <div class="error-text" id="errorTitle">Connection Error</div>
+    <div class="error-detail" id="errorDetail">Unable to connect to Download Station</div>
+    <button class="retry-btn" id="retryBtn">↻ Retry</button>
   </div>
 
   <div class="task-list" id="taskList">

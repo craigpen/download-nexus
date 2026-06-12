@@ -38,6 +38,28 @@ async function getSettings() {
   return new Promise(resolve => chrome.storage.sync.get(DEFAULT_SETTINGS, resolve));
 }
 
+// ── whitelist management ──────────────────────────────────────────────────
+
+async function getWhitelist() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ whitelist: [] }, r => resolve(r.whitelist || []));
+  });
+}
+
+async function addToWhitelist(domain) {
+  const list = await getWhitelist();
+  if (!list.includes(domain)) {
+    list.push(domain);
+    return new Promise(resolve => chrome.storage.sync.set({ whitelist: list }, resolve));
+  }
+}
+
+async function removeFromWhitelist(domain) {
+  let list = await getWhitelist();
+  list = list.filter(d => d !== domain);
+  return new Promise(resolve => chrome.storage.sync.set({ whitelist: list }, resolve));
+}
+
 // ── persistent session ─────────────────────────────────────────────────────
 // Stored in chrome.storage.local so it survives service worker restarts
 // but is NOT synced across devices (it's host-specific).
@@ -60,18 +82,25 @@ async function clearSid() {
 
 // ── Synology API calls ─────────────────────────────────────────────────────
 
-async function synoFetch(label, url, options) {
+async function synoFetch(label, url, options, timeoutMs = 20000) {
   const safeBody = typeof options?.body === "string"
     ? options.body.replace(/passwd=[^&]+/, "passwd=***")
     : "";
   dbg("INFO", `${label} → ${url.replace(/passwd=[^&]+/, "passwd=***")}`, safeBody);
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
   let resp;
   try {
-    resp = await fetch(url, options);
+    resp = await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
-    dbg("ERROR", `${label} fetch threw`, `${err.name}: ${err.message}`);
+    clearTimeout(timeoutId);
+    const errMsg = err.name === "AbortError" ? `timeout after ${timeoutMs}ms` : err.message;
+    dbg("ERROR", `${label} fetch threw`, `${err.name}: ${errMsg}`);
     throw err;
   }
+  clearTimeout(timeoutId);
   dbg("INFO", `${label} ← HTTP ${resp.status} ${resp.statusText}`);
   return resp;
 }
@@ -349,6 +378,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         .then(() => sendResponse({ ok: true }))
         .catch(e => sendResponse({ ok: false, error: e.message }))
     );
+    return true;
+  }
+  if (msg.type === "GET_WHITELIST") {
+    getWhitelist().then(list => sendResponse({ list }));
+    return true;
+  }
+  if (msg.type === "ADD_WHITELIST") {
+    addToWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === "REMOVE_WHITELIST") {
+    removeFromWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === "CHECK_CONNECTION") {
+    testConnection(msg.settings ?? await getSettings())
+      .then(result => sendResponse(result))
+      .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
     return true;
   }
   if (msg.type === "GET_LOG") {

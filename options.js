@@ -79,6 +79,46 @@ $("debugToggleBtn").addEventListener("click", () => {
   btn.textContent = card.classList.contains("show") ? "🛠 Hide Debug Log" : "🛠 Show Debug Log";
 });
 
+// ── whitelist management ──────────────────────────────────────────────────
+
+function renderWhitelist() {
+  chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
+    const list = resp?.list || [];
+    const container = $("whitelistList");
+    if (list.length === 0) {
+      container.innerHTML = '<div class="whitelist-empty">No domains whitelisted. Whitelist will be populated as you add domains.</div>';
+      return;
+    }
+    container.innerHTML = list.map(domain => `
+      <div class="whitelist-item">
+        <span class="whitelist-domain">${domain}</span>
+        <button class="whitelist-remove" data-domain="${domain}">Remove</button>
+      </div>
+    `).join("");
+    container.querySelectorAll(".whitelist-remove").forEach(btn => {
+      btn.addEventListener("click", () => {
+        chrome.runtime.sendMessage({ type: "REMOVE_WHITELIST", domain: btn.dataset.domain }, () => renderWhitelist());
+      });
+    });
+  });
+}
+
+$("whitelistAddBtn").addEventListener("click", () => {
+  const input = $("whitelistInput");
+  const domain = input.value.trim().toLowerCase();
+  if (!domain) return;
+  chrome.runtime.sendMessage({ type: "ADD_WHITELIST", domain }, () => {
+    input.value = "";
+    renderWhitelist();
+  });
+});
+
+$("whitelistInput").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") $("whitelistAddBtn").click();
+});
+
+renderWhitelist();
+
 // ── test connection ───────────────────────────────────────────────────────
 $("testBtn").addEventListener("click", () => {
   const el = $("testStatus");

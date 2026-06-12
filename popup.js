@@ -218,10 +218,46 @@ function escHtml(str) {
 
 // ── data fetch ────────────────────────────────────────────────────────────
 
+async function checkConnection() {
+  try {
+    const resp = await send({ type: "CHECK_CONNECTION" });
+    if (resp.ok) {
+      document.getElementById("connStatus").className = "ok";
+      document.getElementById("connStatus").textContent = "● Connected";
+      return true;
+    } else {
+      throw new Error(resp.error || "Unknown error");
+    }
+  } catch (err) {
+    document.getElementById("connStatus").className = "error";
+    document.getElementById("connStatus").textContent = "● Offline";
+    return false;
+  }
+}
+
+function showError(title, detail) {
+  document.getElementById("errorTitle").textContent = title;
+  document.getElementById("errorDetail").textContent = detail;
+  document.getElementById("errorContainer").classList.add("show");
+  document.getElementById("taskList").style.display = "none";
+  document.getElementById("speedBar").style.display = "none";
+  document.getElementById("tabBar").style.display = "none";
+}
+
+function hideError() {
+  document.getElementById("errorContainer").classList.remove("show");
+  document.getElementById("taskList").style.display = "";
+}
+
 async function refresh() {
   try {
     const resp = await send({ type: "LIST_TASKS" });
-    if (!resp.ok) { setStatus(resp.error, true); return; }
+    if (!resp.ok) {
+      showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
+      setStatus(resp.error, true);
+      return;
+    }
+    hideError();
     allTasks = resp.tasks;
     document.getElementById("speedBar").style.display = "";
     document.getElementById("tabBar").style.display   = "";
@@ -229,6 +265,7 @@ async function refresh() {
     renderTasks();
     setStatus("");
   } catch (err) {
+    showError("❌ Connection error", err.message);
     setStatus(err.message, true);
   }
 }
@@ -261,6 +298,8 @@ document.querySelectorAll(".tab").forEach(tab => {
 // Buttons
 document.getElementById("refreshBtn").addEventListener("click", refresh);
 
+document.getElementById("retryBtn").addEventListener("click", refresh);
+
 document.getElementById("pauseAllBtn").addEventListener("click", () => {
   const visible = getVisibleTasks();
   const ids = visible.filter(t => t.status === "downloading").map(t => t.id);
@@ -285,6 +324,7 @@ document.getElementById("openDSBtn").addEventListener("click", () => {
 });
 
 // Initial load + 5s poll while popup is open
+checkConnection();
 refresh();
 pollTimer = setInterval(refresh, 5000);
 window.addEventListener("unload", () => clearInterval(pollTimer));

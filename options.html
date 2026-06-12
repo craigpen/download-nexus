@@ -115,6 +115,27 @@
     #debugCard { display: none; }
     #debugCard.show { display: block; }
     #debugToggleBtn { margin-bottom: 12px; }
+    #whitelistList {
+      background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;
+      max-height: 200px; overflow-y: auto; margin-bottom: 12px;
+    }
+    .whitelist-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px;
+    }
+    .whitelist-item:last-child { border-bottom: none; }
+    .whitelist-domain { color: #333; font-family: monospace; font-size: 12px; flex: 1; }
+    .whitelist-remove {
+      background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px;
+      padding: 3px 8px; font-size: 11px; cursor: pointer; color: #c0392b;
+      font-weight: 600; transition: background .15s;
+    }
+    .whitelist-remove:hover { background: #ffe0e0; }
+    .whitelist-empty { padding: 12px; color: #999; font-size: 12px; font-style: italic; }
+    .whitelist-controls { display: flex; gap: 8px; }
+    .whitelist-add-input { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+    .whitelist-add-btn { padding: 6px 12px; background: #1a6fb5; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .whitelist-add-btn:hover { background: #155d9c; }
   </style>
 </head>
 <body>
@@ -174,6 +195,20 @@
       </div>
       <div id="testStatus"></div>
     </form>
+  </div>
+
+  <!-- Whitelist management card -->
+  <div class="card">
+    <h2>🔒 Content Script Whitelist</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 12px">
+      The extension scans all web pages for magnet and torrent links. To improve performance and privacy, you can whitelist only specific domains where you need this feature. The extension will still work everywhere, but will only actively scan pages on whitelisted domains.
+    </p>
+    <div id="whitelistList"></div>
+    <div class="whitelist-controls">
+      <input type="text" id="whitelistInput" class="whitelist-add-input" placeholder="example.com" />
+      <button type="button" id="whitelistAddBtn" class="whitelist-add-btn">+ Add</button>
+    </div>
+    <div style="font-size:10px;color:#999;margin-top:8px">Example domains: piratebay.org, 1337x.to, torrentz.eu</div>
   </div>
 
   <!-- Debug log card (hidden by default) -->
