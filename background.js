@@ -371,7 +371,7 @@ async function taskAction(s, sid, action, ids) {
 
 // ── message listener ───────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (msg, _sender, sendResponse) => {
   if (msg.type === "SEND_MAGNET") {
     sendMagnet(msg.url)
       .then(() => sendResponse({ ok: true, log: [...debugLog] }))
