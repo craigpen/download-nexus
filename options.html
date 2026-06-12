@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Synology Magnet Sender — Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      color: #1a1a1a;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 600px;
+      margin: 40px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.12);
+      padding: 28px 32px;
+    }
+    h1 {
+      font-size: 1.2em;
+      margin: 0 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #1a6fb5;
+    }
+    h2 {
+      font-size: 0.95em;
+      margin: 0 0 12px;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 4px; color: #333; }
+    .hint { font-weight: 400; color: #777; font-size: 0.87em; margin-left: 4px; }
+    .row { margin-bottom: 16px; }
+    .row-inline { display: flex; gap: 12px; margin-bottom: 16px; }
+    .row-inline > div { flex: 1; }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; padding: 8px 10px;
+      border: 1px solid #ccc; border-radius: 6px;
+      font-size: 14px; transition: border-color .15s; outline: none;
+    }
+    input:focus { border-color: #1a6fb5; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 22px; transition: .25s; }
+    .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .25s; }
+    input:checked + .slider { background: #1a6fb5; }
+    input:checked + .slider::before { transform: translateX(18px); }
+    button[type="submit"] {
+      width: 100%; padding: 10px;
+      background: #1a6fb5; color: #fff;
+      font-size: 15px; font-weight: 600;
+      border: none; border-radius: 6px;
+      cursor: pointer; transition: background .15s; margin-top: 4px;
+    }
+    button[type="submit"]:hover { background: #155d9c; }
+    #status { margin-top: 12px; text-align: center; font-weight: 600; font-size: 0.95em; min-height: 22px; }
+    .ok  { color: #1d7c2d; }
+    .err { color: #c0392b; }
+    hr { border: none; border-top: 1px solid #e5e8ec; margin: 20px 0; }
+    .btn-row { display: flex; gap: 10px; }
+    .test-btn {
+      flex: 1; padding: 8px;
+      background: #f0f0f0; color: #333;
+      font-size: 13px; font-weight: 600;
+      border: 1px solid #ccc; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+    }
+    .test-btn:hover { background: #e2e2e2; }
+    #testStatus { margin-top: 10px; min-height: 20px; font-size: 0.9em; text-align: center; }
+
+    /* ── debug panel ── */
+    #debugLog {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 11.5px;
+      line-height: 1.55;
+      background: #0d1117;
+      color: #c9d1d9;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 160px;
+      max-height: 360px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-info  { color: #79c0ff; }
+    .log-warn  { color: #e3b341; }
+    .log-error { color: #ff7b72; font-weight: 600; }
+    .log-controls { display: flex; gap: 8px; margin-bottom: 8px; }
+    .log-btn {
+      padding: 4px 12px; font-size: 12px; font-weight: 600;
+      border: 1px solid #ccc; border-radius: 4px;
+      background: #f7f7f7; cursor: pointer;
+    }
+    .log-btn:hover { background: #eee; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Settings card -->
+  <div class="card">
+    <h1>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a6fb5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+      </svg>
+      Synology Magnet Sender — Settings
+    </h1>
+
+    <form id="settingsForm">
+      <div class="row-inline">
+        <div>
+          <label>NAS Host / IP</label>
+          <input type="text" id="host" placeholder="192.168.0.1" required />
+        </div>
+        <div style="max-width:100px">
+          <label>Port</label>
+          <input type="number" id="port" placeholder="5000" min="1" max="65535" required />
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="https" />
+          <span class="slider"></span>
+        </label>
+        <span>Use HTTPS <span class="hint">(port 5001 by default)</span></span>
+      </div>
+
+      <div class="row">
+        <label>DSM Username</label>
+        <input type="text" id="username" placeholder="admin" required autocomplete="username" />
+      </div>
+
+      <div class="row">
+        <label>DSM Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+
+      <div class="row">
+        <label>Download Destination <span class="hint">optional, e.g. /volume1/downloads</span></label>
+        <input type="text" id="destination" placeholder="/volume1/downloads" />
+      </div>
+
+      <button type="submit">Save Settings</button>
+      <div id="status"></div>
+
+      <hr />
+      <div class="btn-row">
+        <button type="button" class="test-btn" id="testBtn">🔗 Test Connection</button>
+      </div>
+      <div id="testStatus"></div>
+    </form>
+  </div>
+
+  <!-- Debug log card -->
+  <div class="card">
+    <h2>🛠 Debug Log</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 10px">
+      Click <strong>Test Connection</strong> above to populate. Shows the exact URL attempted,
+      HTTP status, and response body from your NAS.
+    </p>
+    <div class="log-controls">
+      <button class="log-btn" id="refreshLogBtn">↻ Refresh</button>
+      <button class="log-btn" id="clearLogBtn">✕ Clear</button>
+    </div>
+    <div id="debugLog">(run a test to see output)</div>
+  </div>
+
+</div>
+<script src="options.js"></script>
+</body>
+</html>

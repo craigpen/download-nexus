@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 13px;
+      background: #1a1f2e;
+      color: #e0e6f0;
+      width: 420px;
+      min-height: 100px;
+      max-height: 600px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #141824;
+      border-bottom: 1px solid #2a3045;
+      flex-shrink: 0;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      color: #7eb8f7;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #8898b8;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: color .15s, background .15s;
+    }
+    .icon-btn:hover { color: #e0e6f0; background: #2a3045; }
+
+    /* ── speed bar ── */
+    .speed-bar {
+      display: flex;
+      gap: 16px;
+      padding: 6px 14px;
+      background: #141824;
+      border-bottom: 1px solid #2a3045;
+      font-size: 11px;
+      color: #8898b8;
+      flex-shrink: 0;
+    }
+    .speed-item { display: flex; align-items: center; gap: 5px; }
+    .speed-val { color: #e0e6f0; font-weight: 600; }
+    .speed-up { color: #4caf7d; }
+    .speed-dn { color: #5b9cf6; }
+
+    /* ── filter tabs ── */
+    .tabs {
+      display: flex;
+      padding: 8px 14px 0;
+      gap: 4px;
+      background: #1a1f2e;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px 4px 0 0;
+      background: transparent;
+      color: #8898b8;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: color .15s, background .15s;
+    }
+    .tab:hover { color: #e0e6f0; }
+    .tab.active { background: #2a3045; color: #7eb8f7; }
+    .tab-count {
+      display: inline-block;
+      background: #3a4565;
+      color: #aab8d0;
+      border-radius: 8px;
+      padding: 0 5px;
+      font-size: 10px;
+      margin-left: 4px;
+    }
+
+    /* ── task list ── */
+    .task-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+      min-height: 60px;
+    }
+    .task-list::-webkit-scrollbar { width: 5px; }
+    .task-list::-webkit-scrollbar-track { background: transparent; }
+    .task-list::-webkit-scrollbar-thumb { background: #3a4565; border-radius: 3px; }
+
+    .empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80px;
+      color: #4a5570;
+      font-size: 12px;
+    }
+
+    .task {
+      padding: 8px 14px;
+      border-bottom: 1px solid #222840;
+      transition: background .1s;
+    }
+    .task:hover { background: #1f2538; }
+    .task:last-child { border-bottom: none; }
+
+    .task-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .task-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #c8d8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+    .task-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .task-btn {
+      background: #2a3045;
+      border: none;
+      border-radius: 3px;
+      color: #8898b8;
+      cursor: pointer;
+      padding: 2px 5px;
+      font-size: 11px;
+      transition: background .15s, color .15s;
+      display: flex;
+      align-items: center;
+    }
+    .task-btn:hover { background: #3a4565; color: #e0e6f0; }
+    .task-btn.danger:hover { background: #5c2030; color: #ff7b72; }
+
+    .task-mid {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .progress-track {
+      flex: 1;
+      height: 3px;
+      background: #2a3045;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width .4s;
+    }
+    .progress-pct {
+      font-size: 10px;
+      color: #8898b8;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    .task-bot {
+      display: flex;
+      gap: 12px;
+      font-size: 10px;
+      color: #5a6880;
+    }
+    .task-size { color: #6a7890; }
+    .task-dn   { color: #5b9cf6; }
+    .task-up   { color: #4caf7d; }
+    .task-eta  { color: #6a7890; margin-left: auto; }
+
+    /* status badge */
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .s-downloading { background: #5b9cf6; }
+    .s-seeding     { background: #4caf7d; }
+    .s-paused      { background: #e3b341; }
+    .s-finished    { background: #4caf7d; opacity: .5; }
+    .s-error       { background: #ff7b72; }
+    .s-waiting     { background: #8898b8; }
+    .s-other       { background: #4a5570; }
+
+    /* ── footer ── */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 14px;
+      background: #141824;
+      border-top: 1px solid #2a3045;
+      flex-shrink: 0;
+    }
+    .footer-btn {
+      background: #2a3045;
+      border: none;
+      border-radius: 4px;
+      color: #8898b8;
+      cursor: pointer;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      transition: background .15s, color .15s;
+    }
+    .footer-btn:hover { background: #3a4565; color: #e0e6f0; }
+    .footer-btn.primary { background: #1a4f8a; color: #7eb8f7; }
+    .footer-btn.primary:hover { background: #1e5fa0; color: #a8d0ff; }
+
+    .status-msg {
+      font-size: 11px;
+      color: #5a6880;
+    }
+
+    /* loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #3a4565;
+      border-top-color: #7eb8f7;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7eb8f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+      </svg>
+      Download Station
+    </div>
+    <div class="header-right">
+      <span class="status-msg" id="statusMsg"></span>
+      <button class="icon-btn" id="refreshBtn" title="Refresh">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="speed-bar" id="speedBar" style="display:none">
+    <div class="speed-item">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5b9cf6" stroke-width="2.5"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+      <span class="speed-val speed-dn" id="totalDn">0 B/s</span>
+    </div>
+    <div class="speed-item">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2.5"><polyline points="16 7 12 3 8 7"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+      <span class="speed-val speed-up" id="totalUp">0 B/s</span>
+    </div>
+    <div class="speed-item" style="margin-left:auto">
+      <span id="taskCountLabel" style="color:#4a5570"></span>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabBar" style="display:none">
+    <button class="tab active" data-filter="downloading">DL <span class="tab-count" id="cnt-downloading">0</span></button>
+    <button class="tab" data-filter="seeding">Seed <span class="tab-count" id="cnt-seeding">0</span></button>
+    <button class="tab" data-filter="paused">Paused <span class="tab-count" id="cnt-paused">0</span></button>
+    <button class="tab" data-filter="finished">Done <span class="tab-count" id="cnt-finished">0</span></button>
+    <button class="tab" data-filter="error">Error <span class="tab-count" id="cnt-error">0</span></button>
+    <button class="tab" data-filter="all">All <span class="tab-count" id="cnt-all">0</span></button>
+  </div>
+
+  <div class="task-list" id="taskList">
+    <div class="empty" id="emptyMsg">
+      <span class="spinner"></span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div style="display:flex;gap:6px">
+      <button class="footer-btn" id="pauseAllBtn" title="Pause only tasks visible in the current filter">⏸ Pause visible</button>
+      <button class="footer-btn" id="resumeAllBtn" title="Resume only tasks visible in the current filter">▶ Resume visible</button>
+    </div>
+    <button class="footer-btn primary" id="openDSBtn">Open DS ↗</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
