@@ -395,8 +395,14 @@ chrome.runtime.onMessage.addListener(async (msg, _sender, sendResponse) => {
     if (msg.type === "TEST_CONNECTION") {
       dbg("INFO", "TEST_CONNECTION handler called");
       testConnection(msg.settings)
-        .then(result => sendResponse(result))
-        .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
+        .then(result => {
+          dbg("INFO", "TEST_CONNECTION sending response", result.ok ? "success" : result.error);
+          sendResponse(result);
+        })
+        .catch(e => {
+          dbg("ERROR", "TEST_CONNECTION catch block", e.message);
+          sendResponse({ ok: false, error: e.message, log: [...debugLog] });
+        });
       return true;
   }
   if (msg.type === "LIST_TASKS") {
