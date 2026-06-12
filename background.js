@@ -375,7 +375,7 @@ async function taskAction(s, sid, action, ids) {
 
 // ── message listener ───────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener(async (msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   try {
     console.log("Message received:", msg.type);
     dbg("INFO", "Message received", msg.type);
@@ -404,44 +404,46 @@ chrome.runtime.onMessage.addListener(async (msg, _sender, sendResponse) => {
           sendResponse({ ok: false, error: e.message, log: [...debugLog] });
         });
       return true;
-  }
-  if (msg.type === "LIST_TASKS") {
-    getSettings().then(s =>
-      synoCall(s, sid => listTasks(s, sid))
-        .then(tasks => sendResponse({ ok: true, tasks }))
-        .catch(e => sendResponse({ ok: false, error: e.message }))
-    );
-    return true;
-  }
-  if (msg.type === "TASK_ACTION") {
-    getSettings().then(s =>
-      synoCall(s, sid => taskAction(s, sid, msg.action, msg.ids))
-        .then(() => sendResponse({ ok: true }))
-        .catch(e => sendResponse({ ok: false, error: e.message }))
-    );
-    return true;
-  }
-  if (msg.type === "GET_WHITELIST") {
-    getWhitelist().then(list => sendResponse({ list }));
-    return true;
-  }
-  if (msg.type === "ADD_WHITELIST") {
-    addToWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
-    return true;
-  }
-  if (msg.type === "REMOVE_WHITELIST") {
-    removeFromWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
-    return true;
-  }
-  if (msg.type === "CHECK_CONNECTION") {
-    testConnection(msg.settings ?? await getSettings())
-      .then(result => sendResponse(result))
-      .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
-    return true;
-  }
-  if (msg.type === "GET_LOG") {
-    sendResponse({ log: [...debugLog] });
-  }
+    }
+    if (msg.type === "LIST_TASKS") {
+      getSettings().then(s =>
+        synoCall(s, sid => listTasks(s, sid))
+          .then(tasks => sendResponse({ ok: true, tasks }))
+          .catch(e => sendResponse({ ok: false, error: e.message }))
+      );
+      return true;
+    }
+    if (msg.type === "TASK_ACTION") {
+      getSettings().then(s =>
+        synoCall(s, sid => taskAction(s, sid, msg.action, msg.ids))
+          .then(() => sendResponse({ ok: true }))
+          .catch(e => sendResponse({ ok: false, error: e.message }))
+      );
+      return true;
+    }
+    if (msg.type === "GET_WHITELIST") {
+      getWhitelist().then(list => sendResponse({ list }));
+      return true;
+    }
+    if (msg.type === "ADD_WHITELIST") {
+      addToWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (msg.type === "REMOVE_WHITELIST") {
+      removeFromWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (msg.type === "CHECK_CONNECTION") {
+      getSettings().then(s =>
+        testConnection(s)
+          .then(result => sendResponse(result))
+          .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }))
+      );
+      return true;
+    }
+    if (msg.type === "GET_LOG") {
+      sendResponse({ log: [...debugLog] });
+    }
   } catch (err) {
     console.error("Message listener error:", err);
     dbg("ERROR", "Message listener error", err.message);
