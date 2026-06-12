@@ -112,6 +112,9 @@
       background: #f7f7f7; cursor: pointer;
     }
     .log-btn:hover { background: #eee; }
+    #debugCard { display: none; }
+    #debugCard.show { display: block; }
+    #debugToggleBtn { margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -173,8 +176,9 @@
     </form>
   </div>
 
-  <!-- Debug log card -->
-  <div class="card">
+  <!-- Debug log card (hidden by default) -->
+  <button type="button" id="debugToggleBtn" class="test-btn">🛠 Show Debug Log</button>
+  <div class="card" id="debugCard">
     <h2>🛠 Debug Log</h2>
     <p style="font-size:12px;color:#666;margin:0 0 10px">
       Click <strong>Test Connection</strong> above to populate. Shows the exact URL attempted,

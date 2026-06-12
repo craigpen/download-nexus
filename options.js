@@ -71,6 +71,14 @@ $("clearLogBtn").addEventListener("click", () => {
 
 $("refreshLogBtn").addEventListener("click", refreshLog);
 
+// ── debug toggle ─────────────────────────────────────────────────────────
+$("debugToggleBtn").addEventListener("click", () => {
+  const card = $("debugCard");
+  const btn = $("debugToggleBtn");
+  card.classList.toggle("show");
+  btn.textContent = card.classList.contains("show") ? "🛠 Hide Debug Log" : "🛠 Show Debug Log";
+});
+
 // ── test connection ───────────────────────────────────────────────────────
 $("testBtn").addEventListener("click", () => {
   const el = $("testStatus");
