@@ -259,6 +259,9 @@ async function testConnection(s) {
   // Always do a fresh login for the test so we can verify credentials
   await clearSid();
   try {
+    if (!s || !s.host || !s.port || !s.username) {
+      throw new Error("Settings incomplete: missing host, port, or username");
+    }
     const sid = await getSid(s, true);
     const infoUrl = `${baseUrl(s)}/DownloadStation/info.cgi?api=SYNO.DownloadStation.Info&version=1&method=getinfo&_sid=${sid}`;
     const ir   = await synoFetch("DS_INFO", infoUrl, { credentials: "include" });
@@ -276,8 +279,9 @@ async function testConnection(s) {
       throw new Error(`Download Station error code ${data.error?.code ?? "?"}`);
     }
   } catch (err) {
-    dbg("ERROR", "TEST_CONNECTION failed", err.message);
-    return { ok: false, error: err.message, log: [...debugLog] };
+    const msg = err?.message || String(err) || "Unknown error";
+    dbg("ERROR", "TEST_CONNECTION failed", msg);
+    return { ok: false, error: msg, log: [...debugLog] };
   }
 }
 
