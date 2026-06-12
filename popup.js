@@ -1,8 +1,13 @@
 // popup.js — Download Station task manager
 
-let allTasks   = [];
-let filter     = "downloading";
-let pollTimer  = null;
+let allTasks     = [];
+let filter       = "downloading";
+let pollTimer    = null;
+let currentDomain = null;
+let whitelistSet = new Set();
+let nasList      = [];
+let currentNasId = null;
+let nasConnStatus = {}; // Track connection status per NAS
 
 // ── utilities ─────────────────────────────────────────────────────────────
 
@@ -87,7 +92,24 @@ function updateCounts() {
 }
 
 function getVisibleTasks() {
-  return filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+  const filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+
+  // Sort based on filter
+  if (filter === "downloading") {
+    // DL tab: sort by % complete (most complete first)
+    return filtered.sort((a, b) => {
+      const aPct = a.size > 0 ? (a.additional?.transfer?.size_downloaded || 0) / a.size : 0;
+      const bPct = b.size > 0 ? (b.additional?.transfer?.size_downloaded || 0) / b.size : 0;
+      return bPct - aPct;
+    });
+  } else {
+    // All other tabs: sort by date added (newest first)
+    return filtered.sort((a, b) => {
+      const aTime = a.additional?.time_added || 0;
+      const bTime = b.additional?.time_added || 0;
+      return bTime - aTime;
+    }).reverse();
+  }
 }
 
 function updateFooterButtons() {
@@ -219,18 +241,23 @@ function escHtml(str) {
 // ── data fetch ────────────────────────────────────────────────────────────
 
 async function checkConnection() {
+  if (!currentNasId) return false;
   try {
-    const resp = await send({ type: "CHECK_CONNECTION" });
+    const resp = await send({ type: "CHECK_CONNECTION", nasId: currentNasId });
     if (resp.ok) {
+      nasConnStatus[currentNasId] = "ok";
       document.getElementById("connStatus").className = "ok";
       document.getElementById("connStatus").textContent = "● Connected";
+      renderNasTabs(); // Update tabs with status
       return true;
     } else {
       throw new Error(resp.error || "Unknown error");
     }
   } catch (err) {
+    nasConnStatus[currentNasId] = "error";
     document.getElementById("connStatus").className = "error";
     document.getElementById("connStatus").textContent = "● Offline";
+    renderNasTabs(); // Update tabs with status
     return false;
   }
 }
@@ -250,8 +277,9 @@ function hideError() {
 }
 
 async function refresh() {
+  if (!currentNasId) return;
   try {
-    const resp = await send({ type: "LIST_TASKS" });
+    const resp = await send({ type: "LIST_TASKS", nasId: currentNasId });
     if (!resp.ok) {
       showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
       setStatus(resp.error, true);
@@ -275,11 +303,129 @@ async function refresh() {
 async function taskAction(action, ids) {
   setStatus("…");
   try {
-    const resp = await send({ type: "TASK_ACTION", action, ids });
+    const resp = await send({ type: "TASK_ACTION", nasId: currentNasId, action, ids });
     if (!resp.ok) { setStatus(resp.error, true); return; }
     await refresh();
   } catch (err) {
     setStatus(err.message, true);
+  }
+}
+
+// ── NAS management ────────────────────────────────────────────────────────
+
+async function loadNasList() {
+  return new Promise(resolve => {
+    send({ type: "GET_NAS_LIST" }).then(resp => {
+      nasList = resp.list || [];
+
+      if (nasList.length === 0) {
+        // No NAS configured
+        document.getElementById("noNasContainer").classList.add("show");
+        document.getElementById("taskList").style.display = "none";
+        document.getElementById("speedBar").style.display = "none";
+        document.getElementById("tabBar").style.display = "none";
+      } else {
+        // NAS configured
+        document.getElementById("noNasContainer").classList.remove("show");
+        // Set current NAS to first in list if not set
+        if (!currentNasId) {
+          currentNasId = nasList[0].id;
+        }
+      }
+
+      renderNasTabs(); // Render tabs after setting currentNasId
+      resolve(nasList);
+    });
+  });
+}
+
+function renderNasTabs() {
+  if (nasList.length <= 1) {
+    // Hide tabs if only one or zero NAS, show header status instead
+    document.getElementById("nasTabBar").style.display = "none";
+    document.getElementById("connStatus").style.display = ""; // Show in header for single NAS
+    return;
+  }
+
+  // Multiple NAS: hide header status, show in tabs instead
+  document.getElementById("connStatus").style.display = "none";
+  const tabBar = document.getElementById("nasTabBar");
+  tabBar.innerHTML = nasList.map(nas => {
+    const isActive = nas.id === currentNasId;
+    const connStatus = nasConnStatus[nas.id] || "unknown";
+    const connIndicator = connStatus === "ok" ? "● Connected" : connStatus === "error" ? "● Offline" : "● …";
+    const connColor = connStatus === "ok" ? "#4caf7d" : connStatus === "error" ? "#ff7b72" : "#8898b8";
+    return `
+      <button class="tab ${isActive ? "active" : ""}" data-nas-id="${nas.id}" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+        <div>${nas.name}</div>
+        <div style="font-size: 9px; color: ${connColor}; opacity: 0.8;">${connIndicator}</div>
+      </button>
+    `;
+  }).join("");
+  tabBar.style.display = "flex";
+
+  tabBar.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      currentNasId = tab.dataset.nasId;
+      renderNasTabs();
+      allTasks = [];
+      filter = "downloading";
+      checkConnection();
+      refresh();
+    });
+  });
+}
+
+// ── whitelist ──────────────────────────────────────────────────────────────
+
+async function loadWhitelist() {
+  try {
+    const resp = await send({ type: "GET_WHITELIST" });
+    whitelistSet = new Set(resp.list || []);
+    updateWhitelistUI();
+  } catch (err) {
+    console.error("[NAS] Failed to load whitelist:", err);
+  }
+}
+
+function updateWhitelistUI() {
+  if (!currentDomain) return;
+  const isWhitelisted = whitelistSet.has(currentDomain);
+  const actionBtn = document.getElementById("whitelistAction");
+  const domainInfo = document.getElementById("domainInfo");
+  const btn = document.getElementById("whitelistBtn");
+  domainInfo.textContent = currentDomain;
+  actionBtn.textContent = isWhitelisted ? "✓ Remove from whitelist" : "+ Add to whitelist";
+
+  if (isWhitelisted) {
+    btn.style.color = "#4caf7d";
+    btn.title = "Domain is whitelisted";
+  } else {
+    btn.style.color = "#8898b8";
+    btn.title = "Whitelist current domain";
+  }
+}
+
+async function toggleWhitelist() {
+  if (!currentDomain) return;
+  const isWhitelisted = whitelistSet.has(currentDomain);
+  try {
+    const msg = isWhitelisted
+      ? { type: "REMOVE_WHITELIST", domain: currentDomain }
+      : { type: "ADD_WHITELIST", domain: currentDomain };
+    const resp = await send(msg);
+    if (!resp.ok) {
+      console.error("[NAS] Whitelist update failed:", resp.error);
+      return;
+    }
+    if (isWhitelisted) {
+      whitelistSet.delete(currentDomain);
+    } else {
+      whitelistSet.add(currentDomain);
+    }
+    updateWhitelistUI();
+  } catch (err) {
+    console.error("[NAS] Whitelist update error:", err);
   }
 }
 
@@ -316,15 +462,63 @@ document.getElementById("settingsBtn").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
 
-document.getElementById("openDSBtn").addEventListener("click", () => {
-  chrome.storage.sync.get({ host: "192.168.0.1", port: "5000", https: false }, s => {
-    const scheme = s.https ? "https" : "http";
-    chrome.tabs.create({ url: `${scheme}://${s.host}:${s.port}` });
-  });
+document.getElementById("configureBtn").addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
 });
 
+document.getElementById("openDSBtn").addEventListener("click", () => {
+  if (!currentNasId) return;
+  const nas = nasList.find(n => n.id === currentNasId);
+  if (!nas) return;
+  const scheme = nas.https ? "https" : "http";
+  chrome.tabs.create({ url: `${scheme}://${nas.host}:${nas.port}` });
+});
+
+// Whitelist dropdown
+document.getElementById("whitelistBtn").addEventListener("click", () => {
+  const menu = document.getElementById("whitelistMenu");
+  menu.classList.toggle("show");
+});
+
+document.getElementById("whitelistAction").addEventListener("click", () => {
+  toggleWhitelist();
+  document.getElementById("whitelistMenu").classList.remove("show");
+});
+
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  const dropdown = document.querySelector(".dropdown");
+  if (!dropdown.contains(e.target)) {
+    document.getElementById("whitelistMenu").classList.remove("show");
+  }
+});
+
+// Get current tab domain
+async function getCurrentDomain() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.url) {
+      try {
+        const url = new URL(tab.url);
+        currentDomain = url.hostname;
+        updateWhitelistUI();
+      } catch {
+        currentDomain = null;
+      }
+    }
+  } catch (err) {
+    console.error("[NAS] Failed to get current tab:", err);
+  }
+}
+
 // Initial load + 5s poll while popup is open
-checkConnection();
-refresh();
-pollTimer = setInterval(refresh, 5000);
+(async () => {
+  await loadNasList();
+  getCurrentDomain();
+  loadWhitelist();
+  checkConnection();
+  refresh();
+  pollTimer = setInterval(refresh, 5000);
+})();
+
 window.addEventListener("unload", () => clearInterval(pollTimer));

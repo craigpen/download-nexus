@@ -1,7 +1,7 @@
 // background.js — NAS Download helper
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
-const DEFAULT_SETTINGS = {
+const DEFAULT_NAS_SYNOLOGY = {
   host: "192.168.0.1",
   port: "5000",
   https: false,
@@ -34,8 +34,69 @@ function baseUrl(s) {
   return `${scheme}://${s.host}:${s.port}/webapi`;
 }
 
+// Multi-NAS storage helpers
+async function getNasList() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ nasList: [] }, r => {
+      let list = r.nasList || [];
+      // Migrate old single-NAS config if it exists
+      if (list.length === 0) {
+        chrome.storage.sync.get(DEFAULT_NAS_SYNOLOGY, oldSettings => {
+          if (oldSettings.host && oldSettings.host !== DEFAULT_NAS_SYNOLOGY.host) {
+            // User has old settings, migrate to new format
+            list = [{
+              id: "synology-main",
+              type: "synology",
+              name: "Synology NAS",
+              ...oldSettings
+            }];
+            chrome.storage.sync.set({ nasList: list });
+          }
+          resolve(list);
+        });
+      } else {
+        resolve(list);
+      }
+    });
+  });
+}
+
+async function getNasById(nasId) {
+  const list = await getNasList();
+  return list.find(n => n.id === nasId);
+}
+
+async function saveNasList(list) {
+  return new Promise(resolve => chrome.storage.sync.set({ nasList: list }, resolve));
+}
+
+async function addNas(nas) {
+  const list = await getNasList();
+  list.push(nas);
+  await saveNasList(list);
+}
+
+async function updateNas(nasId, updates) {
+  const list = await getNasList();
+  const idx = list.findIndex(n => n.id === nasId);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...updates };
+    await saveNasList(list);
+  }
+}
+
+async function deleteNas(nasId) {
+  const list = await getNasList();
+  const filtered = list.filter(n => n.id !== nasId);
+  await saveNasList(filtered);
+  // Clear session for this NAS
+  await removeSid(nasId);
+}
+
+// For backward compatibility, expose getSettings() that returns first NAS
 async function getSettings() {
-  return new Promise(resolve => chrome.storage.sync.get(DEFAULT_SETTINGS, resolve));
+  const list = await getNasList();
+  return list.length > 0 ? list[0] : DEFAULT_NAS_SYNOLOGY;
 }
 
 // ── whitelist management ──────────────────────────────────────────────────
@@ -61,23 +122,39 @@ async function removeFromWhitelist(domain) {
 }
 
 // ── persistent session ─────────────────────────────────────────────────────
-// Stored in chrome.storage.local so it survives service worker restarts
+// Stored in chrome.storage.local keyed by NAS id so it survives service worker restarts
 // but is NOT synced across devices (it's host-specific).
 
-async function getStoredSid() {
+async function getStoredSid(nasId) {
   return new Promise(resolve => {
-    chrome.storage.local.get({ sid: null, sidHost: null }, r => {
-      resolve(r);
+    chrome.storage.local.get({ sids: {} }, r => {
+      resolve(r.sids?.[nasId] || null);
     });
   });
 }
 
-async function storeSid(sid, host) {
-  return new Promise(resolve => chrome.storage.local.set({ sid, sidHost: host }, resolve));
+async function storeSid(nasId, sid) {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ sids: {} }, r => {
+      const sids = r.sids || {};
+      sids[nasId] = sid;
+      chrome.storage.local.set({ sids }, resolve);
+    });
+  });
 }
 
-async function clearSid() {
-  return new Promise(resolve => chrome.storage.local.remove(["sid", "sidHost"], resolve));
+async function removeSid(nasId) {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ sids: {} }, r => {
+      const sids = r.sids || {};
+      delete sids[nasId];
+      chrome.storage.local.set({ sids }, resolve);
+    });
+  });
+}
+
+async function clearAllSids() {
+  return new Promise(resolve => chrome.storage.local.set({ sids: {} }, resolve));
 }
 
 // ── Synology API calls ─────────────────────────────────────────────────────
@@ -134,32 +211,32 @@ async function synoLogin(s) {
 
 // Get a valid sid — reuse stored one if available, otherwise login fresh.
 // Pass force=true to skip the cached sid and always re-authenticate.
-async function getSid(s, force = false) {
+async function getSid(nasId, s, force = false) {
   if (!force) {
-    const stored = await getStoredSid();
-    if (stored.sid && stored.sidHost === s.host) {
-      dbg("INFO", "Reusing stored sid");
-      return stored.sid;
+    const stored = await getStoredSid(nasId);
+    if (stored) {
+      dbg("INFO", "Reusing stored sid for NAS", nasId);
+      return stored;
     }
   }
-  dbg("INFO", "No stored sid, logging in fresh");
+  dbg("INFO", "No stored sid for NAS, logging in fresh", nasId);
   const sid = await synoLogin(s);
-  await storeSid(sid, s.host);
+  await storeSid(nasId, sid);
   return sid;
 }
 
 // Call a Synology API function. If it fails with an auth error (code 105/106),
 // clear the stored sid and retry once with a fresh login.
-async function synoCall(s, apiFn) {
-  let sid = await getSid(s);
+async function synoCall(nasId, s, apiFn) {
+  let sid = await getSid(nasId, s);
   try {
     return await apiFn(sid);
   } catch (err) {
     // DSM auth error codes: 105 = permission denied, 106 = session expired
     if (/code (105|106|119)/.test(err.message)) {
       dbg("WARN", "Session expired, re-authenticating", err.message);
-      await clearSid();
-      sid = await getSid(s, true);
+      await removeSid(nasId);
+      sid = await getSid(nasId, s, true);
       return await apiFn(sid);
     }
     throw err;
@@ -254,15 +331,15 @@ async function synoAddTorrent(s, sid, torrentUrl) {
 
 // ── test connection ────────────────────────────────────────────────────────
 
-async function testConnection(s) {
+async function testConnection(nasId, s) {
   dbg("INFO", "TEST_CONNECTION start", `${s.https ? "https" : "http"}://${s.host}:${s.port}`);
   // Always do a fresh login for the test so we can verify credentials
-  await clearSid();
+  await removeSid(nasId);
   try {
     if (!s || !s.host || !s.port || !s.username) {
       throw new Error("Settings incomplete: missing host, port, or username");
     }
-    const sid = await getSid(s, true);
+    const sid = await getSid(nasId, s, true);
     const infoUrl = `${baseUrl(s)}/DownloadStation/info.cgi?api=SYNO.DownloadStation.Info&version=1&method=getinfo&_sid=${sid}`;
     const ir   = await synoFetch("DS_INFO", infoUrl, { credentials: "include" });
     const text = await ir.text();
@@ -273,7 +350,7 @@ async function testConnection(s) {
     if (data.success) {
       dbg("INFO", "TEST_CONNECTION success", `DS version: ${data.data?.version_string}`);
       // Store the sid so subsequent sends reuse it
-      await storeSid(sid, s.host);
+      await storeSid(nasId, sid);
       return { ok: true, version: data.data?.version_string ?? "", log: [...debugLog] };
     } else {
       throw new Error(`Download Station error code ${data.error?.code ?? "?"}`);
@@ -303,35 +380,49 @@ function notify(title, message) {
   });
 }
 
-async function sendMagnet(magnetUrl) {
-  const s = await getSettings();
+async function sendMagnet(magnetUrl, nasId = null) {
+  const list = await getNasList();
+  if (!nasId && list.length > 0) nasId = list[0].id;
+
+  const s = await getNasById(nasId);
+  if (!s) {
+    notify("⚠️ NAS not found", "Configure a NAS device in extension options.");
+    return;
+  }
   if (!s.password) {
-    notify("⚠️ Not configured", "Open the extension options and enter your Synology credentials.");
+    notify("⚠️ Not configured", "Open the extension options and enter your NAS credentials.");
     return;
   }
   dbg("INFO", "SEND_MAGNET", magnetUrl.slice(0, 80));
   try {
-    await synoCall(s, sid => synoAddMagnet(s, sid, magnetUrl));
+    await synoCall(nasId, s, sid => synoAddMagnet(s, sid, magnetUrl));
     notify("✅ Sent to Download Station", decodeName(magnetUrl) || magnetUrl.slice(0, 80));
   } catch (err) {
-    notify("❌ Synology error", err.message);
+    notify("❌ NAS error", err.message);
     dbg("ERROR", "SEND_MAGNET failed", err.message);
   }
 }
 
-async function sendTorrent(torrentUrl) {
-  const s = await getSettings();
+async function sendTorrent(torrentUrl, nasId = null) {
+  const list = await getNasList();
+  if (!nasId && list.length > 0) nasId = list[0].id;
+
+  const s = await getNasById(nasId);
+  if (!s) {
+    notify("⚠️ NAS not found", "Configure a NAS device in extension options.");
+    return;
+  }
   if (!s.password) {
-    notify("⚠️ Not configured", "Open the extension options and enter your Synology credentials.");
+    notify("⚠️ Not configured", "Open the extension options and enter your NAS credentials.");
     return;
   }
   dbg("INFO", "SEND_TORRENT", torrentUrl.slice(0, 80));
   try {
-    await synoCall(s, sid => synoAddTorrent(s, sid, torrentUrl));
+    await synoCall(nasId, s, sid => synoAddTorrent(s, sid, torrentUrl));
     const filename = torrentUrl.split("/").pop().split("?")[0] || torrentUrl.slice(0, 60);
     notify("✅ Torrent sent to Download Station", filename);
   } catch (err) {
-    notify("❌ Synology error", err.message);
+    notify("❌ NAS error", err.message);
     dbg("ERROR", "SEND_TORRENT failed", err.message);
   }
 }
@@ -379,22 +470,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   try {
     console.log("Message received:", msg.type);
     dbg("INFO", "Message received", msg.type);
-    
+
     if (msg.type === "SEND_MAGNET") {
-      sendMagnet(msg.url)
+      sendMagnet(msg.url, msg.nasId)
         .then(() => sendResponse({ ok: true, log: [...debugLog] }))
         .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
       return true;
     }
     if (msg.type === "SEND_TORRENT") {
-      sendTorrent(msg.url)
+      sendTorrent(msg.url, msg.nasId)
         .then(() => sendResponse({ ok: true, log: [...debugLog] }))
         .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
       return true;
     }
     if (msg.type === "TEST_CONNECTION") {
       dbg("INFO", "TEST_CONNECTION handler called");
-      testConnection(msg.settings)
+      testConnection(msg.nasId, msg.settings)
         .then(result => {
           dbg("INFO", "TEST_CONNECTION sending response", result.ok ? "success" : result.error);
           sendResponse(result);
@@ -406,19 +497,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "LIST_TASKS") {
-      getSettings().then(s =>
-        synoCall(s, sid => listTasks(s, sid))
+      (async () => {
+        const s = await getNasById(msg.nasId);
+        if (!s) return sendResponse({ ok: false, error: "NAS not found" });
+        synoCall(msg.nasId, s, sid => listTasks(s, sid))
           .then(tasks => sendResponse({ ok: true, tasks }))
-          .catch(e => sendResponse({ ok: false, error: e.message }))
-      );
+          .catch(e => sendResponse({ ok: false, error: e.message }));
+      })();
       return true;
     }
     if (msg.type === "TASK_ACTION") {
-      getSettings().then(s =>
-        synoCall(s, sid => taskAction(s, sid, msg.action, msg.ids))
+      (async () => {
+        const s = await getNasById(msg.nasId);
+        if (!s) return sendResponse({ ok: false, error: "NAS not found" });
+        synoCall(msg.nasId, s, sid => taskAction(s, sid, msg.action, msg.ids))
           .then(() => sendResponse({ ok: true }))
-          .catch(e => sendResponse({ ok: false, error: e.message }))
-      );
+          .catch(e => sendResponse({ ok: false, error: e.message }));
+      })();
+      return true;
+    }
+    if (msg.type === "GET_NAS_LIST") {
+      getNasList().then(list => sendResponse({ list }));
       return true;
     }
     if (msg.type === "GET_WHITELIST") {
@@ -434,11 +533,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "CHECK_CONNECTION") {
-      getSettings().then(s =>
-        testConnection(s)
+      (async () => {
+        const s = await getNasById(msg.nasId);
+        if (!s) return sendResponse({ ok: false, error: "NAS not found" });
+        testConnection(msg.nasId, s)
           .then(result => sendResponse(result))
-          .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }))
-      );
+          .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
+      })();
+      return true;
+    }
+    if (msg.type === "ADD_NAS") {
+      addNas(msg.nas).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (msg.type === "UPDATE_NAS") {
+      updateNas(msg.nasId, msg.updates).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (msg.type === "DELETE_NAS") {
+      deleteNas(msg.nasId).then(() => sendResponse({ ok: true }));
       return true;
     }
     if (msg.type === "GET_LOG") {

@@ -6,6 +6,44 @@
   const ATTR      = "data-syno-injected";
   const TEXT_ATTR = "data-syno-text-injected";
 
+  // NAS device info for tooltips
+  let nasDevices = [];
+  let nasTooltip = "Send to NAS";
+  let whitelist = [];
+  let currentDomain = window.location.hostname;
+  let whitelistEnabled = false; // True if whitelist has domains
+
+  // Load NAS list and whitelist on content script load
+  chrome.runtime.sendMessage({ type: "GET_NAS_LIST" }, resp => {
+    nasDevices = resp?.list || [];
+    if (nasDevices.length === 1) {
+      nasTooltip = `Send to ${nasDevices[0].name}`;
+    } else if (nasDevices.length > 1) {
+      nasTooltip = `Send to: ${nasDevices.map(n => n.name).join(", ")}`;
+    }
+    // Update all existing buttons with new tooltip
+    document.querySelectorAll(`[${ATTR}="btn"]`).forEach(btn => {
+      btn.title = nasTooltip;
+    });
+
+    // Re-scan for links now that NAS list is loaded
+    document.querySelectorAll("a").forEach(processLink);
+    scanTextNodes();
+  });
+
+  // Load whitelist (global across all NAS)
+  chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
+    whitelist = resp?.list || [];
+    whitelistEnabled = whitelist.length > 0;
+    console.log("[NAS] Whitelist loaded:", { whitelist, whitelistEnabled, currentDomain });
+
+    // If whitelist just loaded and we need to filter, re-scan
+    if (whitelistEnabled) {
+      document.querySelectorAll("a").forEach(processLink);
+      scanTextNodes();
+    }
+  });
+
   // Matches full magnet URIs in plain text
   const MAGNET_RE  = /magnet:\?[^\s"'<>]+/g;
   // Matches http(s) URLs ending in .torrent in plain text
@@ -32,11 +70,11 @@
 
   // ── send helper ───────────────────────────────────────────────────────────
 
-  function sendUrl(btn, url, type) {
+  function sendUrl(btn, url, type, nasId) {
     // Validate URL format before sending
     const isValid = type === "torrent" ? isValidTorrentURL(url) : isValidMagnetURI(url);
     if (!isValid) {
-      btn.textContent = "❌ Invalid";
+      btn.textContent = "❌";
       btn.disabled = false;
       btn.style.background = "#c0392b";
       btn.title = `Invalid ${type} URL`;
@@ -44,13 +82,14 @@
       return;
     }
 
-    // Show confirmation dialog before sending
+    // Get filename for confirmation
     const typeLabel = type === "torrent" ? "torrent file" : "magnet link";
-    const name = type === "torrent" 
-      ? new URL(url).pathname.split("/").pop() 
+    const name = type === "torrent"
+      ? new URL(url).pathname.split("/").pop()
       : (url.match(/[?&]dn=([^&]+)/) ?? ["", "Torrent"])[1].substring(0, 50);
-    
-    if (!confirm(`Send ${typeLabel} to Download Station?\n\n${decodeURIComponent(name)}`)) {
+
+    const nasName = nasDevices.find(n => n.id === nasId)?.name || "NAS";
+    if (!confirm(`Send ${typeLabel} to ${nasName}?\n\n${decodeURIComponent(name)}`)) {
       btn.textContent = "⬇ NAS";
       btn.disabled = false;
       return;
@@ -59,8 +98,8 @@
     btn.textContent = "⏳";
     btn.disabled = true;
     const msg = type === "torrent"
-      ? { type: "SEND_TORRENT", url }
-      : { type: "SEND_MAGNET",  url };
+      ? { type: "SEND_TORRENT", url, nasId }
+      : { type: "SEND_MAGNET",  url, nasId };
     chrome.runtime.sendMessage(msg, resp => {
       if (chrome.runtime.lastError || !resp?.ok) {
         btn.textContent = "❌";
@@ -74,74 +113,176 @@
     });
   }
 
-  // ── floating button ───────────────────────────────────────────────────────
+  // ── inline button ─────────────────────────────────────────────────────────
 
-  function makeFloatingButton(url, type, anchorEl) {
+  function showNasSelector(btn, url, type) {
+    console.log("[NAS] showNasSelector called", { nasDevices: nasDevices.length, url, type });
+
+    // If no NAS configured, show message
+    if (nasDevices.length === 0) {
+      alert("No NAS devices configured. Please go to extension options and add a NAS device first.");
+      return;
+    }
+
+    // If only one NAS, send directly
+    if (nasDevices.length === 1) {
+      console.log("[NAS] Single NAS, sending directly to", nasDevices[0].name);
+      sendUrl(btn, url, type, nasDevices[0].id);
+      return;
+    }
+
+    // Create popup menu matching button styling
+    const popup = document.createElement("div");
+    popup.setAttribute("data-syno-popup", "1");
+    const bgColor = type === "torrent" ? "#1a7a4a" : "#1a6fb5";
+    Object.assign(popup.style, {
+      position:       "fixed",
+      zIndex:         "999999999",
+      background:     bgColor,
+      border:         "none",
+      borderRadius:   "3px",
+      boxShadow:      "0 1px 3px rgba(0,0,0,0.2)",
+      minWidth:       "150px",
+      padding:        "0",
+      fontFamily:     "sans-serif",
+      fontSize:       "11px",
+      fontWeight:     "600",
+      color:          "#fff",
+      overflow:       "hidden"
+    });
+
+    console.log("[NAS] Adding options to popup:", nasDevices.map(n => n.name));
+
+    // Add NAS options
+    nasDevices.forEach((nas, idx) => {
+      const option = document.createElement("div");
+      option.textContent = `${idx + 1}. ${nas.name}`;
+      Object.assign(option.style, {
+        padding:     "4px 8px",
+        cursor:      "pointer",
+        color:       "#fff",
+        transition:  "background 0.15s",
+        borderBottom: idx < nasDevices.length - 1 ? "1px solid rgba(255,255,255,0.2)" : "none",
+        lineHeight:  "1.4"
+      });
+      option.addEventListener("mouseenter", () => {
+        option.style.background = bgColor === "#1a7a4a" ? "#2a9a5a" : "#2a7fc5";
+      });
+      option.addEventListener("mouseleave", () => {
+        option.style.background = "";
+      });
+      option.addEventListener("click", (e) => {
+        e.stopPropagation();
+        console.log("[NAS] User selected:", nas.name);
+        document.body.removeChild(popup);
+        sendUrl(btn, url, type, nas.id);
+      });
+      popup.appendChild(option);
+    });
+
+    // Position popup near the button (fixed positioning, so no scroll offsets needed)
+    const rect = btn.getBoundingClientRect();
+    popup.style.left = rect.left + "px";
+    popup.style.top = (rect.bottom + 6) + "px";
+
+    console.log("[NAS] Popup positioning at:", { left: popup.style.left, top: popup.style.top });
+
+    document.body.appendChild(popup);
+    console.log("[NAS] Popup appended, children:", popup.children.length);
+
+    // Detailed diagnostics
+    setTimeout(() => {
+      const computed = window.getComputedStyle(popup);
+      console.log("[NAS] Popup diagnostics:", {
+        inDOM: document.body.contains(popup),
+        display: computed.display,
+        visibility: computed.visibility,
+        opacity: computed.opacity,
+        zIndex: computed.zIndex,
+        position: computed.position,
+        left: popup.style.left,
+        top: popup.style.top,
+        width: computed.width,
+        height: computed.height,
+        offsetWidth: popup.offsetWidth,
+        offsetHeight: popup.offsetHeight,
+        parentNode: popup.parentNode?.tagName,
+        innerHTML: popup.innerHTML.substring(0, 100)
+      });
+      console.log("[NAS] Page info:", {
+        docElement: document.documentElement.tagName,
+        bodyExists: !!document.body,
+        bodyChildren: document.body?.children.length
+      });
+    }, 100);
+
+    // Close popup when clicking outside
+    const closePopup = (e) => {
+      if (!popup.contains(e.target) && e.target !== btn) {
+        if (document.body.contains(popup)) {
+          document.body.removeChild(popup);
+        }
+        document.removeEventListener("click", closePopup);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closePopup), 0);
+  }
+
+  function makeInlineButton(url, type, anchorEl) {
     const btn = document.createElement("button");
     btn.textContent = "⬇ NAS";
-    btn.title = type === "torrent"
-      ? "Send torrent to Synology Download Station"
-      : "Send magnet to Synology Download Station";
+    btn.title = nasTooltip;
     btn.setAttribute(ATTR, "btn");
     btn.setAttribute("data-url", url);
     btn.setAttribute("data-type", type);
     Object.assign(btn.style, {
-      position:      "absolute",
-      zIndex:        "2147483647",
-      padding:       "2px 8px",
-      fontSize:      "12px",
-      fontFamily:    "sans-serif",
-      fontWeight:    "600",
-      color:         "#fff",
-      background:    type === "torrent" ? "#1a7a4a" : "#1a6fb5",
-      border:        "none",
-      borderRadius:  "4px",
-      cursor:        "pointer",
-      lineHeight:    "1.7",
-      whiteSpace:    "nowrap",
-      pointerEvents: "all",
-      userSelect:    "none",
-      boxShadow:     "0 1px 4px rgba(0,0,0,0.3)"
+      display:      "inline-block",
+      marginLeft:   "4px",
+      padding:      "2px 6px",
+      fontSize:     "11px",
+      fontFamily:   "sans-serif",
+      fontWeight:   "600",
+      color:        "#fff",
+      background:   type === "torrent" ? "#1a7a4a" : "#1a6fb5",
+      border:       "none",
+      borderRadius: "3px",
+      cursor:       "pointer",
+      lineHeight:   "1.4",
+      whiteSpace:   "nowrap",
+      verticalAlign: "middle",
+      userSelect:   "none",
+      boxShadow:    "0 1px 3px rgba(0,0,0,0.2)"
     });
-
-    function reposition() {
-      const r = anchorEl.getBoundingClientRect();
-      const btnWidth = btn.offsetWidth || 60;
-      let top  = r.top  + window.scrollY;
-      let left = r.right + window.scrollX + 6;
-      if (r.right + btnWidth + 10 > window.innerWidth) {
-        left = r.left + window.scrollX;
-        top  = r.bottom + window.scrollY + 2;
-      }
-      btn.style.top  = `${top}px`;
-      btn.style.left = `${left}px`;
-    }
 
     btn.addEventListener("click", e => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      if (!btn.disabled) sendUrl(btn, url, type);
+      if (!btn.disabled) showNasSelector(btn, url, type);
     });
 
-    document.body.appendChild(btn);
-    reposition();
-    window.addEventListener("scroll", reposition, { passive: true });
-    window.addEventListener("resize", reposition, { passive: true });
+    // Insert button after the anchor element
+    anchorEl.parentNode.insertBefore(btn, anchorEl.nextSibling);
     return btn;
   }
 
   // ── process anchor links ──────────────────────────────────────────────────
 
   function processLink(a) {
-    if (a.getAttribute(ATTR)) return;
+    // Skip if button already injected
+    if (a.nextSibling && a.nextSibling.getAttribute && a.nextSibling.getAttribute(ATTR) === "btn") return;
+    if (nasDevices.length === 0) return; // Don't inject if no NAS configured
+
+    // Check whitelist: if enabled, only inject on whitelisted domains
+    if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
+
     const href = a.href || "";
     let type = null;
     if (href.startsWith("magnet:")) type = "magnet";
     else if (/\.torrent(\?|$)/i.test(href)) type = "torrent";
     if (!type) return;
-    a.setAttribute(ATTR, "1");
-    makeFloatingButton(href, type, a);
+
+    makeInlineButton(href, type, a);
   }
 
   // ── pill helper ───────────────────────────────────────────────────────────
@@ -170,6 +311,11 @@
   const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "INPUT"]);
 
   function scanTextNodes() {
+    if (nasDevices.length === 0) return; // Don't scan if no NAS configured
+
+    // Check whitelist: if enabled, only scan on whitelisted domains
+    if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
+
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
@@ -234,13 +380,13 @@
       node.parentNode.replaceChild(frag, node);
     }
 
-    // Create floating buttons for all pills
+    // Create inline buttons for all pills
     document.querySelectorAll(`[${TEXT_ATTR}="1"]`).forEach(pill => {
-      if (pill.getAttribute("data-float-created")) return;
-      pill.setAttribute("data-float-created", "1");
+      if (pill.getAttribute("data-btn-created")) return;
+      pill.setAttribute("data-btn-created", "1");
       const url  = pill.getAttribute("data-url");
       const type = pill.getAttribute("data-type");
-      if (url && type) makeFloatingButton(url, type, pill);
+      if (url && type) makeInlineButton(url, type, pill);
     });
   }
 

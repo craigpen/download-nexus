@@ -5,16 +5,32 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      color-scheme: light dark;
+    }
+
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: 13px;
-      background: #1a1f2e;
-      color: #e0e6f0;
       width: 420px;
       min-height: 100px;
       max-height: 600px;
       display: flex;
       flex-direction: column;
+    }
+
+    @media (prefers-color-scheme: light) {
+      body {
+        background: #f5f5f5;
+        color: #333;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #1a1f2e;
+        color: #e0e6f0;
+      }
     }
 
     /* ── header ── */
@@ -23,17 +39,44 @@
       align-items: center;
       justify-content: space-between;
       padding: 10px 14px;
-      background: #141824;
-      border-bottom: 1px solid #2a3045;
       flex-shrink: 0;
+      border-bottom: 1px solid;
     }
+
+    @media (prefers-color-scheme: light) {
+      .header {
+        background: #f0f0f0;
+        border-color: #ddd;
+      }
+      .header-left {
+        color: #1a6fb5;
+      }
+      .icon-btn {
+        color: #666;
+      }
+      .icon-btn:hover { color: #000; background: #e0e0e0; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .header {
+        background: #141824;
+        border-color: #2a3045;
+      }
+      .header-left {
+        color: #7eb8f7;
+      }
+      .icon-btn {
+        color: #8898b8;
+      }
+      .icon-btn:hover { color: #e0e6f0; background: #2a3045; }
+    }
+
     .header-left {
       display: flex;
       align-items: center;
       gap: 8px;
       font-weight: 700;
       font-size: 13px;
-      color: #7eb8f7;
     }
     .header-right {
       display: flex;
@@ -44,28 +87,42 @@
       background: none;
       border: none;
       cursor: pointer;
-      color: #8898b8;
       padding: 4px;
       border-radius: 4px;
       display: flex;
       align-items: center;
       transition: color .15s, background .15s;
     }
-    .icon-btn:hover { color: #e0e6f0; background: #2a3045; }
 
     /* ── speed bar ── */
     .speed-bar {
       display: flex;
       gap: 16px;
       padding: 6px 14px;
-      background: #141824;
-      border-bottom: 1px solid #2a3045;
       font-size: 11px;
-      color: #8898b8;
       flex-shrink: 0;
+      border-bottom: 1px solid;
     }
+
+    @media (prefers-color-scheme: light) {
+      .speed-bar {
+        background: #f0f0f0;
+        border-color: #ddd;
+        color: #666;
+      }
+      .speed-val { color: #000; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .speed-bar {
+        background: #141824;
+        border-color: #2a3045;
+        color: #8898b8;
+      }
+      .speed-val { color: #e0e6f0; }
+    }
+
     .speed-item { display: flex; align-items: center; gap: 5px; }
-    .speed-val { color: #e0e6f0; font-weight: 600; }
     .speed-up { color: #4caf7d; }
     .speed-dn { color: #5b9cf6; }
 
@@ -74,26 +131,37 @@
       display: flex;
       padding: 8px 14px 0;
       gap: 4px;
-      background: #1a1f2e;
       flex-shrink: 0;
     }
+
+    @media (prefers-color-scheme: light) {
+      .tabs { background: #f5f5f5; }
+      .tab { color: #666; }
+      .tab:hover { color: #000; }
+      .tab.active { background: #e8e8e8; color: #1a6fb5; }
+      .tab-count { background: #ddd; color: #666; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tabs { background: #1a1f2e; }
+      .tab { color: #8898b8; }
+      .tab:hover { color: #e0e6f0; }
+      .tab.active { background: #2a3045; color: #7eb8f7; }
+      .tab-count { background: #3a4565; color: #aab8d0; }
+    }
+
     .tab {
       padding: 4px 10px;
       border: none;
       border-radius: 4px 4px 0 0;
       background: transparent;
-      color: #8898b8;
       cursor: pointer;
       font-size: 11px;
       font-weight: 600;
       transition: color .15s, background .15s;
     }
-    .tab:hover { color: #e0e6f0; }
-    .tab.active { background: #2a3045; color: #7eb8f7; }
     .tab-count {
       display: inline-block;
-      background: #3a4565;
-      color: #aab8d0;
       border-radius: 8px;
       padding: 0 5px;
       font-size: 10px;
@@ -108,24 +176,38 @@
       min-height: 60px;
     }
     .task-list::-webkit-scrollbar { width: 5px; }
-    .task-list::-webkit-scrollbar-track { background: transparent; }
-    .task-list::-webkit-scrollbar-thumb { background: #3a4565; border-radius: 3px; }
+    .task-list::-webkit-scrollbar-thumb { border-radius: 3px; }
+
+    @media (prefers-color-scheme: light) {
+      .task-list::-webkit-scrollbar-track { background: transparent; }
+      .task-list::-webkit-scrollbar-thumb { background: #ccc; }
+      .empty { color: #999; }
+      .task { border-color: #eee; }
+      .task:hover { background: #f9f9f9; }
+      .task-name { color: #333; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .task-list::-webkit-scrollbar-track { background: transparent; }
+      .task-list::-webkit-scrollbar-thumb { background: #3a4565; }
+      .empty { color: #4a5570; }
+      .task { border-color: #222840; }
+      .task:hover { background: #1f2538; }
+      .task-name { color: #c8d8f0; }
+    }
 
     .empty {
       display: flex;
       align-items: center;
       justify-content: center;
       height: 80px;
-      color: #4a5570;
       font-size: 12px;
     }
 
     .task {
       padding: 8px 14px;
-      border-bottom: 1px solid #222840;
       transition: background .1s;
     }
-    .task:hover { background: #1f2538; }
     .task:last-child { border-bottom: none; }
 
     .task-top {
@@ -222,24 +304,41 @@
       align-items: center;
       justify-content: space-between;
       padding: 7px 14px;
-      background: #141824;
-      border-top: 1px solid #2a3045;
       flex-shrink: 0;
+      border-top: 1px solid;
     }
+
+    @media (prefers-color-scheme: light) {
+      .footer {
+        background: #f0f0f0;
+        border-color: #ddd;
+      }
+      .footer-btn { background: #e0e0e0; color: #333; }
+      .footer-btn:hover { background: #d0d0d0; color: #000; }
+      .footer-btn.primary { background: #1a6fb5; color: #fff; }
+      .footer-btn.primary:hover { background: #155d9c; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .footer {
+        background: #141824;
+        border-color: #2a3045;
+      }
+      .footer-btn { background: #2a3045; color: #8898b8; }
+      .footer-btn:hover { background: #3a4565; color: #e0e6f0; }
+      .footer-btn.primary { background: #1a4f8a; color: #7eb8f7; }
+      .footer-btn.primary:hover { background: #1e5fa0; color: #a8d0ff; }
+    }
+
     .footer-btn {
-      background: #2a3045;
       border: none;
       border-radius: 4px;
-      color: #8898b8;
       cursor: pointer;
       padding: 4px 10px;
       font-size: 11px;
       font-weight: 600;
       transition: background .15s, color .15s;
     }
-    .footer-btn:hover { background: #3a4565; color: #e0e6f0; }
-    .footer-btn.primary { background: #1a4f8a; color: #7eb8f7; }
-    .footer-btn.primary:hover { background: #1e5fa0; color: #a8d0ff; }
 
     .status-msg {
       font-size: 11px;
@@ -276,6 +375,46 @@
     }
     .retry-btn:hover { background: #1e5fa0; }
 
+    /* whitelist dropdown */
+    .dropdown {
+      position: relative;
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #2a3045;
+      border: 1px solid #3a4565;
+      border-radius: 4px;
+      min-width: 200px;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      color: #e0e6f0;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background .15s;
+    }
+    .dropdown-item:first-child { border-radius: 3px 3px 0 0; }
+    .dropdown-item:last-child { border-radius: 0 0 3px 3px; }
+    .dropdown-item:hover { background: #3a4565; }
+    .dropdown-item.info {
+      color: #8898b8;
+      cursor: default;
+      font-size: 11px;
+      padding: 6px 12px;
+    }
+    .dropdown-item.info:hover { background: none; }
+
     /* loading spinner */
     .spinner {
       display: inline-block;
@@ -291,14 +430,11 @@
 <body>
   <div class="header">
     <div class="header-left">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7eb8f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
-        <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
-      </svg>
-      Download Station
+      <img src="icons/icon48.png" width="16" height="16" style="border-radius: 3px;" />
+      NAS Download Helper
     </div>
     <div class="header-right">
-      <span id="connStatus" title="Connection status">●</span>
+      <span id="connStatus" title="Connection status" style="display:none">●</span>
       <span class="status-msg" id="statusMsg"></span>
       <button class="icon-btn" id="refreshBtn" title="Refresh">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -306,6 +442,17 @@
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
         </svg>
       </button>
+      <div class="dropdown">
+        <button class="icon-btn" id="whitelistBtn" title="Whitelist current domain">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+          </svg>
+        </button>
+        <div class="dropdown-menu" id="whitelistMenu">
+          <div class="dropdown-item info" id="domainInfo">Loading...</div>
+          <button class="dropdown-item" id="whitelistAction">Add to whitelist</button>
+        </div>
+      </div>
       <button class="icon-btn" id="settingsBtn" title="Settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
@@ -313,6 +460,10 @@
         </svg>
       </button>
     </div>
+  </div>
+
+  <div class="tabs" id="nasTabBar" style="display:none">
+    <!-- NAS tabs will be inserted here -->
   </div>
 
   <div class="speed-bar" id="speedBar" style="display:none">
@@ -344,6 +495,12 @@
     <button class="retry-btn" id="retryBtn">↻ Retry</button>
   </div>
 
+  <div class="error-container" id="noNasContainer" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+    <div class="error-text" style="color: #1a6fb5;">⚙️ No NAS Configured</div>
+    <div class="error-detail">Go to settings and add a NAS device to get started.</div>
+    <button class="retry-btn" id="configureBtn" style="background: #1a6fb5;">⚙️ Open Settings</button>
+  </div>
+
   <div class="task-list" id="taskList">
     <div class="empty" id="emptyMsg">
       <span class="spinner"></span>
@@ -355,7 +512,7 @@
       <button class="footer-btn" id="pauseAllBtn" title="Pause only tasks visible in the current filter">⏸ Pause visible</button>
       <button class="footer-btn" id="resumeAllBtn" title="Resume only tasks visible in the current filter">▶ Resume visible</button>
     </div>
-    <button class="footer-btn primary" id="openDSBtn">Open DS ↗</button>
+    <button class="footer-btn primary" id="openDSBtn">Open Web ↗</button>
   </div>
 
   <script src="popup.js"></script>

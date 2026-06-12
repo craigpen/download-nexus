@@ -1,45 +1,53 @@
 # NAS Download Helper - Development Memory
 
 **Last Updated:** 2026-06-12
-**Project:** Browser extension for managing Synology Download Station downloads
+**Project:** Browser extension for managing multiple NAS devices (Synology, etc.)
 
 ---
 
 ## Project Overview
 
 **NAS Download Helper** is a Manifest V3 browser extension for Chrome/Edge that:
+- **Multi-NAS support:** Configure and manage multiple NAS devices from one extension
 - Detects magnet links and torrent files on web pages
-- Injects "⬇ NAS" buttons to send them to Synology Download Station
-- Provides a popup UI for task management (view, pause, resume, delete)
-- Maintains persistent authentication sessions
-- Supports content script whitelisting for performance
+- Injects "⬇ NAS" buttons to send them to configured NAS devices
+- Provides a popup UI for task management with NAS tabs (view, pause, resume, delete)
+- Maintains per-NAS persistent authentication sessions
+- Supports global content script whitelisting for performance
+- **Auto-theme:** Follows browser/OS light/dark theme preference
+- **Export/Import config** with optional password protection
 
 ---
 
-## Current Status (Session 3)
+## Current Status (Session 4 - Complete)
 
-### ✅ Completed Features
-- Core magnet/torrent detection and sending
-- Task management popup (list, filter, pause/resume, delete)
-- Persistent session caching (avoids repeated logins)
-- Connection validation with status indicator
-- Error handling with retry button
-- Debug logging (hidden by default, toggleable)
-- API call timeouts (20s via AbortController)
-- **CSRF Protection** (#2): URL validation + confirmation dialog
-- **Credentials Validation** (#5): Password required, test button state management
-- **Whitelist Management** (#1): Full CRUD UI in options page
-- **All security issues fixed** (recommendations #1-6 complete)
+### ✅ Completed Features (Session 4)
+- **Multi-NAS architecture** - Full backend support for multiple NAS devices with per-NAS sessions
+- **NAS Management UI** - Add/Edit/Delete NAS devices in options page with export/import
+- **Popup tabs** - Tab per NAS device showing connection status and task list
+- **Inline buttons** - Magnet/torrent buttons injected inline (no floating/overlapping)
+- **NAS selector popup** - Click button → menu to select which NAS to send to
+- **Whitelist filtering** - Global whitelist enforced (buttons only on whitelisted domains)
+- **Export/Import config** - Backup settings with optional password protection
+- **Task sorting** - DL tab by % complete (ascending), others by date added (newest first)
+- **Connection status per NAS** - Shown in tabs or header depending on device count
+- **"Open Web" button** - Opens current NAS web interface (host/port/https aware)
+- **Light/Dark theme** - Auto-detects browser/OS theme preference via CSS media queries
+- **Whitelist dropdown** - Quick add/remove current domain from popup header
+- **Core features** - Magnet/torrent detection, task management, auth sessions, timeouts
+- **Security** - CSRF protection, credentials validation, URL validation, error handling
 
-### 🔴 Known Issue (Just Fixed)
-- Test Connection now shows result properly (was stuck in pending state)
-- Root cause: Message listener was `async`, breaking Chrome's message channel
-- **FIXED**: Removed `async` and converted to explicit Promise chains
-
-### 📋 Next Steps
-1. Implement active whitelist filtering in content.js (currently whitelist exists but isn't used)
-2. Add "Manage Whitelist" quick link in popup
-3. Remaining feature recommendations (#7-14)
+### 📋 Next Steps (Future Sessions)
+1. **Search feature** — Add magnet/torrent search tab in popup (1337x.to or API integration)
+2. **Feature recommendations #7-14**:
+   - #7: Task sorting (done - by % complete or date added)
+   - #8: Pause/Resume all buttons
+   - #9: Badge counter (download count in extension icon)
+   - #10: Export logs as JSON
+   - #11: Keyboard shortcuts
+   - #12: Theme toggle (manual light/dark, currently auto)
+   - #13: DOM error boundary in content.js
+   - #14: Migration guide for version upgrades
 
 ---
 
@@ -61,10 +69,16 @@ MEMORY.md             - This file
 
 ### Key Design Patterns
 
-**Session Management:**
-- `getSid(s, force=false)`: Returns cached SID if valid, otherwise logs in fresh
-- `clearSid()`: Clears stored session
-- `storeSid(sid, host)`: Caches SID in chrome.storage.local
+**Multi-NAS Storage:**
+- `nasList`: Array in chrome.storage.sync, each with id, type, name, host, port, https, username, password, destination
+- `getNasList()`, `getNasById(nasId)`, `addNas()`, `updateNas()`, `deleteNas()`
+- Backward compatible: old single-NAS config auto-migrates to nasList format on first load
+
+**Per-NAS Session Management:**
+- `sids`: Object in chrome.storage.local keyed by NAS id: { "synology-main": sid, ... }
+- `getSid(nasId, s, force=false)`: Returns cached SID for NAS, logs in fresh if needed
+- `storeSid(nasId, sid)`: Caches SID per NAS id
+- `removeSid(nasId)`: Clears session for specific NAS
 - Automatic re-auth on error codes 105/106/119 (auth errors)
 
 **Timeout Protection:**
@@ -214,20 +228,25 @@ MEMORY.md             - This file
 ## Message Handler Reference
 
 ### Sent from Popup
-- **CHECK_CONNECTION**: Validate NAS (silent, for status indicator)
-- **LIST_TASKS**: Fetch current tasks
-- **TASK_ACTION**: Action + IDs (pause/resume/delete)
+- **GET_NAS_LIST**: No params → { list: [NAS objects] }
+- **CHECK_CONNECTION**: nasId → { ok, error? }
+- **LIST_TASKS**: nasId → { ok, tasks: [...] }
+- **TASK_ACTION**: nasId, action, ids → { ok, error? }
 
 ### Sent from Options
-- **TEST_CONNECTION**: settings object → { ok, version, log }
+- **GET_NAS_LIST**: No params → { list: [NAS objects] }
+- **ADD_NAS**: nas object → { ok }
+- **UPDATE_NAS**: nasId, updates → { ok }
+- **DELETE_NAS**: nasId → { ok }
+- **TEST_CONNECTION**: nasId, settings → { ok, version, log }
 - **GET_WHITELIST**: No params → { list: [domains] }
 - **ADD_WHITELIST**: domain → { ok }
 - **REMOVE_WHITELIST**: domain → { ok }
 - **GET_LOG**: No params → { log: entries }
 
 ### Sent from Content
-- **SEND_MAGNET**: url → { ok, log }
-- **SEND_TORRENT**: url → { ok, log }
+- **SEND_MAGNET**: url, nasId? (optional, defaults to first NAS) → { ok, log }
+- **SEND_TORRENT**: url, nasId? (optional, defaults to first NAS) → { ok, log }
 
 ---
 
@@ -289,8 +308,12 @@ MEMORY.md             - This file
 **After content.js changes:**
 - ⚠️ MUST reinstall extension (content script restart)
 
-**After popup.js/options.js/HTML changes:**
-- ✅ Just reload the page (Ctrl+R on options, refresh on task page)
+**After popup.js/popup.html changes:**
+- ✅ Just close and reopen popup (auto-reload)
+- No reinstall needed
+
+**After options.js/options.html changes:**
+- ✅ Just reload the page (Ctrl+R)
 - No reinstall needed
 
 ### Gotchas Encountered
@@ -298,6 +321,8 @@ MEMORY.md             - This file
 2. **sendResponse is for async responses** - Return `true` from listener to signal async handling
 3. **Whitelist exists but isn't filtering** - Need to implement domain check in content.js `processLink()`
 4. **URL validation is two-layer** - Both content.js and background.js check format for security
+5. **All popup/options messages now need nasId** - Pass nasId for NAS context (optional for content.js, defaults to first NAS)
+6. **NAS migration is automatic** - Old single-NAS configs are auto-converted to nasList format on first load
 
 ### Development Workflow
 1. Make changes to code

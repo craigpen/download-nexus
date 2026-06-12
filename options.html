@@ -5,17 +5,34 @@
   <title>NAS Download helper — Settings</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      color-scheme: light dark;
+    }
+
     body {
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: 14px;
-      color: #1a1a1a;
-      background: #f4f6f8;
       margin: 0;
       padding: 0;
       min-height: 100vh;
       display: flex;
       align-items: flex-start;
       justify-content: center;
+    }
+
+    @media (prefers-color-scheme: light) {
+      body {
+        color: #1a1a1a;
+        background: #f4f6f8;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: #e0e6f0;
+        background: #1a1f2e;
+      }
     }
     .wrap {
       width: 100%;
@@ -26,37 +43,68 @@
       gap: 20px;
     }
     .card {
-      background: #fff;
       border-radius: 10px;
       box-shadow: 0 2px 16px rgba(0,0,0,.12);
       padding: 28px 32px;
     }
+
+    @media (prefers-color-scheme: light) {
+      .card { background: #fff; }
+      h1 { color: #1a6fb5; }
+      h2 { color: #444; }
+      label { color: #333; }
+      .hint { color: #777; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .card { background: #2a3045; }
+      h1 { color: #7eb8f7; }
+      h2 { color: #aab8d0; }
+      label { color: #e0e6f0; }
+      .hint { color: #8898b8; }
+    }
+
     h1 {
       font-size: 1.2em;
       margin: 0 0 20px;
       display: flex;
       align-items: center;
       gap: 10px;
-      color: #1a6fb5;
     }
     h2 {
       font-size: 0.95em;
       margin: 0 0 12px;
-      color: #444;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    label { display: block; font-weight: 600; margin-bottom: 4px; color: #333; }
-    .hint { font-weight: 400; color: #777; font-size: 0.87em; margin-left: 4px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    .hint { font-weight: 400; font-size: 0.87em; margin-left: 4px; }
     .row { margin-bottom: 16px; }
     .row-inline { display: flex; gap: 12px; margin-bottom: 16px; }
     .row-inline > div { flex: 1; }
     input[type="text"], input[type="number"], input[type="password"] {
       width: 100%; padding: 8px 10px;
-      border: 1px solid #ccc; border-radius: 6px;
+      border-radius: 6px;
       font-size: 14px; transition: border-color .15s; outline: none;
     }
-    input:focus { border-color: #1a6fb5; }
+
+    @media (prefers-color-scheme: light) {
+      input[type="text"], input[type="number"], input[type="password"] {
+        border: 1px solid #ccc;
+        background: #fff;
+        color: #333;
+      }
+      input:focus { border-color: #1a6fb5; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      input[type="text"], input[type="number"], input[type="password"] {
+        border: 1px solid #444;
+        background: #1f2538;
+        color: #e0e6f0;
+      }
+      input:focus { border-color: #7eb8f7; }
+    }
     .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
     .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -66,31 +114,111 @@
     input:checked + .slider::before { transform: translateX(18px); }
     button[type="submit"] {
       width: 100%; padding: 10px;
-      background: #1a6fb5; color: #fff;
+      color: #fff;
       font-size: 15px; font-weight: 600;
       border: none; border-radius: 6px;
       cursor: pointer; transition: background .15s; margin-top: 4px;
     }
-    button[type="submit"]:hover { background: #155d9c; }
+
+    @media (prefers-color-scheme: light) {
+      button[type="submit"] { background: #1a6fb5; }
+      button[type="submit"]:hover { background: #155d9c; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      button[type="submit"] { background: #1a4f8a; }
+      button[type="submit"]:hover { background: #1e5fa0; }
+    }
+
     #status { margin-top: 12px; text-align: center; font-weight: 600; font-size: 0.95em; min-height: 22px; }
     .ok  { color: #1d7c2d; }
     .err { color: #c0392b; }
-    hr { border: none; border-top: 1px solid #e5e8ec; margin: 20px 0; }
+    hr { border: none; margin: 20px 0; }
+
+    @media (prefers-color-scheme: light) {
+      hr { border-top: 1px solid #e5e8ec; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      hr { border-top: 1px solid #3a4565; }
+    }
     .btn-row { display: flex; gap: 10px; }
     .test-btn {
       flex: 1; padding: 8px;
-      background: #f0f0f0; color: #333;
       font-size: 13px; font-weight: 600;
-      border: 1px solid #ccc; border-radius: 6px;
+      border-radius: 6px;
       cursor: pointer; transition: background .15s;
     }
-    .test-btn:hover:not(:disabled) { background: #e2e2e2; }
-    .test-btn:disabled {
-      background: #e8e8e8; color: #999;
-      cursor: not-allowed; opacity: 0.6;
-      border-color: #ddd;
+
+    @media (prefers-color-scheme: light) {
+      .test-btn {
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+      }
+      .test-btn:hover:not(:disabled) { background: #e2e2e2; }
+      .test-btn:disabled {
+        background: #e8e8e8;
+        color: #999;
+        border-color: #ddd;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .test-btn {
+        background: #2a3045;
+        color: #aab8d0;
+        border: 1px solid #3a4565;
+      }
+      .test-btn:hover:not(:disabled) { background: #3a4565; }
+      .test-btn:disabled {
+        background: #1f2538;
+        color: #555;
+        border-color: #333;
+      }
     }
     #testStatus { margin-top: 10px; min-height: 20px; font-size: 0.9em; text-align: center; }
+
+    /* ── NAS list ── */
+    .nas-list { margin-bottom: 12px; }
+    .nas-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;
+      margin-bottom: 8px; cursor: pointer; transition: background .15s;
+    }
+    .nas-item:hover { background: #f0f0f0; }
+    .nas-item.active { background: #e3f0ff; border-color: #1a6fb5; }
+    .nas-item-info { flex: 1; }
+    .nas-item-name { font-weight: 600; color: #333; }
+    .nas-item-host { font-size: 12px; color: #777; font-family: monospace; }
+    .nas-item-delete {
+      background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px;
+      padding: 3px 8px; font-size: 11px; cursor: pointer; color: #c0392b;
+      font-weight: 600; transition: background .15s;
+    }
+    .nas-item-delete:hover { background: #ffe0e0; }
+    .add-nas-btn {
+      width: 100%; padding: 8px;
+      background: #1a6fb5; color: #fff;
+      font-size: 14px; font-weight: 600;
+      border: none; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+      margin-bottom: 12px;
+    }
+    .add-nas-btn:hover { background: #155d9c; }
+    #settingsForm { display: none; }
+    #settingsForm.show { display: block; }
+    .form-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .form-back-btn {
+      background: none; border: none; color: #1a6fb5; font-weight: 600;
+      cursor: pointer; font-size: 14px; padding: 0; text-decoration: underline;
+    }
+    .form-delete-btn {
+      background: #c0392b; color: #fff; border: none; border-radius: 4px;
+      padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .form-delete-btn:hover { background: #a03220; }
+    .btn-row { display: flex; gap: 10px; }
 
     /* ── debug panel ── */
     #debugLog {
@@ -146,7 +274,7 @@
 <body>
 <div class="wrap">
 
-  <!-- Settings card -->
+  <!-- NAS Devices card -->
   <div class="card">
     <h1>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a6fb5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -156,7 +284,27 @@
       NAS Download helper — Settings
     </h1>
 
+    <div id="nasListContainer">
+      <h2>NAS Devices</h2>
+      <div class="nas-list" id="nasList"></div>
+      <button type="button" class="add-nas-btn" id="addNasBtn">+ Add NAS Device</button>
+    </div>
+
+    <!-- Settings form (shown when editing a NAS) -->
     <form id="settingsForm">
+      <div class="form-header">
+        <h2 id="formTitle" style="margin:0">Add Synology NAS</h2>
+        <div id="formActions" style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="form-delete-btn" id="deleteNasBtn" style="display:none">Delete</button>
+          <button type="button" class="form-back-btn" id="backBtn">← Back</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Device Name <span class="hint">e.g. Home NAS, Backup</span></label>
+        <input type="text" id="name" placeholder="Home NAS" required />
+      </div>
+
       <div class="row-inline">
         <div>
           <label>NAS Host / IP</label>
@@ -191,15 +339,37 @@
         <input type="text" id="destination" placeholder="/volume1/downloads" />
       </div>
 
-      <button type="submit">Save Settings</button>
-      <div id="status"></div>
-
-      <hr />
       <div class="btn-row">
         <button type="button" class="test-btn" id="testBtn">🔗 Test Connection</button>
       </div>
       <div id="testStatus"></div>
+
+      <hr />
+
+      <button type="submit">Save NAS Device</button>
+      <div id="status"></div>
     </form>
+  </div>
+
+  <!-- Backup/Restore card -->
+  <div class="card">
+    <h2>💾 Backup & Restore</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 12px">
+      Export your NAS devices and whitelist to a file. Useful before reinstalling the extension.
+    </p>
+    <div class="toggle-row">
+      <label class="switch">
+        <input type="checkbox" id="exportWithPasswords" />
+        <span class="slider"></span>
+      </label>
+      <span>Include passwords in export <span class="hint">(plaintext, faster restore but less secure)</span></span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="button" id="exportBtn" class="test-btn" style="flex:1;background:#1a6fb5;color:#fff;border:none">💾 Export Config</button>
+      <button type="button" id="importBtn" class="test-btn" style="flex:1;background:#1a6fb5;color:#fff;border:none">📂 Import Config</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" />
+    <div id="importStatus" style="margin-top:10px;min-height:20px;font-size:0.9em;text-align:center"></div>
   </div>
 
   <!-- Whitelist management card -->
@@ -221,7 +391,7 @@
   <div class="card" id="debugCard">
     <h2>🛠 Debug Log</h2>
     <p style="font-size:12px;color:#666;margin:0 0 10px">
-      Click <strong>Test Connection</strong> above to populate. Shows the exact URL attempted,
+      Click <strong>Test Connection</strong> to populate. Shows the exact URL attempted,
       HTTP status, and response body from your NAS.
     </p>
     <div class="log-controls">
