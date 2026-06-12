@@ -12,6 +12,13 @@ A browser extension for Edge/Chrome that intercepts magnet links and torrent fil
 - **Debug logging**: Built-in debug log for troubleshooting (hidden by default)
 - **Content script whitelist**: Manage which domains the extension actively scans (performance optimization)
 
+## Security
+
+- **CSRF Protection**: Validates magnet URI format and torrent URLs before sending; user confirmation required
+- **Credentials Validation**: Warns if password is empty; Test Connection button disabled without password
+- **URL Validation**: Defense-in-depth with validation in both content script and background service worker
+- **Secure Session Management**: Reuses authentication session to avoid repeated credential exposure
+
 ## Configuration
 
 1. Open extension options
