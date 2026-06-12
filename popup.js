@@ -86,19 +86,41 @@ function updateCounts() {
   document.getElementById("taskCountLabel").textContent = `${allTasks.length} task${allTasks.length !== 1 ? "s" : ""}`;
 }
 
+function getVisibleTasks() {
+  return filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+}
+
+function updateFooterButtons() {
+  const visible = getVisibleTasks();
+  const pauseCount = visible.filter(t => t.status === "downloading").length;
+  const resumeCount = visible.filter(t => t.status === "paused").length;
+  const pauseBtn = document.getElementById("pauseAllBtn");
+  const resumeBtn = document.getElementById("resumeAllBtn");
+
+  pauseBtn.disabled = pauseCount === 0;
+  resumeBtn.disabled = resumeCount === 0;
+  pauseBtn.textContent = `⏸ Pause visible${pauseCount ? ` (${pauseCount})` : ""}`;
+  resumeBtn.textContent = `▶ Resume visible${resumeCount ? ` (${resumeCount})` : ""}`;
+  pauseBtn.title = `Pause only tasks visible in the current filter (${pauseCount} task${pauseCount !== 1 ? "s" : ""})`;
+  resumeBtn.title = `Resume only tasks visible in the current filter (${resumeCount} task${resumeCount !== 1 ? "s" : ""})`;
+}
+
 function renderTasks() {
   const list = document.getElementById("taskList");
   const empty = document.getElementById("emptyMsg");
 
-  const visible = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+  const visible = getVisibleTasks();
 
   if (visible.length === 0) {
     empty.style.display = "flex";
+    const labels = { all: "active", downloading: "downloading", seeding: "seeding", paused: "paused", finished: "done", error: "error" };
+    const statusLabel = labels[filter] || filter;
     empty.innerHTML = allTasks.length === 0
       ? "<span>No active downloads</span>"
-      : `<span>No ${filter} tasks</span>`;
+      : `<span>No ${statusLabel} tasks</span>`;
     // Remove old task rows
     list.querySelectorAll(".task").forEach(el => el.remove());
+    updateFooterButtons();
     return;
   }
 
@@ -183,6 +205,7 @@ function renderTasks() {
   });
 
   list.appendChild(fragment);
+  updateFooterButtons();
 }
 
 function escHtml(str) {
@@ -239,13 +262,13 @@ document.querySelectorAll(".tab").forEach(tab => {
 document.getElementById("refreshBtn").addEventListener("click", refresh);
 
 document.getElementById("pauseAllBtn").addEventListener("click", () => {
-  const visible = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+  const visible = getVisibleTasks();
   const ids = visible.filter(t => t.status === "downloading").map(t => t.id);
   if (ids.length) taskAction("pause", ids);
 });
 
 document.getElementById("resumeAllBtn").addEventListener("click", () => {
-  const visible = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+  const visible = getVisibleTasks();
   const ids = visible.filter(t => t.status === "paused").map(t => t.id);
   if (ids.length) taskAction("resume", ids);
 });
