@@ -123,8 +123,16 @@
     }
 
     .speed-item { display: flex; align-items: center; gap: 5px; }
-    .speed-up { color: #4caf7d; }
-    .speed-dn { color: #5b9cf6; }
+
+    @media (prefers-color-scheme: light) {
+      .speed-up { color: #2a8659; }
+      .speed-dn { color: #1a5fc9; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .speed-up { color: #4caf7d; }
+      .speed-dn { color: #5b9cf6; }
+    }
 
     /* ── filter tabs ── */
     .tabs {
@@ -181,10 +189,9 @@
     @media (prefers-color-scheme: light) {
       .task-list::-webkit-scrollbar-track { background: transparent; }
       .task-list::-webkit-scrollbar-thumb { background: #ccc; }
-      .empty { color: #999; }
+      .empty { color: #555; }
       .task { border-color: #eee; }
       .task:hover { background: #f9f9f9; }
-      .task-name { color: #333; }
     }
 
     @media (prefers-color-scheme: dark) {
@@ -220,12 +227,19 @@
     .task-name {
       font-size: 12px;
       font-weight: 500;
-      color: #c8d8f0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       flex: 1;
       min-width: 0;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .task-name { color: #222; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .task-name { color: #c8d8f0; }
     }
     .task-actions {
       display: flex;
@@ -253,13 +267,24 @@
       gap: 8px;
       margin-bottom: 4px;
     }
+
     .progress-track {
       flex: 1;
       height: 3px;
-      background: #2a3045;
       border-radius: 2px;
       overflow: hidden;
     }
+
+    @media (prefers-color-scheme: light) {
+      .progress-track { background: #bbb; }
+      .progress-pct { color: #333; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .progress-track { background: #2a3045; }
+      .progress-pct { color: #8898b8; }
+    }
+
     .progress-fill {
       height: 100%;
       border-radius: 2px;
@@ -267,7 +292,6 @@
     }
     .progress-pct {
       font-size: 10px;
-      color: #8898b8;
       min-width: 32px;
       text-align: right;
     }
@@ -276,12 +300,23 @@
       display: flex;
       gap: 12px;
       font-size: 10px;
-      color: #5a6880;
     }
-    .task-size { color: #6a7890; }
+
+    @media (prefers-color-scheme: light) {
+      .task-bot { color: #666; }
+      .task-size { color: #666; }
+      .task-eta { color: #666; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .task-bot { color: #5a6880; }
+      .task-size { color: #6a7890; }
+      .task-eta { color: #6a7890; }
+    }
+
     .task-dn   { color: #5b9cf6; }
     .task-up   { color: #4caf7d; }
-    .task-eta  { color: #6a7890; margin-left: auto; }
+    .task-eta  { margin-left: auto; }
 
     /* status badge */
     .status-dot {
@@ -342,18 +377,34 @@
 
     .status-msg {
       font-size: 11px;
-      color: #5a6880;
     }
+
+    @media (prefers-color-scheme: light) {
+      .status-msg { color: #444; }
+      #connStatus {
+        background: #e0e0e0;
+        color: #333;
+      }
+      #connStatus.ok { color: #1d7c2d; background: rgba(29, 124, 45, 0.1); }
+      #connStatus.error { color: #c0392b; background: rgba(192, 57, 43, 0.1); }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .status-msg { color: #5a6880; }
+      #connStatus {
+        background: #2a3045;
+        color: #8898b8;
+      }
+      #connStatus.ok { color: #4caf7d; background: rgba(76, 175, 125, 0.15); }
+      #connStatus.error { color: #ff7b72; background: rgba(255, 123, 114, 0.15); }
+    }
+
     #connStatus {
       font-size: 10px;
       padding: 2px 6px;
       border-radius: 3px;
-      background: #2a3045;
-      color: #8898b8;
       white-space: nowrap;
     }
-    #connStatus.ok { color: #4caf7d; background: rgba(76, 175, 125, 0.15); }
-    #connStatus.error { color: #ff7b72; background: rgba(255, 123, 114, 0.15); }
     .error-container {
       display: none;
       flex-direction: column;
@@ -414,6 +465,41 @@
       padding: 6px 12px;
     }
     .dropdown-item.info:hover { background: none; }
+
+    /* ── support footer ── */
+    .support-footer {
+      padding: 4px 14px;
+      text-align: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      border-top: 1px solid;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .support-footer {
+        background: #f9f9f9;
+        border-color: #e5e8ec;
+        color: #888;
+      }
+      .support-footer a {
+        color: #666;
+        text-decoration: none;
+      }
+      .support-footer a:hover { color: #1a6fb5; text-decoration: underline; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .support-footer {
+        background: #0f1420;
+        border-color: #1a2538;
+        color: #6a7890;
+      }
+      .support-footer a {
+        color: #7a8aa0;
+        text-decoration: none;
+      }
+      .support-footer a:hover { color: #7eb8f7; text-decoration: underline; }
+    }
 
     /* loading spinner */
     .spinner {
@@ -513,6 +599,10 @@
       <button class="footer-btn" id="resumeAllBtn" title="Resume only tasks visible in the current filter">▶ Resume visible</button>
     </div>
     <button class="footer-btn primary" id="openDSBtn">Open Web ↗</button>
+  </div>
+
+  <div class="support-footer">
+    ♥ <a href="https://ko-fi.com/craigwpen" target="_blank" rel="noopener noreferrer">Support</a> • <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer">Donate</a>
   </div>
 
   <script src="popup.js"></script>
