@@ -269,6 +269,65 @@
     .whitelist-add-input { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
     .whitelist-add-btn { padding: 6px 12px; background: #1a6fb5; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
     .whitelist-add-btn:hover { background: #155d9c; }
+
+    /* ── Donation buttons ── */
+    .donation-btn {
+      flex: 1; min-width: 140px;
+      padding: 10px 16px;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 2px solid;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .donation-btn.kofi {
+        background: #ff5e78;
+        color: #fff;
+        border-color: #ff5e78;
+      }
+      .donation-btn.kofi:hover {
+        background: #ff4f6f;
+        border-color: #ff4f6f;
+      }
+      .donation-btn.bmac {
+        background: #FFDD00;
+        color: #1a1a1a;
+        border-color: #FFDD00;
+      }
+      .donation-btn.bmac:hover {
+        background: #ffd700;
+        border-color: #ffd700;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .donation-btn.kofi {
+        background: #ff5e78;
+        color: #fff;
+        border-color: #ff5e78;
+      }
+      .donation-btn.kofi:hover {
+        background: #ff7b8e;
+        border-color: #ff7b8e;
+      }
+      .donation-btn.bmac {
+        background: #FFDD00;
+        color: #1a1a1a;
+        border-color: #FFDD00;
+      }
+      .donation-btn.bmac:hover {
+        background: #ffe66d;
+        border-color: #ffe66d;
+      }
+    }
   </style>
 </head>
 <body>
@@ -370,6 +429,18 @@
     </div>
     <input type="file" id="importFile" accept=".json" style="display:none" />
     <div id="importStatus" style="margin-top:10px;min-height:20px;font-size:0.9em;text-align:center"></div>
+  </div>
+
+  <!-- Support / Donation card -->
+  <div class="card">
+    <h2>❤️ Support Development</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 14px">
+      Enjoy the extension? Consider supporting ongoing development and improvements.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="https://ko-fi.com/craigwpen" target="_blank" rel="noopener noreferrer" class="donation-btn kofi">☕ Ko-fi</a>
+      <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer" class="donation-btn bmac">☕ Buy Me a Coffee</a>
+    </div>
   </div>
 
   <!-- Whitelist management card -->
