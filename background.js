@@ -166,7 +166,28 @@ async function synoCall(s, apiFn) {
   }
 }
 
+// ── URL validation ─────────────────────────────────────────────────────────
+
+function isValidMagnetURI(url) {
+  if (!url.startsWith("magnet:?")) return false;
+  return /[&?](xt|dn|tr)=/.test(url);
+}
+
+function isValidTorrentURL(url) {
+  try {
+    const u = new URL(url);
+    return /\.torrent(\?|$)/i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 async function synoAddMagnet(s, sid, magnetUrl) {
+  // Secondary validation check
+  if (!isValidMagnetURI(magnetUrl)) {
+    dbg("ERROR", "Invalid magnet URI rejected", magnetUrl.slice(0, 80));
+    throw new Error("Invalid magnet URI format");
+  }
   const params = new URLSearchParams({
     api:     "SYNO.DownloadStation.Task",
     version: "1",
@@ -194,6 +215,11 @@ async function synoAddMagnet(s, sid, magnetUrl) {
 }
 
 async function synoAddTorrent(s, sid, torrentUrl) {
+  // Secondary validation check
+  if (!isValidTorrentURL(torrentUrl)) {
+    dbg("ERROR", "Invalid torrent URL rejected", torrentUrl.slice(0, 80));
+    throw new Error("Invalid torrent URL format");
+  }
   dbg("INFO", "FETCH_TORRENT", torrentUrl);
   const tResp = await fetch(torrentUrl, { credentials: "omit" });
   if (!tResp.ok) throw new Error(`Failed to fetch torrent file (HTTP ${tResp.status})`);

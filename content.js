@@ -11,9 +11,51 @@
   // Matches http(s) URLs ending in .torrent in plain text
   const TORRENT_RE = /https?:\/\/[^\s"'<>]+\.torrent(?:[^\s"'<>]*)/g;
 
+  // ── URL validation ────────────────────────────────────────────────────────
+
+  function isValidMagnetURI(url) {
+    // Must start with magnet:? and contain required parameters
+    if (!url.startsWith("magnet:?")) return false;
+    // Must have at least one of: xt (exact topic), dn (display name), or tr (tracker)
+    return /[&?](xt|dn|tr)=/.test(url);
+  }
+
+  function isValidTorrentURL(url) {
+    // Must be http(s) and end with .torrent
+    try {
+      const u = new URL(url);
+      return /\.torrent(\?|$)/i.test(u.pathname);
+    } catch {
+      return false;
+    }
+  }
+
   // ── send helper ───────────────────────────────────────────────────────────
 
   function sendUrl(btn, url, type) {
+    // Validate URL format before sending
+    const isValid = type === "torrent" ? isValidTorrentURL(url) : isValidMagnetURI(url);
+    if (!isValid) {
+      btn.textContent = "❌ Invalid";
+      btn.disabled = false;
+      btn.style.background = "#c0392b";
+      btn.title = `Invalid ${type} URL`;
+      console.warn(`[NAS] Invalid ${type} URL attempted: ${url.slice(0, 80)}`);
+      return;
+    }
+
+    // Show confirmation dialog before sending
+    const typeLabel = type === "torrent" ? "torrent file" : "magnet link";
+    const name = type === "torrent" 
+      ? new URL(url).pathname.split("/").pop() 
+      : (url.match(/[?&]dn=([^&]+)/) ?? ["", "Torrent"])[1].substring(0, 50);
+    
+    if (!confirm(`Send ${typeLabel} to Download Station?\n\n${decodeURIComponent(name)}`)) {
+      btn.textContent = "⬇ NAS";
+      btn.disabled = false;
+      return;
+    }
+
     btn.textContent = "⏳";
     btn.disabled = true;
     const msg = type === "torrent"

@@ -24,12 +24,20 @@ chrome.storage.sync.get(DEFAULT, s => {
 // ── save ──────────────────────────────────────────────────────────────────
 $("settingsForm").addEventListener("submit", e => {
   e.preventDefault();
+  const password = $("password").value;
+  if (!password) {
+    const el = $("status");
+    el.textContent = "⚠️ Password is required";
+    el.className = "err";
+    setTimeout(() => { el.textContent = ""; }, 4000);
+    return;
+  }
   const settings = {
     host:        $("host").value.trim(),
     port:        $("port").value.trim(),
     https:       $("https").checked,
     username:    $("username").value.trim(),
-    password:    $("password").value,
+    password:    password,
     destination: $("destination").value.trim()
   };
   chrome.storage.sync.set(settings, () => {
@@ -37,7 +45,29 @@ $("settingsForm").addEventListener("submit", e => {
     el.textContent = "✅ Settings saved!";
     el.className = "ok";
     setTimeout(() => { el.textContent = ""; }, 3000);
+    updateTestButtonState();
   });
+});
+
+// ── test button state management ───────────────────────────────────────────
+function updateTestButtonState() {
+  const password = $("password").value.trim();
+  const testBtn = $("testBtn");
+  const hasPassword = password.length > 0;
+  testBtn.disabled = !hasPassword;
+  testBtn.title = hasPassword 
+    ? "Test connection to your NAS" 
+    : "Enter a password to test connection";
+}
+
+// Monitor password field for real-time button state
+$("password").addEventListener("input", updateTestButtonState);
+$("password").addEventListener("change", updateTestButtonState);
+
+// Initial state on load
+chrome.storage.sync.get(DEFAULT, s => {
+  const hasPassword = s.password && s.password.length > 0;
+  $("testBtn").disabled = !hasPassword;
 });
 
 // ── debug log rendering ───────────────────────────────────────────────────
