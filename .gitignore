@@ -21,3 +21,6 @@ build/
 # Temporary files
 *.tmp
 *.temp
+
+# Local development notes
+MEMORY.md
