@@ -376,23 +376,28 @@ async function taskAction(s, sid, action, ids) {
 // ── message listener ───────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(async (msg, _sender, sendResponse) => {
-  if (msg.type === "SEND_MAGNET") {
-    sendMagnet(msg.url)
-      .then(() => sendResponse({ ok: true, log: [...debugLog] }))
-      .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
-    return true;
-  }
-  if (msg.type === "SEND_TORRENT") {
-    sendTorrent(msg.url)
-      .then(() => sendResponse({ ok: true, log: [...debugLog] }))
-      .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
-    return true;
-  }
-  if (msg.type === "TEST_CONNECTION") {
-    testConnection(msg.settings)
-      .then(result => sendResponse(result))
-      .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
-    return true;
+  try {
+    console.log("Message received:", msg.type);
+    dbg("INFO", "Message received", msg.type);
+    
+    if (msg.type === "SEND_MAGNET") {
+      sendMagnet(msg.url)
+        .then(() => sendResponse({ ok: true, log: [...debugLog] }))
+        .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
+      return true;
+    }
+    if (msg.type === "SEND_TORRENT") {
+      sendTorrent(msg.url)
+        .then(() => sendResponse({ ok: true, log: [...debugLog] }))
+        .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
+      return true;
+    }
+    if (msg.type === "TEST_CONNECTION") {
+      dbg("INFO", "TEST_CONNECTION handler called");
+      testConnection(msg.settings)
+        .then(result => sendResponse(result))
+        .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
+      return true;
   }
   if (msg.type === "LIST_TASKS") {
     getSettings().then(s =>
@@ -430,5 +435,10 @@ chrome.runtime.onMessage.addListener(async (msg, _sender, sendResponse) => {
   }
   if (msg.type === "GET_LOG") {
     sendResponse({ log: [...debugLog] });
+  }
+  } catch (err) {
+    console.error("Message listener error:", err);
+    dbg("ERROR", "Message listener error", err.message);
+    sendResponse({ ok: false, error: err.message, log: [...debugLog] });
   }
 });
