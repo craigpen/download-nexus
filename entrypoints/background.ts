@@ -593,5 +593,10 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any)
   }
 });
 
-// WXT requires a default export for background scripts
+// Keep service worker alive
+setInterval(() => {
+  // No-op to keep the service worker from being garbage collected
+}, 60000);
+
+// WXT requires a default export
 export default {};
