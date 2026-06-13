@@ -63,14 +63,26 @@ The content script can be optimized by whitelisting specific domains where you f
 
 ## Getting Started
 
-1. Clone or load the folder in VS Code
-2. Go to `edge://extensions` or `chrome://extensions`
-3. Enable Developer Mode
-4. Click "Load unpacked" and select the project folder
-5. Click the extension icon and go to options (gear icon)
-6. Click **"+ Add NAS Device"** and configure your Synology NAS
-7. Test the connection to verify settings
-8. Back in the popup, your NAS task queue should load
+### Development
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Build the extension: `npm run build` (creates `dist/chrome-mv3/`)
+4. Go to `edge://extensions` or `chrome://extensions`
+5. Enable Developer Mode
+6. Click "Load unpacked" and select `dist/chrome-mv3/`
+7. Click the extension icon and go to options (gear icon)
+8. Click **"+ Add NAS Device"** and configure your NAS
+9. Test the connection to verify settings
+10. Back in the popup, your NAS task queue should load
+
+### Building for Different Browsers
+
+- **Chrome/Edge**: `npm run build:chrome` → `dist/chrome-mv3/`
+- **Firefox**: `npm run build:firefox` → `dist/firefox-mv3/`
+- **All targets**: `npm run build:all`
+
+Each build is ready to submit to the respective app store.
 
 ## Architecture
 
@@ -78,6 +90,7 @@ The content script can be optimized by whitelisting specific domains where you f
 - **nasList** (chrome.storage.sync): Array of NAS device configs, each with id, type, name, host, port, https, username, password, destination
 - **Per-NAS sessions** (chrome.storage.local): SID cached separately for each NAS device to maintain independent sessions
 - **Type extensibility**: Device type ("synology", "qbittorrent", etc.) allows adding new NAS types in the future
+- **Generic codebase**: Function names use "NAS" prefix (nasFetch, nasCall, nasLogin) to be agnostic of device type
 
 ### File Structure
 - **background.js**: Service worker handling API calls, session management, and NAS CRUD operations
