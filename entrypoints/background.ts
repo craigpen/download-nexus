@@ -561,3 +561,6 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any)
     sendResponse({ ok: false, error: err.message, log: [...debugLog] });
   }
 });
+
+// WXT requires a default export for background scripts
+export default {};

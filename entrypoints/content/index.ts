@@ -1,7 +1,8 @@
 // content.ts — NAS Download helper content script
 
-(function () {
-  "use strict";
+if (typeof document !== "undefined" && typeof window !== "undefined") {
+  (function () {
+    "use strict";
 
   const ATTR      = "data-syno-injected";
   const TEXT_ATTR = "data-syno-text-injected";
@@ -10,47 +11,65 @@
   let nasDevices: any[] = [];
   let nasTooltip = "Send to NAS";
   let whitelist: string[] = [];
-  let currentDomain = window.location.hostname;
+  let currentDomain = "";
   let whitelistEnabled = false; // True if whitelist has domains
 
+  // Set domain at runtime
+  try {
+    currentDomain = window.location.hostname;
+  } catch {
+    currentDomain = "";
+  }
+
   // Load NAS list and whitelist on content script load
-  chrome.runtime.sendMessage({ type: "GET_NAS_LIST" }, (resp: any) => {
-    nasDevices = resp?.list || [];
-    if (nasDevices.length === 1) {
-      nasTooltip = `Send to ${nasDevices[0].name}`;
-    } else if (nasDevices.length > 1) {
-      nasTooltip = `Send to: ${nasDevices.map((n: any) => n.name).join(", ")}`;
-    }
-    // Update all existing buttons with new tooltip
-    document.querySelectorAll(`[${ATTR}="btn"]`).forEach((btn: any) => {
-      btn.title = nasTooltip;
-    });
+  const initializeExtension = () => {
+    try {
+      chrome.runtime.sendMessage({ type: "GET_NAS_LIST" }, (resp: any) => {
+        nasDevices = resp?.list || [];
+        if (nasDevices.length === 1) {
+          nasTooltip = `Send to ${nasDevices[0].name}`;
+        } else if (nasDevices.length > 1) {
+          nasTooltip = `Send to: ${nasDevices.map((n: any) => n.name).join(", ")}`;
+        }
+        // Update all existing buttons with new tooltip
+        document.querySelectorAll(`[${ATTR}="btn"]`).forEach((btn: any) => {
+          btn.title = nasTooltip;
+        });
 
-    // Re-scan for links now that NAS list is loaded
-    document.querySelectorAll("a").forEach(processLink);
-    scanTextNodes();
-  });
-
-  // Load whitelist (global across all NAS)
-  chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, (resp: any) => {
-    whitelist = resp?.list || [];
-    whitelistEnabled = whitelist.length > 0;
-
-    // If whitelist is enabled and current domain is NOT whitelisted, remove all injected buttons
-    if (whitelistEnabled && !whitelist.includes(currentDomain)) {
-      document.querySelectorAll(`[${ATTR}="btn"]`).forEach((btn: any) => {
-        btn.remove();
+        // Re-scan for links now that NAS list is loaded
+        document.querySelectorAll("a").forEach(processLink);
+        scanTextNodes();
       });
-      // Remove pills and their buttons too
-      document.querySelectorAll(`[${TEXT_ATTR}="1"]`).forEach((pill: any) => {
-        pill.remove();
+
+      // Load whitelist (global across all NAS)
+      chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, (resp: any) => {
+        whitelist = resp?.list || [];
+        whitelistEnabled = whitelist.length > 0;
+
+        // If whitelist is enabled and current domain is NOT whitelisted, remove all injected buttons
+        if (whitelistEnabled && !whitelist.includes(currentDomain)) {
+          document.querySelectorAll(`[${ATTR}="btn"]`).forEach((btn: any) => {
+            btn.remove();
+          });
+          // Remove pills and their buttons too
+          document.querySelectorAll(`[${TEXT_ATTR}="1"]`).forEach((pill: any) => {
+            pill.remove();
+          });
+        } else if (whitelistEnabled) {
+          // Domain is whitelisted, re-scan in case buttons were blocked initially
+          document.querySelectorAll("a").forEach(processLink);
+          scanTextNodes();
+        }
       });
-    } else if (whitelistEnabled) {
-      // Domain is whitelisted, re-scan in case buttons were blocked initially
-      document.querySelectorAll("a").forEach(processLink);
-      scanTextNodes();
+    } catch (e) {
+      // Chrome API not available during build
     }
-  });
+  };
+
+  // Delay initialization to avoid running during build
+  if (typeof chrome !== "undefined") {
+    setTimeout(initializeExtension, 0);
+  }
 
   // Matches full magnet URIs in plain text
   const MAGNET_RE  = /magnet:\?[^\s"'<>]+/g;
@@ -369,29 +388,38 @@
 
   // ── MutationObserver — anchor tags only ───────────────────────────────────
 
-  const observer = new MutationObserver((mutations: any) => {
-    for (const mut of mutations) {
-      for (const node of mut.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue;
-        node.querySelectorAll?.('a').forEach(processLink);
-        if (node.matches?.('a')) processLink(node);
+  if (typeof MutationObserver !== "undefined") {
+    const observer = new MutationObserver((mutations: any) => {
+      for (const mut of mutations) {
+        for (const node of mut.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          node.querySelectorAll?.('a').forEach(processLink);
+          if (node.matches?.('a')) processLink(node);
+        }
       }
-    }
-  });
+    });
 
-  observer.observe(document.body || document.documentElement, {
-    childList: true,
-    subtree:   true
-  });
+    observer.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree:   true
+    });
+  }
 
   // ── run ───────────────────────────────────────────────────────────────────
 
   document.querySelectorAll("a").forEach(processLink);
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scanTextNodes);
-  } else {
-    scanTextNodes();
-  }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scanTextNodes);
+    } else {
+      scanTextNodes();
+    }
 
-})();
+  })();
+}
+
+// WXT requires a default export for content scripts
+export default {
+  matches: ["<all_urls>"],
+  run_at: "document_idle"
+};
