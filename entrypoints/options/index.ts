@@ -368,18 +368,23 @@ function importConfig() {
 
     // Import NAS list (merge with existing, overwrite by name)
     if (config.nasList && Array.isArray(config.nasList)) {
+      console.log("[NAS] Importing", config.nasList.length, "NAS devices");
       for (const importedNas of config.nasList) {
         // Check if NAS with same name already exists
         const existing = nasList.find((n: any) => n.name === importedNas.name);
         if (existing) {
           // Update existing NAS
+          console.log("[NAS] Updating NAS:", existing.id);
           await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("UPDATE_NAS timeout")), 5000);
             try {
               chrome.runtime.sendMessage({
                 type: "UPDATE_NAS",
                 nasId: existing.id,
                 updates: importedNas
               }, (resp: any) => {
+                clearTimeout(timeout);
+                console.log("[NAS] UPDATE_NAS response:", resp);
                 if (chrome.runtime.lastError) {
                   reject(new Error(chrome.runtime.lastError.message));
                 } else {
@@ -387,17 +392,22 @@ function importConfig() {
                 }
               });
             } catch (err) {
+              clearTimeout(timeout);
               reject(err);
             }
           });
         } else {
           // Add new NAS
+          console.log("[NAS] Adding new NAS:", importedNas.name);
           await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("ADD_NAS timeout")), 5000);
             try {
               chrome.runtime.sendMessage({
                 type: "ADD_NAS",
                 nas: importedNas
               }, (resp: any) => {
+                clearTimeout(timeout);
+                console.log("[NAS] ADD_NAS response:", resp);
                 if (chrome.runtime.lastError) {
                   reject(new Error(chrome.runtime.lastError.message));
                 } else {
@@ -405,6 +415,7 @@ function importConfig() {
                 }
               });
             } catch (err) {
+              clearTimeout(timeout);
               reject(err);
             }
           });
@@ -414,13 +425,16 @@ function importConfig() {
 
     // Import whitelist
     if (config.whitelist && Array.isArray(config.whitelist)) {
+      console.log("[NAS] Importing", config.whitelist.length, "whitelist domains");
       for (const domain of config.whitelist) {
         await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("ADD_WHITELIST timeout")), 5000);
           try {
             chrome.runtime.sendMessage({
               type: "ADD_WHITELIST",
               domain: domain
             }, (resp: any) => {
+              clearTimeout(timeout);
               if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
               } else {
@@ -428,6 +442,7 @@ function importConfig() {
               }
             });
           } catch (err) {
+            clearTimeout(timeout);
             reject(err);
           }
         });
