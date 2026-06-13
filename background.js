@@ -307,19 +307,21 @@ async function synoAddTorrent(s, sid, torrentUrl) {
   const blob = await tResp.blob();
   dbg("INFO", "FETCH_TORRENT ok", `${blob.size} bytes`);
 
-  const form = new FormData();
-  form.append("api",     "SYNO.DownloadStation.Task");
-  form.append("version", "1");
-  form.append("method",  "create");
-  if (s.destination) form.append("destination", s.destination);
-  const filename = torrentUrl.split("/").pop().split("?")[0] || "download.torrent";
-  form.append("file", new File([blob], filename, { type: "application/x-bittorrent" }));
+  // Per Synology API docs: for file upload, set parameters as GET and file as only POST data
+  const params = new URLSearchParams({
+    api:     "SYNO.DownloadStation.Task",
+    version: "1",
+    method:  "create",
+    _sid:    sid
+  });
+  if (s.destination) params.append("destination", s.destination);
 
-  const url  = `${baseUrl(s)}/DownloadStation/task.cgi?_sid=${encodeURIComponent(sid)}`;
+  const url  = `${baseUrl(s)}/DownloadStation/task.cgi?${params.toString()}`;
   const resp = await nasFetch("ADD_TORRENT", url, {
     method: "POST",
     credentials: "include",
-    body:   form
+    headers: { "Content-Type": "application/octet-stream" },
+    body:   blob
   });
   const text = await resp.text();
   dbg("INFO", "ADD_TORRENT body", text.slice(0, 300));
