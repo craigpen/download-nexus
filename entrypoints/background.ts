@@ -469,6 +469,7 @@ async function taskAction(s: any, sid: string, action: string, ids: string[]) {
 chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any) => {
   try {
     dbg("INFO", "Message received", msg.type);
+    console.log("[BG] Message type:", msg.type, "Keys:", Object.keys(msg));
 
     if (msg.type === "SEND_MAGNET") {
       sendMagnet(msg.url, msg.nasId)
@@ -524,7 +525,16 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any)
       return true;
     }
     if (msg.type === "ADD_WHITELIST") {
-      addToWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+      console.log("[BG] ADD_WHITELIST handler called, domain:", msg.domain);
+      addToWhitelist(msg.domain)
+        .then(() => {
+          console.log("[BG] ADD_WHITELIST success");
+          sendResponse({ ok: true });
+        })
+        .catch((e: any) => {
+          console.error("[BG] ADD_WHITELIST error:", e);
+          sendResponse({ ok: false, error: e.message });
+        });
       return true;
     }
     if (msg.type === "REMOVE_WHITELIST") {
@@ -542,11 +552,29 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any)
       return true;
     }
     if (msg.type === "ADD_NAS") {
-      addNas(msg.nas).then(() => sendResponse({ ok: true }));
+      console.log("[BG] ADD_NAS handler called, nas:", msg.nas?.name);
+      addNas(msg.nas)
+        .then(() => {
+          console.log("[BG] ADD_NAS success");
+          sendResponse({ ok: true });
+        })
+        .catch((e: any) => {
+          console.error("[BG] ADD_NAS error:", e);
+          sendResponse({ ok: false, error: e.message });
+        });
       return true;
     }
     if (msg.type === "UPDATE_NAS") {
-      updateNas(msg.nasId, msg.updates).then(() => sendResponse({ ok: true }));
+      console.log("[BG] UPDATE_NAS handler called");
+      updateNas(msg.nasId, msg.updates)
+        .then(() => {
+          console.log("[BG] UPDATE_NAS success");
+          sendResponse({ ok: true });
+        })
+        .catch((e: any) => {
+          console.error("[BG] UPDATE_NAS error:", e);
+          sendResponse({ ok: false, error: e.message });
+        });
       return true;
     }
     if (msg.type === "DELETE_NAS") {
