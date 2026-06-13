@@ -2,7 +2,6 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   extensionApi: "chrome",
-  publics: "icons/",
   manifest: {
     name: "NAS Download helper",
     description: "Intercepts magnet links and sends them to Synology Download Station.",
