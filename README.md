@@ -31,6 +31,10 @@ A browser extension for Edge/Chrome that intercepts magnet links and torrent fil
 - **URL Validation**: Defense-in-depth with validation in both content script and background service worker
 - **Secure Session Management**: Reuses authentication session to avoid repeated credential exposure
 
+## Privacy Policy
+
+This extension stores NAS device credentials (hostname, port, username, password) locally in your browser's encrypted storage and does not collect, track, or transmit any personal data. All communication is directly between your browser and your NAS device only. The extension is open-source and does not use analytics, telemetry, export user data, or integrate with third-party services.
+
 ## Configuration
 
 ### Adding NAS Devices

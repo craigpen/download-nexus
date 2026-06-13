@@ -10,9 +10,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "<all_urls>",
-    "http://*/*",
-    "https://*/*"
+    "<all_urls>"
   ],
 
   "background": {

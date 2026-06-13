@@ -18,14 +18,37 @@ let manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.j
 
 // Browser-specific adjustments
 if (target === 'firefox') {
-  // Firefox uses different permission format and doesn't support all MV3 features
+  // Firefox 151 doesn't have MV3 service_worker enabled, use MV2 scripts
+  manifest.manifest_version = 2;
+  delete manifest.background.service_worker;
+  manifest.background.scripts = ["background.js"];
+  manifest.background.persistent = false;
+
+  // Convert MV3 properties to MV2
+  // action -> browser_action
+  if (manifest.action) {
+    manifest.browser_action = manifest.action;
+    delete manifest.action;
+  }
+
+  // host_permissions -> permissions (with <all_urls> equivalent)
+  if (manifest.host_permissions) {
+    manifest.permissions = manifest.permissions || [];
+    manifest.permissions.push("<all_urls>");
+    delete manifest.host_permissions;
+  }
+
   manifest.browser_specific_settings = {
     gecko: {
-      id: "{extension-id}",
+      id: "nas-download-helper@craigpen",
       strict_min_version: "109.0"
     }
   };
-  // Firefox specific permissions if needed
+} else if (target === 'chrome') {
+  // Chrome MV3 requires service_worker
+  manifest.background = {
+    service_worker: "background.js"
+  };
 }
 
 fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
