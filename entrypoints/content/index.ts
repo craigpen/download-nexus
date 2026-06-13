@@ -67,7 +67,7 @@ if (typeof document !== "undefined" && typeof window !== "undefined") {
   };
 
   // Delay initialization to avoid running during build
-  if (typeof chrome !== "undefined") {
+  if (typeof chrome !== "undefined" && chrome?.runtime?.onMessage) {
     setTimeout(initializeExtension, 0);
   }
 

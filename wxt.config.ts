@@ -14,6 +14,10 @@ export default defineConfig({
         js: ["content"],
         run_at: "document_idle"
       }
-    ]
+    ],
+    options_ui: {
+      page: "options.html",
+      open_in_tab: true
+    }
   },
 });
