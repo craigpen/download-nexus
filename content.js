@@ -35,10 +35,18 @@
   chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
     whitelist = resp?.list || [];
     whitelistEnabled = whitelist.length > 0;
-    console.log("[NAS] Whitelist loaded:", { whitelist, whitelistEnabled, currentDomain });
 
-    // If whitelist just loaded and we need to filter, re-scan
-    if (whitelistEnabled) {
+    // If whitelist is enabled and current domain is NOT whitelisted, remove all injected buttons
+    if (whitelistEnabled && !whitelist.includes(currentDomain)) {
+      document.querySelectorAll(`[${ATTR}="btn"]`).forEach(btn => {
+        btn.remove();
+      });
+      // Remove pills and their buttons too
+      document.querySelectorAll(`[${TEXT_ATTR}="1"]`).forEach(pill => {
+        pill.remove();
+      });
+    } else if (whitelistEnabled) {
+      // Domain is whitelisted, re-scan in case buttons were blocked initially
       document.querySelectorAll("a").forEach(processLink);
       scanTextNodes();
     }
@@ -116,7 +124,6 @@
   // ── inline button ─────────────────────────────────────────────────────────
 
   function showNasSelector(btn, url, type) {
-    console.log("[NAS] showNasSelector called", { nasDevices: nasDevices.length, url, type });
 
     // If no NAS configured, show message
     if (nasDevices.length === 0) {
@@ -126,7 +133,6 @@
 
     // If only one NAS, send directly
     if (nasDevices.length === 1) {
-      console.log("[NAS] Single NAS, sending directly to", nasDevices[0].name);
       sendUrl(btn, url, type, nasDevices[0].id);
       return;
     }
@@ -151,7 +157,6 @@
       overflow:       "hidden"
     });
 
-    console.log("[NAS] Adding options to popup:", nasDevices.map(n => n.name));
 
     // Add NAS options
     nasDevices.forEach((nas, idx) => {
@@ -173,7 +178,6 @@
       });
       option.addEventListener("click", (e) => {
         e.stopPropagation();
-        console.log("[NAS] User selected:", nas.name);
         document.body.removeChild(popup);
         sendUrl(btn, url, type, nas.id);
       });
@@ -185,36 +189,9 @@
     popup.style.left = rect.left + "px";
     popup.style.top = (rect.bottom + 6) + "px";
 
-    console.log("[NAS] Popup positioning at:", { left: popup.style.left, top: popup.style.top });
 
     document.body.appendChild(popup);
-    console.log("[NAS] Popup appended, children:", popup.children.length);
 
-    // Detailed diagnostics
-    setTimeout(() => {
-      const computed = window.getComputedStyle(popup);
-      console.log("[NAS] Popup diagnostics:", {
-        inDOM: document.body.contains(popup),
-        display: computed.display,
-        visibility: computed.visibility,
-        opacity: computed.opacity,
-        zIndex: computed.zIndex,
-        position: computed.position,
-        left: popup.style.left,
-        top: popup.style.top,
-        width: computed.width,
-        height: computed.height,
-        offsetWidth: popup.offsetWidth,
-        offsetHeight: popup.offsetHeight,
-        parentNode: popup.parentNode?.tagName,
-        innerHTML: popup.innerHTML.substring(0, 100)
-      });
-      console.log("[NAS] Page info:", {
-        docElement: document.documentElement.tagName,
-        bodyExists: !!document.body,
-        bodyChildren: document.body?.children.length
-      });
-    }, 100);
 
     // Close popup when clicking outside
     const closePopup = (e) => {
