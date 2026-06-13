@@ -22,5 +22,8 @@ build/
 *.tmp
 *.temp
 
+# Store submissions (keep locally, don't commit)
+store-descriptions.md
+
 # Local development notes
 MEMORY.md
