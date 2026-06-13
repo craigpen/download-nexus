@@ -72,6 +72,15 @@ The content script can be optimized by whitelisting specific domains where you f
 7. Test the connection to verify settings
 8. Back in the popup, your NAS task queue should load
 
+## Support Development
+
+If you find this extension helpful, consider supporting its ongoing development:
+
+- **☕ Ko-fi**: https://ko-fi.com/craigpen
+- **☕ Buy Me a Coffee**: https://www.buymeacoffee.com/craigpen
+
+Your support helps fund continued improvements and feature development.
+
 ## Architecture
 
 ### Multi-NAS Design
