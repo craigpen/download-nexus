@@ -1,0 +1,21 @@
+{
+  "name": "nas-download-helper",
+  "version": "1.1.0",
+  "description": "Intercepts magnet links and sends them to Synology Download Station.",
+  "main": "background.js",
+  "scripts": {
+    "build": "node scripts/build.js chrome",
+    "build:chrome": "node scripts/build.js chrome",
+    "build:firefox": "node scripts/build.js firefox",
+    "build:all": "npm run build:chrome && npm run build:firefox"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/craigpen/nas-download-helper.git"
+  },
+  "author": "Craig",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.23.0"
+  }
+}
