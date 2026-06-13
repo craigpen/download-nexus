@@ -353,7 +353,12 @@ function importConfig() {
   const file = e.target.files[0];
   if (!file) return;
 
+  const el = $("importStatus");
+
   try {
+    el.textContent = "⏳ Importing...";
+    (el as any).style.color = "#555";
+
     const text = await file.text();
     const config = JSON.parse(text);
 
@@ -368,20 +373,40 @@ function importConfig() {
         const existing = nasList.find((n: any) => n.name === importedNas.name);
         if (existing) {
           // Update existing NAS
-          await new Promise(resolve => {
-            chrome.runtime.sendMessage({
-              type: "UPDATE_NAS",
-              nasId: existing.id,
-              updates: importedNas
-            }, resolve);
+          await new Promise<void>((resolve, reject) => {
+            try {
+              chrome.runtime.sendMessage({
+                type: "UPDATE_NAS",
+                nasId: existing.id,
+                updates: importedNas
+              }, (resp: any) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message));
+                } else {
+                  resolve();
+                }
+              });
+            } catch (err) {
+              reject(err);
+            }
           });
         } else {
           // Add new NAS
-          await new Promise(resolve => {
-            chrome.runtime.sendMessage({
-              type: "ADD_NAS",
-              nas: importedNas
-            }, resolve);
+          await new Promise<void>((resolve, reject) => {
+            try {
+              chrome.runtime.sendMessage({
+                type: "ADD_NAS",
+                nas: importedNas
+              }, (resp: any) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message));
+                } else {
+                  resolve();
+                }
+              });
+            } catch (err) {
+              reject(err);
+            }
           });
         }
       }
@@ -390,16 +415,25 @@ function importConfig() {
     // Import whitelist
     if (config.whitelist && Array.isArray(config.whitelist)) {
       for (const domain of config.whitelist) {
-        await new Promise(resolve => {
-          chrome.runtime.sendMessage({
-            type: "ADD_WHITELIST",
-            domain: domain
-          }, resolve);
+        await new Promise<void>((resolve, reject) => {
+          try {
+            chrome.runtime.sendMessage({
+              type: "ADD_WHITELIST",
+              domain: domain
+            }, (resp: any) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve();
+              }
+            });
+          } catch (err) {
+            reject(err);
+          }
         });
       }
     }
 
-    const el = $("importStatus");
     el.textContent = "✅ Config imported successfully!";
     (el as any).style.color = "#1d7c2d";
 
@@ -409,7 +443,7 @@ function importConfig() {
       el.textContent = "";
     }, 1500);
   } catch (err: any) {
-    const el = $("importStatus");
+    console.error("[NAS] Import error:", err);
     el.textContent = `❌ Import failed: ${err.message}`;
     (el as any).style.color = "#c0392b";
   }
