@@ -1,6 +1,8 @@
 // background.ts — NAS Download helper service worker
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
+console.log("[BG] Background script loaded");
+
 const DEFAULT_NAS_SYNOLOGY = {
   host: "192.168.0.1",
   port: "5000",
@@ -466,6 +468,7 @@ async function taskAction(s: any, sid: string, action: string, ids: string[]) {
 
 // ── message listener ───────────────────────────────────────────────────────
 
+console.log("[BG] Setting up message listener");
 chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any) => {
   try {
     dbg("INFO", "Message received", msg.type);
