@@ -173,8 +173,12 @@ async function synoFetch(label, url, options, timeoutMs = 20000) {
     resp = await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
     clearTimeout(timeoutId);
-    const errMsg = err.name === "AbortError" ? `timeout after ${timeoutMs}ms` : err.message;
-    dbg("ERROR", `${label} fetch threw`, `${err.name}: ${errMsg}`);
+    if (err.name === "AbortError") {
+      const errMsg = `timeout after ${timeoutMs}ms`;
+      dbg("ERROR", `${label} fetch timeout`, errMsg);
+      throw new Error(errMsg);
+    }
+    dbg("ERROR", `${label} fetch threw`, err.message);
     throw err;
   }
   clearTimeout(timeoutId);
