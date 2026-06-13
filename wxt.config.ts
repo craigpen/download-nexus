@@ -9,10 +9,12 @@ export default defineConfig({
       // Fix open_in_tab for options page after build
       const manifestPath = path.join(config.outDir, "manifest.json");
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-      if (manifest.options_ui) {
-        manifest.options_ui.open_in_tab = true;
+      if (!manifest.options_ui) {
+        manifest.options_ui = {};
       }
+      manifest.options_ui.open_in_tab = true;
       fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+      console.log("[WXT Hook] Fixed options_ui.open_in_tab = true");
     }
   },
   manifest: {

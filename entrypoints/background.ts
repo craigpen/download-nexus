@@ -1,7 +1,12 @@
 // background.ts — NAS Download helper service worker
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
-console.log("[BG] Background script loaded");
+console.log("[BG] Background script loaded - START");
+
+// Keep service worker alive IMMEDIATELY
+setInterval(() => {
+  console.log("[BG] Keep-alive tick");
+}, 30000);
 
 const DEFAULT_NAS_SYNOLOGY = {
   host: "192.168.0.1",
@@ -594,11 +599,6 @@ if (typeof chrome !== "undefined" && chrome?.runtime) {
   }
   });
 }
-
-// Keep service worker alive
-setInterval(() => {
-  // No-op to keep the service worker from being garbage collected
-}, 60000);
 
 // WXT requires a default export
 export default {};
