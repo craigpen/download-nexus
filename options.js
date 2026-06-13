@@ -211,11 +211,9 @@ $("testBtn").addEventListener("click", () => {
   };
 
   chrome.runtime.sendMessage({ type: "TEST_CONNECTION", nasId, settings }, resp => {
-    console.log("TEST_CONNECTION response:", resp);
     if (chrome.runtime.lastError) {
       el.textContent = `❌ Extension error: ${chrome.runtime.lastError.message}`;
       el.style.color = "#c0392b";
-      console.error("Message error:", chrome.runtime.lastError);
       return;
     }
     if (resp?.ok) {

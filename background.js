@@ -468,7 +468,6 @@ async function taskAction(s, sid, action, ids) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   try {
-    console.log("Message received:", msg.type);
     dbg("INFO", "Message received", msg.type);
 
     if (msg.type === "SEND_MAGNET") {
@@ -558,7 +557,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       sendResponse({ log: [...debugLog] });
     }
   } catch (err) {
-    console.error("Message listener error:", err);
     dbg("ERROR", "Message listener error", err.message);
     sendResponse({ ok: false, error: err.message, log: [...debugLog] });
   }
