@@ -4,9 +4,14 @@
   "description": "A browser extension for Edge/Chrome that intercepts magnet links and torrent files on web pages and sends them to your NAS device(s).",
   "main": "background.js",
   "scripts": {
-    "dev": "wxt",
-    "build": "wxt build",
-    "zip": "wxt zip"
+    "build": "node scripts/build.js chrome",
+    "build:chrome": "node scripts/build.js chrome",
+    "build:firefox": "node scripts/build.js firefox",
+    "build:all": "npm run build:chrome && npm run build:firefox",
+    "zip": "npm run zip:chrome && npm run zip:firefox",
+    "zip:chrome": "node scripts/create-zip.js chrome",
+    "zip:firefox": "node scripts/create-zip.js firefox",
+    "package": "npm run build:all && npm run zip"
   },
   "repository": {
     "type": "git",
@@ -21,8 +26,6 @@
   },
   "homepage": "https://github.com/craigpen/nas-download-helper#readme",
   "devDependencies": {
-    "@types/chrome": "^0.1.43",
-    "typescript": "^6.0.3",
-    "wxt": "^0.6.4"
+    "@types/chrome": "^0.1.43"
   }
 }
