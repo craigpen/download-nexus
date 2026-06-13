@@ -1,7 +1,20 @@
 import { defineConfig } from "wxt";
+import fs from "fs";
+import path from "path";
 
 export default defineConfig({
   extensionApi: "chrome",
+  hooks: {
+    "build:done": async ({ config }) => {
+      // Fix open_in_tab for options page after build
+      const manifestPath = path.join(config.outDir, "manifest.json");
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+      if (manifest.options_ui) {
+        manifest.options_ui.open_in_tab = true;
+      }
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    }
+  },
   manifest: {
     name: "NAS Download helper",
     description: "Intercepts magnet links and sends them to Synology Download Station.",
