@@ -469,5 +469,6 @@ function importConfig() {
 
 // ── initialization ────────────────────────────────────────────────────────
 
+console.log("[Options] Initializing options page");
 loadNasList();
 renderWhitelist();

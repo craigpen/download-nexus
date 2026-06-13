@@ -469,7 +469,8 @@ async function taskAction(s: any, sid: string, action: string, ids: string[]) {
 // ── message listener ───────────────────────────────────────────────────────
 
 console.log("[BG] Setting up message listener");
-chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any) => {
+if (typeof chrome !== "undefined" && chrome?.runtime) {
+  chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any) => {
   try {
     dbg("INFO", "Message received", msg.type);
     console.log("[BG] Message type:", msg.type, "Keys:", Object.keys(msg));
@@ -591,7 +592,8 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: any)
     dbg("ERROR", "Message listener error", err.message);
     sendResponse({ ok: false, error: err.message, log: [...debugLog] });
   }
-});
+  });
+}
 
 // Keep service worker alive
 setInterval(() => {
