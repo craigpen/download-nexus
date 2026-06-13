@@ -42,7 +42,9 @@ if (target === 'firefox') {
     gecko: {
       id: "nas-download-helper@craigpen",
       strict_min_version: "109.0",
-      data_collection_permissions: {}
+      data_collection_permissions: {
+        required: ["none"]
+      }
     }
   };
 } else if (target === 'chrome') {
