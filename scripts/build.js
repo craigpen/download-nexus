@@ -41,7 +41,8 @@ if (target === 'firefox') {
   manifest.browser_specific_settings = {
     gecko: {
       id: "nas-download-helper@craigpen",
-      strict_min_version: "109.0"
+      strict_min_version: "109.0",
+      data_collection_permissions: {}
     }
   };
 } else if (target === 'chrome') {

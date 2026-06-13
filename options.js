@@ -2,6 +2,15 @@
 
 function $(id) { return document.getElementById(id); }
 
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 let nasList = [];
 let editingNasId = null;
 
@@ -24,9 +33,9 @@ function renderNasList() {
     return;
   }
   container.innerHTML = nasList.map(nas => `
-    <div class="nas-item" data-nas-id="${nas.id}">
+    <div class="nas-item" data-nas-id="${escHtml(nas.id)}">
       <div class="nas-item-info">
-        <div class="nas-item-name">${nas.name}</div>
+        <div class="nas-item-name">${escHtml(nas.name)}</div>
         <div class="nas-item-host">${nas.host}:${nas.port}</div>
       </div>
       <button class="nas-item-delete" data-nas-id="${nas.id}">✕</button>
@@ -281,8 +290,8 @@ function renderWhitelist() {
     }
     container.innerHTML = list.map(domain => `
       <div class="whitelist-item">
-        <span class="whitelist-domain">${domain}</span>
-        <button class="whitelist-remove" data-domain="${domain}">Remove</button>
+        <span class="whitelist-domain">${escHtml(domain)}</span>
+        <button class="whitelist-remove" data-domain="${escHtml(domain)}">Remove</button>
       </div>
     `).join("");
     container.querySelectorAll(".whitelist-remove").forEach(btn => {

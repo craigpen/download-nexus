@@ -137,9 +137,9 @@ function renderTasks() {
     empty.style.display = "flex";
     const labels = { all: "active", downloading: "downloading", seeding: "seeding", paused: "paused", finished: "done", error: "error" };
     const statusLabel = labels[filter] || filter;
-    empty.innerHTML = allTasks.length === 0
-      ? "<span>No active downloads</span>"
-      : `<span>No ${statusLabel} tasks</span>`;
+    empty.textContent = allTasks.length === 0
+      ? "No active downloads"
+      : `No ${statusLabel} tasks`;
     // Remove old task rows
     list.querySelectorAll(".task").forEach(el => el.remove());
     updateFooterButtons();
@@ -355,9 +355,11 @@ function renderNasTabs() {
     const connStatus = nasConnStatus[nas.id] || "unknown";
     const connIndicator = connStatus === "ok" ? "● Connected" : connStatus === "error" ? "● Offline" : "● …";
     const connColor = connStatus === "ok" ? "#4caf7d" : connStatus === "error" ? "#ff7b72" : "#8898b8";
+    const nasName = escHtml(nas.name);
+    const nasId = escHtml(nas.id);
     return `
-      <button class="tab ${isActive ? "active" : ""}" data-nas-id="${nas.id}" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;">
-        <div>${nas.name}</div>
+      <button class="tab ${isActive ? "active" : ""}" data-nas-id="${nasId}" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+        <div>${nasName}</div>
         <div style="font-size: 9px; color: ${connColor}; opacity: 0.8;">${connIndicator}</div>
       </button>
     `;
