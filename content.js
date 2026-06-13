@@ -46,9 +46,6 @@
 
   // Matches full magnet URIs in plain text
   const MAGNET_RE  = /magnet:\?[^\s"'<>]+/g;
-  // Matches http(s) URLs ending in .torrent in plain text
-  const TORRENT_RE = /https?:\/\/[^\s"'<>]+\.torrent(?:[^\s"'<>]*)/g;
-
   // ── URL validation ────────────────────────────────────────────────────────
 
   function isValidMagnetURI(url) {
@@ -58,38 +55,23 @@
     return /[&?](xt|dn|tr)=/.test(url);
   }
 
-  function isValidTorrentURL(url) {
-    // Must be http(s) and end with .torrent
-    try {
-      const u = new URL(url);
-      return /\.torrent(\?|$)/i.test(u.pathname);
-    } catch {
-      return false;
-    }
-  }
-
   // ── send helper ───────────────────────────────────────────────────────────
 
-  function sendUrl(btn, url, type, nasId) {
-    // Validate URL format before sending
-    const isValid = type === "torrent" ? isValidTorrentURL(url) : isValidMagnetURI(url);
-    if (!isValid) {
+  function sendUrl(btn, url, nasId) {
+    // Validate magnet link format before sending
+    if (!isValidMagnetURI(url)) {
       btn.textContent = "❌";
       btn.disabled = false;
       btn.style.background = "#c0392b";
-      btn.title = `Invalid ${type} URL`;
-      console.warn(`[NAS] Invalid ${type} URL attempted: ${url.slice(0, 80)}`);
+      btn.title = "Invalid magnet link";
+      console.warn(`[NAS] Invalid magnet link attempted: ${url.slice(0, 80)}`);
       return;
     }
 
-    // Get filename for confirmation
-    const typeLabel = type === "torrent" ? "torrent file" : "magnet link";
-    const name = type === "torrent"
-      ? new URL(url).pathname.split("/").pop()
-      : (url.match(/[?&]dn=([^&]+)/) ?? ["", "Torrent"])[1].substring(0, 50);
-
+    // Get display name for confirmation
+    const name = (url.match(/[?&]dn=([^&]+)/) ?? ["", "Download"])[1].substring(0, 50);
     const nasName = nasDevices.find(n => n.id === nasId)?.name || "NAS";
-    if (!confirm(`Send ${typeLabel} to ${nasName}?\n\n${decodeURIComponent(name)}`)) {
+    if (!confirm(`Send magnet link to ${nasName}?\n\n${decodeURIComponent(name)}`)) {
       btn.textContent = "⬇ NAS";
       btn.disabled = false;
       return;
@@ -97,10 +79,7 @@
 
     btn.textContent = "⏳";
     btn.disabled = true;
-    const msg = type === "torrent"
-      ? { type: "SEND_TORRENT", url, nasId }
-      : { type: "SEND_MAGNET",  url, nasId };
-    chrome.runtime.sendMessage(msg, resp => {
+    chrome.runtime.sendMessage({ type: "SEND_MAGNET", url, nasId }, resp => {
       if (chrome.runtime.lastError || !resp?.ok) {
         btn.textContent = "❌";
         btn.disabled = false;
@@ -127,14 +106,14 @@
     // If only one NAS, send directly
     if (nasDevices.length === 1) {
       console.log("[NAS] Single NAS, sending directly to", nasDevices[0].name);
-      sendUrl(btn, url, type, nasDevices[0].id);
+      sendUrl(btn, url, nasDevices[0].id);
       return;
     }
 
     // Create popup menu matching button styling
     const popup = document.createElement("div");
     popup.setAttribute("data-syno-popup", "1");
-    const bgColor = type === "torrent" ? "#1a7a4a" : "#1a6fb5";
+    const bgColor = "#1a6fb5";
     Object.assign(popup.style, {
       position:       "fixed",
       zIndex:         "999999999",
@@ -175,7 +154,7 @@
         e.stopPropagation();
         console.log("[NAS] User selected:", nas.name);
         document.body.removeChild(popup);
-        sendUrl(btn, url, type, nas.id);
+        sendUrl(btn, url, nas.id);
       });
       popup.appendChild(option);
     });
@@ -243,7 +222,7 @@
       fontFamily:   "sans-serif",
       fontWeight:   "600",
       color:        "#fff",
-      background:   type === "torrent" ? "#1a7a4a" : "#1a6fb5",
+      background:   "#1a6fb5",
       border:       "none",
       borderRadius: "3px",
       cursor:       "pointer",
@@ -279,7 +258,6 @@
     const href = a.href || "";
     let type = null;
     if (href.startsWith("magnet:")) type = "magnet";
-    else if (/\.torrent(\?|$)/i.test(href)) type = "torrent";
     if (!type) return;
 
     makeInlineButton(href, type, a);
@@ -297,7 +275,7 @@
       "font-family:monospace",
       "font-size:0.85em",
       "word-break:break-all",
-      `background:${type === "torrent" ? "rgba(26,122,74,0.08)" : "rgba(26,111,181,0.07)"}`,
+      `background:${"rgba(26,111,181,0.07)"}`,
       "border-radius:3px",
       "padding:0 2px",
       "display:inline"
@@ -328,7 +306,7 @@
             el = el.parentElement;
           }
           const v = node.nodeValue;
-          return (v.includes("magnet:?") || v.includes(".torrent"))
+          return v.includes("magnet:?")
             ? NodeFilter.FILTER_ACCEPT
             : NodeFilter.FILTER_REJECT;
         }
@@ -349,16 +327,12 @@
 
       const text = node.nodeValue;
 
-      // Collect all matches (magnets + torrents), sorted by position
+      // Collect all magnet link matches, sorted by position
       const matches = [];
       let m;
       MAGNET_RE.lastIndex = 0;
       while ((m = MAGNET_RE.exec(text)) !== null) {
         matches.push({ url: m[0], index: m.index, length: m[0].length, type: "magnet" });
-      }
-      TORRENT_RE.lastIndex = 0;
-      while ((m = TORRENT_RE.exec(text)) !== null) {
-        matches.push({ url: m[0], index: m.index, length: m[0].length, type: "torrent" });
       }
       if (!matches.length) continue;
       matches.sort((a, b) => a.index - b.index);
