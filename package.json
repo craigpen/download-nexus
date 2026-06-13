@@ -1,7 +1,7 @@
 {
   "name": "nas-download-helper",
   "version": "1.1.0",
-  "description": "Intercepts magnet links and sends them to Synology Download Station.",
+  "description": "Intercepts magnet links and torrent files on web pages and sends them to your NAS device(s).",
   "main": "background.js",
   "scripts": {
     "build": "node scripts/build.js chrome",
