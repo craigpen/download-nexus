@@ -311,12 +311,11 @@ async function synoAddTorrent(s, sid, torrentUrl) {
   form.append("api",     "SYNO.DownloadStation.Task");
   form.append("version", "1");
   form.append("method",  "create");
-  form.append("_sid",    sid);
   if (s.destination) form.append("destination", s.destination);
   const filename = torrentUrl.split("/").pop().split("?")[0] || "download.torrent";
   form.append("file", new File([blob], filename, { type: "application/x-bittorrent" }));
 
-  const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
+  const url  = `${baseUrl(s)}/DownloadStation/task.cgi?_sid=${encodeURIComponent(sid)}`;
   const resp = await nasFetch("ADD_TORRENT", url, {
     method: "POST",
     credentials: "include",
