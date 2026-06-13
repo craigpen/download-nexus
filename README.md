@@ -88,6 +88,15 @@ The content script can be optimized by whitelisting specific domains where you f
 
 Each build is ready to submit to the respective app store.
 
+## Support Development
+
+If you find this extension helpful, consider supporting its ongoing development:
+
+- **☕ Ko-fi**: https://ko-fi.com/craigpen
+- **☕ Buy Me a Coffee**: https://www.buymeacoffee.com/craigpen
+
+Your support helps fund continued improvements and feature development.
+
 ## Architecture
 
 ### Multi-NAS Design

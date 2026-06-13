@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "lib": ["DOM", "WebWorker"],
+    "skipLibCheck": true,
+    "paths": {
+      "@@": [".."],
+      "@@/*": ["../*"],
+      "~~": [".."],
+      "~~/*": ["../*"],
+      "@": [".."],
+      "@/*": ["../*"],
+      "~": [".."],
+      "~/*": ["../*"]
+    }
+  },
+  "include": [
+    "../**/*",
+    "./wxt.d.ts"
+  ],
+  "exclude": ["../.output"]
+}

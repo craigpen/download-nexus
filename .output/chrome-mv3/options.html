@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NAS Download helper — Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    @media (prefers-color-scheme: light) {
+      body {
+        color: #1a1a1a;
+        background: #f4f6f8;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: #e0e6f0;
+        background: #1a1f2e;
+      }
+    }
+    .wrap {
+      width: 100%;
+      max-width: 600px;
+      margin: 40px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      border-radius: 10px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.12);
+      padding: 28px 32px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .card { background: #fff; }
+      h1 { color: #1a6fb5; }
+      h2 { color: #444; }
+      label { color: #333; }
+      .hint { color: #777; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .card { background: #2a3045; }
+      h1 { color: #7eb8f7; }
+      h2 { color: #aab8d0; }
+      label { color: #e0e6f0; }
+      .hint { color: #8898b8; }
+    }
+
+    h1 {
+      font-size: 1.2em;
+      margin: 0 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 {
+      font-size: 0.95em;
+      margin: 0 0 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    .hint { font-weight: 400; font-size: 0.87em; margin-left: 4px; }
+    .row { margin-bottom: 16px; }
+    .row-inline { display: flex; gap: 12px; margin-bottom: 16px; }
+    .row-inline > div { flex: 1; }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%; padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 14px; transition: border-color .15s; outline: none;
+    }
+
+    @media (prefers-color-scheme: light) {
+      input[type="text"], input[type="number"], input[type="password"] {
+        border: 1px solid #ccc;
+        background: #fff;
+        color: #333;
+      }
+      input:focus { border-color: #1a6fb5; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      input[type="text"], input[type="number"], input[type="password"] {
+        border: 1px solid #444;
+        background: #1f2538;
+        color: #e0e6f0;
+      }
+      input:focus { border-color: #7eb8f7; }
+    }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 22px; transition: .25s; }
+    .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .25s; }
+    input:checked + .slider { background: #1a6fb5; }
+    input:checked + .slider::before { transform: translateX(18px); }
+    button[type="submit"] {
+      width: 100%; padding: 10px;
+      color: #fff;
+      font-size: 15px; font-weight: 600;
+      border: none; border-radius: 6px;
+      cursor: pointer; transition: background .15s; margin-top: 4px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      button[type="submit"] { background: #1a6fb5; }
+      button[type="submit"]:hover { background: #155d9c; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      button[type="submit"] { background: #1a4f8a; }
+      button[type="submit"]:hover { background: #1e5fa0; }
+    }
+
+    #status { margin-top: 12px; text-align: center; font-weight: 600; font-size: 0.95em; min-height: 22px; }
+    .ok  { color: #1d7c2d; }
+    .err { color: #c0392b; }
+    hr { border: none; margin: 20px 0; }
+
+    @media (prefers-color-scheme: light) {
+      hr { border-top: 1px solid #e5e8ec; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      hr { border-top: 1px solid #3a4565; }
+    }
+    .btn-row { display: flex; gap: 10px; }
+    .test-btn {
+      flex: 1; padding: 8px;
+      font-size: 13px; font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .test-btn {
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+      }
+      .test-btn:hover:not(:disabled) { background: #e2e2e2; }
+      .test-btn:disabled {
+        background: #e8e8e8;
+        color: #999;
+        border-color: #ddd;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .test-btn {
+        background: #2a3045;
+        color: #aab8d0;
+        border: 1px solid #3a4565;
+      }
+      .test-btn:hover:not(:disabled) { background: #3a4565; }
+      .test-btn:disabled {
+        background: #1f2538;
+        color: #555;
+        border-color: #333;
+      }
+    }
+    #testStatus { margin-top: 10px; min-height: 20px; font-size: 0.9em; text-align: center; }
+
+    /* ── NAS list ── */
+    .nas-list { margin-bottom: 12px; }
+    .nas-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;
+      margin-bottom: 8px; cursor: pointer; transition: background .15s;
+    }
+    .nas-item:hover { background: #f0f0f0; }
+    .nas-item.active { background: #e3f0ff; border-color: #1a6fb5; }
+    .nas-item-info { flex: 1; }
+    .nas-item-name { font-weight: 600; color: #333; }
+    .nas-item-host { font-size: 12px; color: #777; font-family: monospace; }
+    .nas-item-delete {
+      background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px;
+      padding: 3px 8px; font-size: 11px; cursor: pointer; color: #c0392b;
+      font-weight: 600; transition: background .15s;
+    }
+    .nas-item-delete:hover { background: #ffe0e0; }
+    .add-nas-btn {
+      width: 100%; padding: 8px;
+      background: #1a6fb5; color: #fff;
+      font-size: 14px; font-weight: 600;
+      border: none; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+      margin-bottom: 12px;
+    }
+    .add-nas-btn:hover { background: #155d9c; }
+    #settingsForm { display: none; }
+    #settingsForm.show { display: block; }
+    .form-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .form-back-btn {
+      background: none; border: none; color: #1a6fb5; font-weight: 600;
+      cursor: pointer; font-size: 14px; padding: 0; text-decoration: underline;
+    }
+    .form-delete-btn {
+      background: #c0392b; color: #fff; border: none; border-radius: 4px;
+      padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .form-delete-btn:hover { background: #a03220; }
+    .btn-row { display: flex; gap: 10px; }
+
+    /* ── debug panel ── */
+    #debugLog {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 11.5px;
+      line-height: 1.55;
+      background: #0d1117;
+      color: #c9d1d9;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 160px;
+      max-height: 360px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-info  { color: #79c0ff; }
+    .log-warn  { color: #e3b341; }
+    .log-error { color: #ff7b72; font-weight: 600; }
+    .log-controls { display: flex; gap: 8px; margin-bottom: 8px; }
+    .log-btn {
+      padding: 4px 12px; font-size: 12px; font-weight: 600;
+      border: 1px solid #ccc; border-radius: 4px;
+      background: #f7f7f7; cursor: pointer;
+    }
+    .log-btn:hover { background: #eee; }
+    #debugCard { display: none; }
+    #debugCard.show { display: block; }
+    #debugToggleBtn { margin-bottom: 12px; }
+    #whitelistList {
+      background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;
+      max-height: 200px; overflow-y: auto; margin-bottom: 12px;
+    }
+    .whitelist-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px;
+    }
+    .whitelist-item:last-child { border-bottom: none; }
+    .whitelist-domain { color: #333; font-family: monospace; font-size: 12px; flex: 1; }
+    .whitelist-remove {
+      background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px;
+      padding: 3px 8px; font-size: 11px; cursor: pointer; color: #c0392b;
+      font-weight: 600; transition: background .15s;
+    }
+    .whitelist-remove:hover { background: #ffe0e0; }
+    .whitelist-empty { padding: 12px; color: #999; font-size: 12px; font-style: italic; }
+    .whitelist-controls { display: flex; gap: 8px; }
+    .whitelist-add-input { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+    .whitelist-add-btn { padding: 6px 12px; background: #1a6fb5; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .whitelist-add-btn:hover { background: #155d9c; }
+
+    /* ── Donation buttons ── */
+    .donation-btn {
+      flex: 1; min-width: 140px;
+      padding: 10px 16px;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 2px solid;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .donation-btn.kofi {
+        background: #ff5e78;
+        color: #fff;
+        border-color: #ff5e78;
+      }
+      .donation-btn.kofi:hover {
+        background: #ff4f6f;
+        border-color: #ff4f6f;
+      }
+      .donation-btn.bmac {
+        background: #FFDD00;
+        color: #1a1a1a;
+        border-color: #FFDD00;
+      }
+      .donation-btn.bmac:hover {
+        background: #ffd700;
+        border-color: #ffd700;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .donation-btn.kofi {
+        background: #ff5e78;
+        color: #fff;
+        border-color: #ff5e78;
+      }
+      .donation-btn.kofi:hover {
+        background: #ff7b8e;
+        border-color: #ff7b8e;
+      }
+      .donation-btn.bmac {
+        background: #FFDD00;
+        color: #1a1a1a;
+        border-color: #FFDD00;
+      }
+      .donation-btn.bmac:hover {
+        background: #ffe66d;
+        border-color: #ffe66d;
+      }
+    }
+  </style>
+  <script type="module" crossorigin src="/chunks/options-0407ad3a.js"></script>
+  <link rel="modulepreload" crossorigin href="/chunks/modulepreload-polyfill-3cfb730f.js">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- NAS Devices card -->
+  <div class="card">
+    <h1>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a6fb5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+      </svg>
+      NAS Download helper — Settings
+    </h1>
+
+    <div id="nasListContainer">
+      <h2>NAS Devices</h2>
+      <div class="nas-list" id="nasList"></div>
+      <button type="button" class="add-nas-btn" id="addNasBtn">+ Add NAS Device</button>
+    </div>
+
+    <!-- Settings form (shown when editing a NAS) -->
+    <form id="settingsForm">
+      <div class="form-header">
+        <h2 id="formTitle" style="margin:0">Add Synology NAS</h2>
+        <div id="formActions" style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="form-delete-btn" id="deleteNasBtn" style="display:none">Delete</button>
+          <button type="button" class="form-back-btn" id="backBtn">← Back</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Device Name <span class="hint">e.g. Home NAS, Backup</span></label>
+        <input type="text" id="name" placeholder="Home NAS" required />
+      </div>
+
+      <div class="row-inline">
+        <div>
+          <label>NAS Host / IP</label>
+          <input type="text" id="host" placeholder="192.168.0.1" required />
+        </div>
+        <div style="max-width:100px">
+          <label>Port</label>
+          <input type="number" id="port" placeholder="5000" min="1" max="65535" required />
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="https" />
+          <span class="slider"></span>
+        </label>
+        <span>Use HTTPS <span class="hint">(port 5001 by default)</span></span>
+      </div>
+
+      <div class="row">
+        <label>DSM Username</label>
+        <input type="text" id="username" placeholder="admin" required autocomplete="username" />
+      </div>
+
+      <div class="row">
+        <label>DSM Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+
+      <div class="row">
+        <label>Download Destination <span class="hint">optional, e.g. /volume1/downloads</span></label>
+        <input type="text" id="destination" placeholder="/volume1/downloads" />
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="test-btn" id="testBtn">🔗 Test Connection</button>
+      </div>
+      <div id="testStatus"></div>
+
+      <hr />
+
+      <button type="submit">Save NAS Device</button>
+      <div id="status"></div>
+    </form>
+  </div>
+
+  <!-- Backup/Restore card -->
+  <div class="card">
+    <h2>💾 Backup & Restore</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 12px">
+      Export your NAS devices and whitelist to a file. Useful before reinstalling the extension.
+    </p>
+    <div class="toggle-row">
+      <label class="switch">
+        <input type="checkbox" id="exportWithPasswords" />
+        <span class="slider"></span>
+      </label>
+      <span>Include passwords in export <span class="hint">(plaintext, faster restore but less secure)</span></span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="button" id="exportBtn" class="test-btn" style="flex:1;background:#1a6fb5;color:#fff;border:none">💾 Export Config</button>
+      <button type="button" id="importBtn" class="test-btn" style="flex:1;background:#1a6fb5;color:#fff;border:none">📂 Import Config</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" />
+    <div id="importStatus" style="margin-top:10px;min-height:20px;font-size:0.9em;text-align:center"></div>
+  </div>
+
+  <!-- Whitelist management card -->
+  <div class="card">
+    <h2>🔒 Content Script Whitelist</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 12px">
+      The extension scans all web pages for magnet and torrent links. To improve performance and privacy, you can whitelist only specific domains where you need this feature. The extension will still work everywhere, but will only actively scan pages on whitelisted domains.
+    </p>
+    <div id="whitelistList"></div>
+    <div class="whitelist-controls">
+      <input type="text" id="whitelistInput" class="whitelist-add-input" placeholder="example.com" />
+      <button type="button" id="whitelistAddBtn" class="whitelist-add-btn">+ Add</button>
+    </div>
+    <div style="font-size:10px;color:#999;margin-top:8px">Example domains: piratebay.org, 1337x.to, torrentz.eu</div>
+  </div>
+
+  <!-- Debug log card (hidden by default) -->
+  <button type="button" id="debugToggleBtn" class="test-btn">🛠 Show Debug Log</button>
+  <div class="card" id="debugCard">
+    <h2>🛠 Debug Log</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 10px">
+      Click <strong>Test Connection</strong> to populate. Shows the exact URL attempted,
+      HTTP status, and response body from your NAS.
+    </p>
+    <div class="log-controls">
+      <button class="log-btn" id="refreshLogBtn">↻ Refresh</button>
+      <button class="log-btn" id="clearLogBtn">✕ Clear</button>
+    </div>
+    <div id="debugLog">(run a test to see output)</div>
+  </div>
+
+  <!-- Support / Donation card -->
+  <div class="card">
+    <h2>❤️ Support Development</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 14px">
+      Enjoy the extension? Consider supporting ongoing development and improvements.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="https://ko-fi.com/craigpen" target="_blank" rel="noopener noreferrer" class="donation-btn kofi">☕ Ko-fi</a>
+      <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer" class="donation-btn bmac">☕ Buy Me a Coffee</a>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
