@@ -295,45 +295,6 @@ async function synoAddMagnet(s, sid, magnetUrl) {
   }
 }
 
-async function synoAddTorrent(s, sid, torrentUrl) {
-  // Secondary validation check
-  if (!isValidTorrentURL(torrentUrl)) {
-    dbg("ERROR", "Invalid torrent URL rejected", torrentUrl.slice(0, 80));
-    throw new Error("Invalid torrent URL format");
-  }
-  dbg("INFO", "FETCH_TORRENT", torrentUrl);
-  const tResp = await fetch(torrentUrl, { credentials: "omit" });
-  if (!tResp.ok) throw new Error(`Failed to fetch torrent file (HTTP ${tResp.status})`);
-  const blob = await tResp.blob();
-  dbg("INFO", "FETCH_TORRENT ok", `${blob.size} bytes`);
-
-  // Per Synology API docs: for file upload, set parameters as GET and file as only POST data
-  const params = new URLSearchParams({
-    api:     "SYNO.DownloadStation.Task",
-    version: "1",
-    method:  "create",
-    _sid:    sid
-  });
-  if (s.destination) params.append("destination", s.destination);
-
-  const url  = `${baseUrl(s)}/DownloadStation/task.cgi?${params.toString()}`;
-  const resp = await nasFetch("ADD_TORRENT", url, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/octet-stream" },
-    body:   blob
-  });
-  const text = await resp.text();
-  dbg("INFO", "ADD_TORRENT body", text.slice(0, 300));
-  let data;
-  try { data = JSON.parse(text); }
-  catch(e) { throw new Error(`Add-torrent response not JSON: ${text.slice(0, 120)}`); }
-  if (!data.success) {
-    const code = data.error?.code ?? "?";
-    throw new Error(`Torrent upload failed (DSM code ${code})`);
-  }
-}
-
 // ── test connection ────────────────────────────────────────────────────────
 
 async function testConnection(nasId, s) {
@@ -408,30 +369,6 @@ async function sendMagnet(magnetUrl, nasId = null) {
   }
 }
 
-async function sendTorrent(torrentUrl, nasId = null) {
-  const list = await getNasList();
-  if (!nasId && list.length > 0) nasId = list[0].id;
-
-  const s = await getNasById(nasId);
-  if (!s) {
-    notify("⚠️ NAS not found", "Configure a NAS device in extension options.");
-    return;
-  }
-  if (!s.password) {
-    notify("⚠️ Not configured", "Open the extension options and enter your NAS credentials.");
-    return;
-  }
-  dbg("INFO", "SEND_TORRENT", torrentUrl.slice(0, 80));
-  try {
-    await nasCall(nasId, s, sid => synoAddTorrent(s, sid, torrentUrl));
-    const filename = torrentUrl.split("/").pop().split("?")[0] || torrentUrl.slice(0, 60);
-    notify("✅ Torrent sent to Download Station", filename);
-  } catch (err) {
-    notify("❌ NAS error", err.message);
-    dbg("ERROR", "SEND_TORRENT failed", err.message);
-  }
-}
-
 
 // ── task list / control ────────────────────────────────────────────────────
 
@@ -477,12 +414,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     if (msg.type === "SEND_MAGNET") {
       sendMagnet(msg.url, msg.nasId)
-        .then(() => sendResponse({ ok: true, log: [...debugLog] }))
-        .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
-      return true;
-    }
-    if (msg.type === "SEND_TORRENT") {
-      sendTorrent(msg.url, msg.nasId)
         .then(() => sendResponse({ ok: true, log: [...debugLog] }))
         .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
       return true;
