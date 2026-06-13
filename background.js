@@ -23,7 +23,7 @@ function dbg(level, msg, detail) {
   debugLog.push(entry);
   if (debugLog.length > 200) debugLog.shift();
   console[level === "ERROR" ? "error" : level === "WARN" ? "warn" : "log"](
-    `[SynoMagnet][${level}] ${msg}`, detail ?? ""
+    `[NAS][${level}] ${msg}`, detail ?? ""
   );
 }
 
@@ -159,7 +159,7 @@ async function clearAllSids() {
 
 // ── Synology API calls ─────────────────────────────────────────────────────
 
-async function synoFetch(label, url, options, timeoutMs = 20000) {
+async function nasFetch(label, url, options, timeoutMs = 20000) {
   const safeBody = typeof options?.body === "string"
     ? options.body.replace(/passwd=[^&]+/, "passwd=***")
     : "";
@@ -186,7 +186,7 @@ async function synoFetch(label, url, options, timeoutMs = 20000) {
   return resp;
 }
 
-async function synoLogin(s) {
+async function nasLogin(s) {
   const url  = `${baseUrl(s)}/auth.cgi`;
   const body = new URLSearchParams({
     api:     "SYNO.API.Auth",
@@ -197,7 +197,7 @@ async function synoLogin(s) {
     session: "DownloadStation",
     format:  "sid"
   });
-  const resp = await synoFetch("LOGIN", url, {
+  const resp = await nasFetch("LOGIN", url, {
     method:  "POST",
     credentials: "include",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -224,14 +224,14 @@ async function getSid(nasId, s, force = false) {
     }
   }
   dbg("INFO", "No stored sid for NAS, logging in fresh", nasId);
-  const sid = await synoLogin(s);
+  const sid = await nasLogin(s);
   await storeSid(nasId, sid);
   return sid;
 }
 
 // Call a Synology API function. If it fails with an auth error (code 105/106),
 // clear the stored sid and retry once with a fresh login.
-async function synoCall(nasId, s, apiFn) {
+async function nasCall(nasId, s, apiFn) {
   let sid = await getSid(nasId, s);
   try {
     return await apiFn(sid);
@@ -278,7 +278,7 @@ async function synoAddMagnet(s, sid, magnetUrl) {
   });
   if (s.destination) params.set("destination", s.destination);
   const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
-  const resp = await synoFetch("ADD_MAGNET", url, {
+  const resp = await nasFetch("ADD_MAGNET", url, {
     method:  "POST",
     credentials: "include",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -317,7 +317,7 @@ async function synoAddTorrent(s, sid, torrentUrl) {
   form.append("file", new File([blob], filename, { type: "application/x-bittorrent" }));
 
   const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
-  const resp = await synoFetch("ADD_TORRENT", url, {
+  const resp = await nasFetch("ADD_TORRENT", url, {
     method: "POST",
     credentials: "include",
     body:   form
@@ -345,7 +345,7 @@ async function testConnection(nasId, s) {
     }
     const sid = await getSid(nasId, s, true);
     const infoUrl = `${baseUrl(s)}/DownloadStation/info.cgi?api=SYNO.DownloadStation.Info&version=1&method=getinfo&_sid=${sid}`;
-    const ir   = await synoFetch("DS_INFO", infoUrl, { credentials: "include" });
+    const ir   = await nasFetch("DS_INFO", infoUrl, { credentials: "include" });
     const text = await ir.text();
     dbg("INFO", "DS_INFO body", text.slice(0, 300));
     let data;
@@ -399,7 +399,7 @@ async function sendMagnet(magnetUrl, nasId = null) {
   }
   dbg("INFO", "SEND_MAGNET", magnetUrl.slice(0, 80));
   try {
-    await synoCall(nasId, s, sid => synoAddMagnet(s, sid, magnetUrl));
+    await nasCall(nasId, s, sid => synoAddMagnet(s, sid, magnetUrl));
     notify("✅ Sent to Download Station", decodeName(magnetUrl) || magnetUrl.slice(0, 80));
   } catch (err) {
     notify("❌ NAS error", err.message);
@@ -422,7 +422,7 @@ async function sendTorrent(torrentUrl, nasId = null) {
   }
   dbg("INFO", "SEND_TORRENT", torrentUrl.slice(0, 80));
   try {
-    await synoCall(nasId, s, sid => synoAddTorrent(s, sid, torrentUrl));
+    await nasCall(nasId, s, sid => synoAddTorrent(s, sid, torrentUrl));
     const filename = torrentUrl.split("/").pop().split("?")[0] || torrentUrl.slice(0, 60);
     notify("✅ Torrent sent to Download Station", filename);
   } catch (err) {
@@ -437,7 +437,7 @@ async function sendTorrent(torrentUrl, nasId = null) {
 async function listTasks(s, sid) {
   const url = `${baseUrl(s)}/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task` +
               `&version=1&method=list&additional=transfer&_sid=${sid}`;
-  const resp = await synoFetch("LIST_TASKS", url, { credentials: "include" });
+  const resp = await nasFetch("LIST_TASKS", url, { credentials: "include" });
   const text = await resp.text();
   let data;
   try { data = JSON.parse(text); }
@@ -455,7 +455,7 @@ async function taskAction(s, sid, action, ids) {
     _sid:    sid
   });
   const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
-  const resp = await synoFetch(`TASK_${action.toUpperCase()}`, url, {
+  const resp = await nasFetch(`TASK_${action.toUpperCase()}`, url, {
     method:  "POST",
     credentials: "include",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -503,7 +503,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       (async () => {
         const s = await getNasById(msg.nasId);
         if (!s) return sendResponse({ ok: false, error: "NAS not found" });
-        synoCall(msg.nasId, s, sid => listTasks(s, sid))
+        nasCall(msg.nasId, s, sid => listTasks(s, sid))
           .then(tasks => sendResponse({ ok: true, tasks }))
           .catch(e => sendResponse({ ok: false, error: e.message }));
       })();
@@ -513,7 +513,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       (async () => {
         const s = await getNasById(msg.nasId);
         if (!s) return sendResponse({ ok: false, error: "NAS not found" });
-        synoCall(msg.nasId, s, sid => taskAction(s, sid, msg.action, msg.ids))
+        nasCall(msg.nasId, s, sid => taskAction(s, sid, msg.action, msg.ids))
           .then(() => sendResponse({ ok: true }))
           .catch(e => sendResponse({ ok: false, error: e.message }));
       })();
