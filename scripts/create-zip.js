@@ -7,7 +7,7 @@ const os = require('os');
 
 const target = process.argv[2] || 'chrome';
 const buildDir = path.join(__dirname, '..', 'dist', target === 'chrome' ? 'chrome-mv3' : 'firefox-mv3');
-const outputZip = path.join(__dirname, '..', `nas-download-helper-${target}.zip`);
+const outputZip = path.join(__dirname, '..', 'dist', `nas-download-helper-${target}.zip`);
 
 // Create temp Python script file to avoid escaping issues
 const tempScript = path.join(os.tmpdir(), `zip-${Date.now()}.py`);
