@@ -18,6 +18,9 @@ Thumbs.db
 dist/
 build/
 
+# Build artifacts
+*.zip
+
 # Temporary files
 *.tmp
 *.temp
