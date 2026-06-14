@@ -151,21 +151,22 @@
     const popup = document.createElement("div");
     popup.setAttribute("data-syno-popup", "1");
     const bgColor = "#1a6fb5";
-    Object.assign(popup.style, {
-      position:       "fixed",
-      zIndex:         "999999999",
-      background:     bgColor,
-      border:         "none",
-      borderRadius:   "3px",
-      boxShadow:      "0 1px 3px rgba(0,0,0,0.2)",
-      minWidth:       "150px",
-      padding:        "0",
-      fontFamily:     "sans-serif",
-      fontSize:       "11px",
-      fontWeight:     "600",
-      color:          "#fff",
-      overflow:       "hidden"
-    });
+    popup.setAttribute("style", [
+      "position: fixed !important",
+      "z-index: 999999999 !important",
+      `background: ${bgColor} !important`,
+      "border: none !important",
+      "border-radius: 3px !important",
+      "box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important",
+      "min-width: 150px !important",
+      "padding: 0 !important",
+      "font-family: sans-serif !important",
+      "font-size: 11px !important",
+      "font-weight: 600 !important",
+      "color: #fff !important",
+      "overflow: hidden !important",
+      "pointer-events: auto !important"
+    ].join("; "));
 
 
     // Add NAS options
@@ -222,24 +223,25 @@
     btn.setAttribute(ATTR, "btn");
     btn.setAttribute("data-url", url);
     btn.setAttribute("data-type", type);
-    Object.assign(btn.style, {
-      display:      "inline-block",
-      marginLeft:   "4px",
-      padding:      "2px 6px",
-      fontSize:     "11px",
-      fontFamily:   "sans-serif",
-      fontWeight:   "600",
-      color:        "#fff",
-      background:   "#1a6fb5",
-      border:       "none",
-      borderRadius: "3px",
-      cursor:       "pointer",
-      lineHeight:   "1.4",
-      whiteSpace:   "nowrap",
-      verticalAlign: "middle",
-      userSelect:   "none",
-      boxShadow:    "0 1px 3px rgba(0,0,0,0.2)"
-    });
+    btn.setAttribute("style", [
+      "display: inline-block !important",
+      "margin-left: 4px !important",
+      "padding: 2px 6px !important",
+      "font-size: 11px !important",
+      "font-family: sans-serif !important",
+      "font-weight: 600 !important",
+      "color: #fff !important",
+      "background: #1a6fb5 !important",
+      "border: none !important",
+      "border-radius: 3px !important",
+      "cursor: pointer !important",
+      "line-height: 1.4 !important",
+      "white-space: nowrap !important",
+      "vertical-align: middle !important",
+      "user-select: none !important",
+      "pointer-events: auto !important",
+      "box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important"
+    ].join("; "));
 
     btn.addEventListener("click", e => {
       e.preventDefault();
