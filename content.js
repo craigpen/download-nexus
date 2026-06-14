@@ -305,6 +305,8 @@
     // Check whitelist: if enabled, only scan on whitelisted domains
     if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
 
+    console.log("[NAS] scanTextNodes() starting, looking for magnet/torrent links in text nodes");
+
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
@@ -317,15 +319,18 @@
             el = el.parentElement;
           }
           const v = node.nodeValue;
-          return (v.includes("magnet:?") || v.includes(".torrent"))
-            ? NodeFilter.FILTER_ACCEPT
-            : NodeFilter.FILTER_REJECT;
+          const found = (v.includes("magnet:?") || v.includes(".torrent"));
+          if (found) {
+            console.log("[NAS] Found magnet/torrent link in text node:", v.slice(0, 100));
+          }
+          return found ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
       }
     );
 
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
+    console.log("[NAS] Found", nodes.length, "text nodes with magnet/torrent links");
 
     for (const node of nodes) {
       let skip = false;
@@ -349,8 +354,10 @@
       while ((m = TORRENT_RE.exec(text)) !== null) {
         matches.push({ url: m[0], index: m.index, length: m[0].length, type: "torrent" });
       }
+      console.log("[NAS] Regex matched", matches.length, "links in this text node");
       if (!matches.length) continue;
       matches.sort((a, b) => a.index - b.index);
+      console.log("[NAS] Creating pills and buttons for", matches.length, "links");
 
       const frag = document.createDocumentFragment();
       let cursor = 0;
