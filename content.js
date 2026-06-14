@@ -407,12 +407,11 @@
 
   // ── run ───────────────────────────────────────────────────────────────────
 
-  document.querySelectorAll("a").forEach(processLink);
-
+  // Defer initial scan until both NAS list and whitelist load (via injectButtons)
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scanTextNodes);
+    document.addEventListener("DOMContentLoaded", injectButtons);
   } else {
-    scanTextNodes();
+    injectButtons();
   }
 
 })();
