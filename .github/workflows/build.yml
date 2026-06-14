@@ -31,22 +31,10 @@ jobs:
         id: version
         run: echo "VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_OUTPUT
 
-      - name: Upload Chrome zip to release
-        uses: actions/upload-release-asset@v1
+      - name: Upload zips to release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/nas-download-helper-chrome-${{ steps.version.outputs.VERSION }}.zip
-          asset_name: nas-download-helper-chrome-${{ github.event.release.tag_name }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload Firefox zip to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/nas-download-helper-firefox-${{ steps.version.outputs.VERSION }}.zip
-          asset_name: nas-download-helper-firefox-${{ github.event.release.tag_name }}.zip
-          asset_content_type: application/zip
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} \
+            dist/nas-download-helper-chrome-${{ steps.version.outputs.VERSION }}.zip \
+            dist/nas-download-helper-firefox-${{ steps.version.outputs.VERSION }}.zip
