@@ -1,6 +1,6 @@
 {
   "name": "nas-download-helper",
-  "version": "1.1.2",
+  "version": "1.1.1",
   "description": "A browser extension for Edge/Chrome that intercepts magnet links and torrent files on web pages and sends them to your NAS device(s).",
   "main": "background.js",
   "scripts": {
