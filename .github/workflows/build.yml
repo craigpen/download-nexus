@@ -1,0 +1,47 @@
+name: Build Extension Releases
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Chrome
+        run: npm run build:chrome
+
+      - name: Build Firefox
+        run: npm run build:firefox
+
+      - name: Create zips
+        run: npm run zip
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=$(node -e "console.log(require('./package.json').version)")" >> $GITHUB_OUTPUT
+
+      - name: Upload zips to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} \
+            dist/nas-download-helper-chrome-${{ steps.version.outputs.VERSION }}.zip \
+            dist/nas-download-helper-firefox-${{ steps.version.outputs.VERSION }}.zip
