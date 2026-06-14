@@ -1,5 +1,6 @@
 name: Build Extension Releases
 
+# Using gh CLI for release uploads (updated 2026-06-13)
 on:
   release:
     types: [published]
