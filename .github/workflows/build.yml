@@ -24,11 +24,14 @@ jobs:
       - name: Build Firefox
         run: npm run build:firefox
 
-      - name: Zip Chrome build
-        run: cd dist/chrome-mv3 && zip -r ../nas-download-helper-chrome-${{ github.event.release.tag_name }}.zip . && cd ../..
+      - name: Create zips
+        run: npm run zip
 
-      - name: Zip Firefox build
-        run: cd dist/firefox-mv3 && zip -r ../nas-download-helper-firefox-${{ github.event.release.tag_name }}.zip . && cd ../..
+      - name: Rename Chrome zip with version tag
+        run: mv nas-download-helper-chrome.zip nas-download-helper-chrome-${{ github.event.release.tag_name }}.zip
+
+      - name: Rename Firefox zip with version tag
+        run: mv nas-download-helper-firefox.zip nas-download-helper-firefox-${{ github.event.release.tag_name }}.zip
 
       - name: Upload Chrome zip to release
         uses: actions/upload-release-asset@v1
