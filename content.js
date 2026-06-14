@@ -3,6 +3,8 @@
 (function () {
   "use strict";
 
+  console.log("[NAS] Content script loaded on", window.location.hostname);
+
   const ATTR      = "data-syno-injected";
   const TEXT_ATTR = "data-syno-text-injected";
 
@@ -12,44 +14,44 @@
   let whitelist = [];
   let currentDomain = window.location.hostname;
   let whitelistEnabled = false; // True if whitelist has domains
+  let nasListLoaded = false;
+  let whitelistLoaded = false;
 
-  // Load NAS list and whitelist on content script load
+  function injectButtons() {
+    if (!nasListLoaded || !whitelistLoaded) return; // Wait for both to load
+
+    // Check if this domain should have buttons
+    if (whitelistEnabled && !whitelist.includes(currentDomain)) {
+      console.log("[NAS] Domain not whitelisted, skipping injection");
+      return;
+    }
+
+    console.log("[NAS] Injecting buttons on", currentDomain);
+    document.querySelectorAll("a").forEach(processLink);
+    scanTextNodes();
+  }
+
+  // Load NAS list
   chrome.runtime.sendMessage({ type: "GET_NAS_LIST" }, resp => {
+    console.log("[NAS] GET_NAS_LIST response:", resp);
     nasDevices = resp?.list || [];
     if (nasDevices.length === 1) {
       nasTooltip = `Send to ${nasDevices[0].name}`;
     } else if (nasDevices.length > 1) {
       nasTooltip = `Send to: ${nasDevices.map(n => n.name).join(", ")}`;
     }
-    // Update all existing buttons with new tooltip
-    document.querySelectorAll(`[${ATTR}="btn"]`).forEach(btn => {
-      btn.title = nasTooltip;
-    });
-
-    // Re-scan for links now that NAS list is loaded
-    document.querySelectorAll("a").forEach(processLink);
-    scanTextNodes();
+    nasListLoaded = true;
+    injectButtons();
   });
 
-  // Load whitelist (global across all NAS)
+  // Load whitelist
   chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
+    console.log("[NAS] GET_WHITELIST response:", resp);
     whitelist = resp?.list || [];
     whitelistEnabled = whitelist.length > 0;
-
-    // If whitelist is enabled and current domain is NOT whitelisted, remove all injected buttons
-    if (whitelistEnabled && !whitelist.includes(currentDomain)) {
-      document.querySelectorAll(`[${ATTR}="btn"]`).forEach(btn => {
-        btn.remove();
-      });
-      // Remove pills and their buttons too
-      document.querySelectorAll(`[${TEXT_ATTR}="1"]`).forEach(pill => {
-        pill.remove();
-      });
-    } else if (whitelistEnabled) {
-      // Domain is whitelisted, re-scan in case buttons were blocked initially
-      document.querySelectorAll("a").forEach(processLink);
-      scanTextNodes();
-    }
+    console.log("[NAS] Whitelist enabled:", whitelistEnabled, "Current domain:", currentDomain, "In whitelist:", whitelist.includes(currentDomain));
+    whitelistLoaded = true;
+    injectButtons();
   });
 
   // Regex patterns
