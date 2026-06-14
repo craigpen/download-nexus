@@ -101,23 +101,6 @@
       return;
     }
 
-    // Get display name for confirmation
-    let name = "Download";
-    if (isMagnet) {
-      name = (url.match(/[?&]dn=([^&]+)/) ?? ["", "Download"])[1];
-      name = decodeURIComponent(name).substring(0, 50);
-    } else if (isTorrent) {
-      name = url.split("/").pop().replace(/\.torrent(\?.*)?$/, "").substring(0, 50);
-    }
-
-    const nasName = nasDevices.find(n => n.id === nasId)?.name || "NAS";
-    const typeLabel = isTorrent ? "torrent file" : "magnet link";
-    if (!confirm(`Send ${typeLabel} to ${nasName}?\n\n${name}`)) {
-      btn.textContent = "⬇ NAS";
-      btn.disabled = false;
-      return;
-    }
-
     btn.textContent = "⏳";
     btn.disabled = true;
     chrome.runtime.sendMessage({ type: "SEND_MAGNET", url, nasId }, resp => {
