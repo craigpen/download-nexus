@@ -82,6 +82,7 @@ function editNas(nasId) {
   $("formTitle").textContent = `Edit ${nas.name}`;
   $("deleteNasBtn").style.display = "";
   $("name").value = nas.name;
+  $("type").value = nas.type || "synology";
   $("host").value = nas.host;
   $("port").value = nas.port;
   $("https").checked = nas.https;
@@ -97,9 +98,10 @@ function editNas(nasId) {
 
 function addNewNas() {
   editingNasId = null;
-  $("formTitle").textContent = "Add Synology NAS";
+  $("formTitle").textContent = "Add NAS Device";
   $("deleteNasBtn").style.display = "none";
   $("name").value = "";
+  $("type").value = "synology";
   $("host").value = "192.168.0.1";
   $("port").value = "5000";
   $("https").checked = false;
@@ -130,7 +132,7 @@ $("settingsForm").addEventListener("submit", async (e) => {
   }
 
   const nasConfig = {
-    type: "synology",
+    type: $("type").value,
     name: $("name").value.trim(),
     host: $("host").value.trim(),
     port: $("port").value.trim(),

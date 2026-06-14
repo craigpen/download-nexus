@@ -1,6 +1,45 @@
 // background.js — NAS Download helper
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
+// ── NAS Adapter Abstraction Layer ──────────────────────────────────────────
+// Allows support for multiple NAS types (Synology, QNAP, etc.)
+
+class NasAdapter {
+  constructor(nasId, config) {
+    this.nasId = nasId;
+    this.config = config;
+  }
+
+  async addDownload(uri, destination) {
+    throw new Error("addDownload() not implemented");
+  }
+}
+
+class SynologyAdapter extends NasAdapter {
+  async addDownload(uri, destination) {
+    const isMagnet = uri.startsWith("magnet:");
+    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+
+    if (!isMagnet && !isTorrentUrl) {
+      throw new Error("Invalid URI: must be a magnet link or .torrent URL");
+    }
+
+    await synoAddDownload(this.config, this.nasId, uri, destination);
+  }
+}
+
+function getAdapter(nasId, config) {
+  const type = config.type || "synology";
+  switch (type) {
+    case "synology":
+      return new SynologyAdapter(nasId, config);
+    default:
+      throw new Error(`Unknown NAS type: ${type}`);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 const DEFAULT_NAS_SYNOLOGY = {
   host: "192.168.0.1",
   port: "5000",
@@ -247,6 +286,130 @@ async function nasCall(nasId, s, apiFn) {
   }
 }
 
+// ── Torrent file parser ───────────────────────────────────────────────────
+// Converts .torrent files to magnet links
+
+class BencodedParser {
+  constructor(buffer) {
+    this.buffer = new Uint8Array(buffer);
+    this.pos = 0;
+  }
+
+  parse() {
+    return this.decodeValue();
+  }
+
+  decodeValue() {
+    if (this.pos >= this.buffer.length) throw new Error("Unexpected end of buffer");
+    const byte = this.buffer[this.pos];
+    if (byte === 100) return this.decodeDict();      // 'd'
+    else if (byte === 108) return this.decodeList(); // 'l'
+    else if (byte === 105) return this.decodeInteger(); // 'i'
+    else if (byte >= 48 && byte <= 57) return this.decodeString(); // '0'-'9'
+    throw new Error(`Invalid bencode at position ${this.pos}`);
+  }
+
+  decodeDict() {
+    this.pos++; // skip 'd'
+    const obj = {};
+    while (this.pos < this.buffer.length && this.buffer[this.pos] !== 101) { // 'e'
+      const key = this.decodeString();
+      const value = this.decodeValue();
+      obj[key] = value;
+    }
+    if (this.pos < this.buffer.length) this.pos++; // skip 'e'
+    return obj;
+  }
+
+  decodeList() {
+    this.pos++; // skip 'l'
+    const arr = [];
+    while (this.pos < this.buffer.length && this.buffer[this.pos] !== 101) { // 'e'
+      arr.push(this.decodeValue());
+    }
+    if (this.pos < this.buffer.length) this.pos++; // skip 'e'
+    return arr;
+  }
+
+  decodeInteger() {
+    this.pos++; // skip 'i'
+    let num = 0;
+    while (this.pos < this.buffer.length && this.buffer[this.pos] !== 101) { // 'e'
+      num = num * 10 + (this.buffer[this.pos] - 48);
+      this.pos++;
+    }
+    if (this.pos < this.buffer.length) this.pos++; // skip 'e'
+    return num;
+  }
+
+  decodeString() {
+    let len = 0;
+    while (this.pos < this.buffer.length && this.buffer[this.pos] !== 58) { // ':'
+      len = len * 10 + (this.buffer[this.pos] - 48);
+      this.pos++;
+    }
+    if (this.pos < this.buffer.length) this.pos++; // skip ':'
+    const str = new TextDecoder().decode(this.buffer.slice(this.pos, this.pos + len));
+    this.pos += len;
+    return str;
+  }
+}
+
+async function torrentToMagnet(torrentBuffer) {
+  try {
+    const parser = new BencodedParser(torrentBuffer);
+    const torrent = parser.parse();
+
+    if (!torrent.info) throw new Error("Invalid torrent: missing info dict");
+
+    // Get the name
+    const name = torrent.info.name || "download";
+
+    // Calculate info hash by re-parsing to get raw info dict bytes
+    const infoHash = await calculateTorrentInfoHash(torrentBuffer, torrent);
+
+    // Build magnet link
+    const magnet = `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(name)}`;
+
+    // Add trackers if present
+    if (torrent.announce) {
+      return `${magnet}&tr=${encodeURIComponent(torrent.announce)}`;
+    }
+
+    return magnet;
+  } catch (err) {
+    dbg("ERROR", "Torrent parsing failed", err.message);
+    throw err;
+  }
+}
+
+async function calculateTorrentInfoHash(torrentBuffer, torrent) {
+  // Find the raw info dictionary bytes in the buffer
+  const infoStartMarker = "4:infod"; // "info" in bencoding
+  const buffer = new Uint8Array(torrentBuffer);
+  const bufStr = new TextDecoder().decode(buffer);
+  const infoStart = bufStr.indexOf(infoStartMarker) + 5; // skip "4:info"
+
+  // Find the end of the info dict by finding the matching 'e'
+  let depth = 1;
+  let pos = infoStart + 1; // start after 'd'
+  while (depth > 0 && pos < buffer.length) {
+    if (buffer[pos] === 100) depth++; // 'd'
+    else if (buffer[pos] === 108) depth++; // 'l'
+    else if (buffer[pos] === 101) depth--; // 'e'
+    pos++;
+  }
+
+  const infoBytes = buffer.slice(infoStart, pos);
+
+  // SHA1 hash the info dict
+  const hashBuffer = await crypto.subtle.digest("SHA-1", infoBytes);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+  return hashHex;
+}
+
 // ── URL validation ─────────────────────────────────────────────────────────
 
 function isValidMagnetURI(url) {
@@ -263,36 +426,62 @@ function isValidTorrentURL(url) {
   }
 }
 
-async function synoAddMagnet(s, sid, magnetUrl) {
+async function synoAddDownload(s, nasId, uri, overrideDestination) {
   // Secondary validation check
-  if (!isValidMagnetURI(magnetUrl)) {
-    dbg("ERROR", "Invalid magnet URI rejected", magnetUrl.slice(0, 80));
-    throw new Error("Invalid magnet URI format");
+  if (!isValidMagnetURI(uri) && !isValidTorrentURL(uri)) {
+    dbg("ERROR", "Invalid URI rejected", uri.slice(0, 80));
+    throw new Error("Invalid URI format (must be magnet link or .torrent URL)");
   }
-  const params = new URLSearchParams({
-    api:     "SYNO.DownloadStation.Task",
-    version: "1",
-    method:  "create",
-    uri:     magnetUrl,
-    _sid:    sid
-  });
-  if (s.destination) params.set("destination", s.destination);
-  const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
-  const resp = await nasFetch("ADD_MAGNET", url, {
-    method:  "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body:    params.toString()
-  });
-  const text = await resp.text();
-  dbg("INFO", "ADD_MAGNET body", text.slice(0, 300));
-  let data;
-  try { data = JSON.parse(text); }
-  catch(e) { throw new Error(`Add-magnet response not JSON: ${text.slice(0, 120)}`); }
-  if (!data.success) {
-    const code = data.error?.code ?? "?";
-    throw new Error(`Task creation failed (DSM code ${code})`);
+
+  // If it's a .torrent URL, download and convert to magnet
+  let finalUri = uri;
+  if (isValidTorrentURL(uri)) {
+    dbg("INFO", "Converting .torrent URL to magnet", uri.slice(0, 80));
+    try {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      finalUri = await torrentToMagnet(torrentBuffer);
+      dbg("INFO", "Torrent converted to magnet", finalUri.slice(0, 80));
+    } catch (err) {
+      throw new Error(`Failed to parse torrent: ${err.message}`);
+    }
   }
+
+  // Use provided destination or fall back to config default
+  const destination = overrideDestination || s.destination;
+
+  await nasCall(nasId, s, sid => {
+    const params = new URLSearchParams({
+      api:     "SYNO.DownloadStation.Task",
+      version: "1",
+      method:  "create",
+      uri:     finalUri,
+      _sid:    sid
+    });
+    if (destination) params.set("destination", destination);
+    const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
+    return nasFetch("ADD_DOWNLOAD", url, {
+      method:  "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:    params.toString()
+    }).then(async resp => {
+      const text = await resp.text();
+      dbg("INFO", "ADD_DOWNLOAD body", text.slice(0, 300));
+      let data;
+      try { data = JSON.parse(text); }
+      catch(e) { throw new Error(`Add-download response not JSON: ${text.slice(0, 120)}`); }
+      if (!data.success) {
+        const code = data.error?.code ?? "?";
+        throw new Error(`Task creation failed (DSM code ${code})`);
+      }
+    });
+  });
+}
+
+async function downloadTorrentFile(url) {
+  const resp = await fetch(url, { credentials: "omit" });
+  if (!resp.ok) throw new Error(`Failed to download torrent: HTTP ${resp.status}`);
+  return resp.arrayBuffer();
 }
 
 // ── test connection ────────────────────────────────────────────────────────
@@ -337,6 +526,15 @@ function decodeName(magnetUrl) {
   } catch { return ""; }
 }
 
+function extractFileName(uri) {
+  try {
+    const url = new URL(uri);
+    const pathname = url.pathname;
+    const filename = pathname.split('/').pop();
+    return filename.replace(/\.torrent$/i, "") || "";
+  } catch { return ""; }
+}
+
 function notify(title, message) {
   chrome.notifications.create({
     type: "basic",
@@ -346,7 +544,7 @@ function notify(title, message) {
   });
 }
 
-async function sendMagnet(magnetUrl, nasId = null) {
+async function sendDownload(uri, nasId = null) {
   const list = await getNasList();
   if (!nasId && list.length > 0) nasId = list[0].id;
 
@@ -359,15 +557,23 @@ async function sendMagnet(magnetUrl, nasId = null) {
     notify("⚠️ Not configured", "Open the extension options and enter your NAS credentials.");
     return;
   }
-  dbg("INFO", "SEND_MAGNET", magnetUrl.slice(0, 80));
+
+  const isMagnet = uri.startsWith("magnet:");
+  dbg("INFO", isMagnet ? "SEND_MAGNET" : "SEND_TORRENT", uri.slice(0, 80));
+
   try {
-    await nasCall(nasId, s, sid => synoAddMagnet(s, sid, magnetUrl));
-    notify("✅ Sent to Download Station", decodeName(magnetUrl) || magnetUrl.slice(0, 80));
+    const adapter = getAdapter(nasId, s);
+    await adapter.addDownload(uri);
+    const displayName = isMagnet ? decodeName(uri) : extractFileName(uri);
+    notify("✅ Sent to Download Station", displayName || uri.slice(0, 80));
   } catch (err) {
     notify("❌ NAS error", err.message);
-    dbg("ERROR", "SEND_MAGNET failed", err.message);
+    dbg("ERROR", "SEND_DOWNLOAD failed", err.message);
   }
 }
+
+// Backward compatibility alias
+const sendMagnet = sendDownload;
 
 
 // ── task list / control ────────────────────────────────────────────────────

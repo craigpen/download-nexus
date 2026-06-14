@@ -82,28 +82,28 @@
     .row { margin-bottom: 16px; }
     .row-inline { display: flex; gap: 12px; margin-bottom: 16px; }
     .row-inline > div { flex: 1; }
-    input[type="text"], input[type="number"], input[type="password"] {
+    input[type="text"], input[type="number"], input[type="password"], select {
       width: 100%; padding: 8px 10px;
       border-radius: 6px;
       font-size: 14px; transition: border-color .15s; outline: none;
     }
 
     @media (prefers-color-scheme: light) {
-      input[type="text"], input[type="number"], input[type="password"] {
+      input[type="text"], input[type="number"], input[type="password"], select {
         border: 1px solid #ccc;
         background: #fff;
         color: #333;
       }
-      input:focus { border-color: #1a6fb5; }
+      input:focus, select:focus { border-color: #1a6fb5; }
     }
 
     @media (prefers-color-scheme: dark) {
-      input[type="text"], input[type="number"], input[type="password"] {
+      input[type="text"], input[type="number"], input[type="password"], select {
         border: 1px solid #444;
         background: #1f2538;
         color: #e0e6f0;
       }
-      input:focus { border-color: #7eb8f7; }
+      input:focus, select:focus { border-color: #7eb8f7; }
     }
     .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
     .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
@@ -362,6 +362,13 @@
       <div class="row">
         <label>Device Name <span class="hint">e.g. Home NAS, Backup</span></label>
         <input type="text" id="name" placeholder="Home NAS" required />
+      </div>
+
+      <div class="row">
+        <label>NAS Type <span class="hint">currently supports Synology only</span></label>
+        <select id="type" style="width: 100%; padding: 8px 10px; border-radius: 6px; font-size: 14px; outline: none;" required>
+          <option value="synology">Synology</option>
+        </select>
       </div>
 
       <div class="row-inline">

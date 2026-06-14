@@ -52,8 +52,10 @@
     }
   });
 
-  // Matches full magnet URIs in plain text
+  // Regex patterns
   const MAGNET_RE  = /magnet:\?[^\s"'<>]+/g;
+  const TORRENT_RE = /https?:\/\/[^\s"'<>]+\.torrent(?:\?[^\s"'<>]*)*/g;
+
   // ── URL validation ────────────────────────────────────────────────────────
 
   function isValidMagnetURI(url) {
@@ -63,11 +65,23 @@
     return /[&?](xt|dn|tr)=/.test(url);
   }
 
+  function isValidTorrentURL(url) {
+    try {
+      const u = new URL(url);
+      return /\.torrent(\?|$)/i.test(u.pathname);
+    } catch {
+      return false;
+    }
+  }
+
   // ── send helper ───────────────────────────────────────────────────────────
 
-  function sendUrl(btn, url, nasId) {
-    // Validate magnet link format before sending
-    if (!isValidMagnetURI(url)) {
+  function sendUrl(btn, url, nasId, type) {
+    // Validate URL format before sending
+    const isMagnet = url.startsWith("magnet:");
+    const isTorrent = /\.torrent(\?|$)/i.test(url);
+
+    if (isMagnet && !isValidMagnetURI(url)) {
       btn.textContent = "❌";
       btn.disabled = false;
       btn.style.background = "#c0392b";
@@ -76,10 +90,27 @@
       return;
     }
 
+    if (isTorrent && !isValidTorrentURL(url)) {
+      btn.textContent = "❌";
+      btn.disabled = false;
+      btn.style.background = "#c0392b";
+      btn.title = "Invalid torrent URL";
+      console.warn(`[NAS] Invalid torrent URL attempted: ${url.slice(0, 80)}`);
+      return;
+    }
+
     // Get display name for confirmation
-    const name = (url.match(/[?&]dn=([^&]+)/) ?? ["", "Download"])[1].substring(0, 50);
+    let name = "Download";
+    if (isMagnet) {
+      name = (url.match(/[?&]dn=([^&]+)/) ?? ["", "Download"])[1];
+      name = decodeURIComponent(name).substring(0, 50);
+    } else if (isTorrent) {
+      name = url.split("/").pop().replace(/\.torrent(\?.*)?$/, "").substring(0, 50);
+    }
+
     const nasName = nasDevices.find(n => n.id === nasId)?.name || "NAS";
-    if (!confirm(`Send magnet link to ${nasName}?\n\n${decodeURIComponent(name)}`)) {
+    const typeLabel = isTorrent ? "torrent file" : "magnet link";
+    if (!confirm(`Send ${typeLabel} to ${nasName}?\n\n${name}`)) {
       btn.textContent = "⬇ NAS";
       btn.disabled = false;
       return;
@@ -235,6 +266,7 @@
     const href = a.href || "";
     let type = null;
     if (href.startsWith("magnet:")) type = "magnet";
+    else if (/\.torrent(\?|$)/i.test(href)) type = "torrent";
     if (!type) return;
 
     makeInlineButton(href, type, a);
@@ -283,7 +315,7 @@
             el = el.parentElement;
           }
           const v = node.nodeValue;
-          return v.includes("magnet:?")
+          return (v.includes("magnet:?") || v.includes(".torrent"))
             ? NodeFilter.FILTER_ACCEPT
             : NodeFilter.FILTER_REJECT;
         }
@@ -304,12 +336,16 @@
 
       const text = node.nodeValue;
 
-      // Collect all magnet link matches, sorted by position
+      // Collect all magnet and torrent link matches, sorted by position
       const matches = [];
       let m;
       MAGNET_RE.lastIndex = 0;
       while ((m = MAGNET_RE.exec(text)) !== null) {
         matches.push({ url: m[0], index: m.index, length: m[0].length, type: "magnet" });
+      }
+      TORRENT_RE.lastIndex = 0;
+      while ((m = TORRENT_RE.exec(text)) !== null) {
+        matches.push({ url: m[0], index: m.index, length: m[0].length, type: "torrent" });
       }
       if (!matches.length) continue;
       matches.sort((a, b) => a.index - b.index);

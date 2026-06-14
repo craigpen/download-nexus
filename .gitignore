@@ -17,6 +17,8 @@ Thumbs.db
 # Browser extension build output
 dist/
 build/
+.output/
+.wxt/
 
 # Build artifacts
 *.zip
