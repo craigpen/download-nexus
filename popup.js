@@ -425,6 +425,10 @@ function renderNasTabs() {
       renderNasTabs();
       updateTabLabels(); // Update tab labels for this adapter
       filter = "downloading";
+      // Mark the correct filter tab as active
+      document.querySelectorAll('[data-filter]').forEach(t => t.classList.remove("active"));
+      const activeFilterTab = document.querySelector('[data-filter="downloading"]');
+      if (activeFilterTab) activeFilterTab.classList.add("active");
       await paintCachedTasks();
       refresh();
     });
