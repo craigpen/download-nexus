@@ -482,37 +482,45 @@
 
     /* ── support footer ── */
     .support-footer {
-      padding: 4px 14px;
-      text-align: center;
-      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
       flex-shrink: 0;
       border-top: 1px solid;
+    }
+
+    .support-footer-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .support-footer-links a {
+      color: var(--accent-primary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .support-footer-links a:hover {
+      opacity: 0.7;
     }
 
     @media (prefers-color-scheme: light) {
       .support-footer {
         background: #f9f9f9;
         border-color: #e5e8ec;
-        color: #1d7c2d;
       }
-      .support-footer a {
-        color: #1d7c2d;
-        text-decoration: none;
-      }
-      .support-footer a:hover { color: #155c1f; text-decoration: underline; }
     }
 
     @media (prefers-color-scheme: dark) {
       .support-footer {
         background: #0f1420;
         border-color: #1a2538;
-        color: #4caf7d;
       }
-      .support-footer a {
-        color: #4caf7d;
-        text-decoration: none;
-      }
-      .support-footer a:hover { color: #6cff9d; text-decoration: underline; }
     }
 
     /* loading spinner */
@@ -877,7 +885,9 @@
   </div>
 
   <div class="support-footer">
-    Support me: <a href="https://ko-fi.com/craigpen" target="_blank" rel="noopener noreferrer">Ko-Fi</a> | <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
+    <div class="support-footer-links">
+      Support me: <a href="https://ko-fi.com/craigpen" target="_blank" rel="noopener noreferrer">Ko-Fi</a> | <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
+    </div>
   </div>
 
   <script src="popup.js"></script>
