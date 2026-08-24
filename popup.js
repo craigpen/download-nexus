@@ -109,8 +109,10 @@ function getVisibleTasks() {
   if (filter === "downloading") {
     // DL tab: sort by % complete (most complete first)
     return filtered.sort((a, b) => {
-      const aPct = a.size > 0 ? (a.additional?.transfer?.size_downloaded || 0) / a.size : 0;
-      const bPct = b.size > 0 ? (b.additional?.transfer?.size_downloaded || 0) / b.size : 0;
+      const aDownloaded = a.downloaded !== undefined ? a.downloaded : (a.additional?.transfer?.size_downloaded || 0);
+      const bDownloaded = b.downloaded !== undefined ? b.downloaded : (b.additional?.transfer?.size_downloaded || 0);
+      const aPct = a.size > 0 ? aDownloaded / a.size : 0;
+      const bPct = b.size > 0 ? bDownloaded / b.size : 0;
       return bPct - aPct;
     });
   } else {
