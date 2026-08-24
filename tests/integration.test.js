@@ -132,47 +132,29 @@ describe('qBittorrent Integration Tests', () => {
   });
 
   describe('Task Actions', () => {
-    test('should handle pause action', async () => {
+    test('should pause torrent with /torrents/stop endpoint', async () => {
       await qbApi('POST', '/auth/login', QB_CONFIG);
       const listResp = await qbApi('GET', '/torrents/info');
 
       if (listResp.json && listResp.json.length > 0) {
         const hash = listResp.json[0].hash;
-        // Try different endpoint paths for pause
-        let resp = await qbApi('POST', '/torrents/pause', { hashes: hash });
-        if (resp.status === 404) {
-          // Try alternate format
-          resp = await qbApi('POST', '/torrents/stop', { hashes: hash });
-        }
-        // Skip test if endpoint not found (qBit version difference)
-        if (resp.status === 404) {
-          console.log('⚠️  Pause endpoint not found in this qBittorrent version');
-          return;
-        }
-        assert(resp.status === 200 || resp.ok,
-          `Pause failed with status ${resp.status}: ${resp.body}`);
+        // qBittorrent API v2: POST /torrents/stop (pause action)
+        const resp = await qbApi('POST', '/torrents/stop', { hashes: hash });
+        assert(resp.status === 200 || resp.status === 204 || resp.ok,
+          `Stop (pause) failed with status ${resp.status}: ${resp.body}`);
       }
     }, 10000);
 
-    test('should handle resume action', async () => {
+    test('should resume torrent with /torrents/start endpoint', async () => {
       await qbApi('POST', '/auth/login', QB_CONFIG);
       const listResp = await qbApi('GET', '/torrents/info');
 
       if (listResp.json && listResp.json.length > 0) {
         const hash = listResp.json[0].hash;
-        // Try different endpoint paths for resume
-        let resp = await qbApi('POST', '/torrents/resume', { hashes: hash });
-        if (resp.status === 404) {
-          // Try alternate format
-          resp = await qbApi('POST', '/torrents/start', { hashes: hash });
-        }
-        // Skip test if endpoint not found (qBit version difference)
-        if (resp.status === 404) {
-          console.log('⚠️  Resume endpoint not found in this qBittorrent version');
-          return;
-        }
-        assert(resp.status === 200 || resp.ok,
-          `Resume failed with status ${resp.status}: ${resp.body}`);
+        // qBittorrent API v2: POST /torrents/start (resume action)
+        const resp = await qbApi('POST', '/torrents/start', { hashes: hash });
+        assert(resp.status === 200 || resp.status === 204 || resp.ok,
+          `Start (resume) failed with status ${resp.status}: ${resp.body}`);
       }
     }, 10000);
   });

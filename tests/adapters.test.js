@@ -190,14 +190,15 @@ describe('Device Adapters', () => {
     });
 
     test('should map task actions correctly', () => {
+      // qBittorrent API v2 endpoint mapping
       const actionMap = {
-        'pause': 'pause',
-        'resume': 'resume',
+        'pause': 'stop',      // pause → /torrents/stop
+        'resume': 'start',    // resume → /torrents/start
         'delete': 'deletePerm'
       };
 
-      assert(actionMap.pause === 'pause', 'Pause action should map to "pause"');
-      assert(actionMap.resume === 'resume', 'Resume action should map to "resume"');
+      assert(actionMap.pause === 'stop', 'Pause action should map to "stop" (/torrents/stop)');
+      assert(actionMap.resume === 'start', 'Resume action should map to "start" (/torrents/start)');
       assert(actionMap.delete === 'deletePerm', 'Delete action should map to "deletePerm"');
     });
 
