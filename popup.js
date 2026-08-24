@@ -1,5 +1,21 @@
 // popup.js — Task manager + device settings
 
+// Adapter feature configuration - defines tabs and labels for each adapter
+const ADAPTER_FEATURES = {
+  synology: {
+    tabs: ["downloading", "seeding", "paused", "finished", "error"],
+    pausedLabel: "Paused"
+  },
+  qbittorrent: {
+    tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
+    pausedLabel: "Stopped"
+  },
+  transmission: {
+    tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
+    pausedLabel: "Paused"
+  }
+};
+
 let allTasks      = [];
 let filter        = "downloading";
 let pollTimer     = null;
@@ -423,37 +439,98 @@ function renderNasTabs() {
     tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
       renderNasTabs();
-      updateTabLabels(); // Update tab labels for this adapter
+      renderFilterTabs(); // Render filter tabs based on new adapter
       filter = "downloading";
-      // Mark the correct filter tab as active
-      document.querySelectorAll('[data-filter]').forEach(t => t.classList.remove("active"));
-      const activeFilterTab = document.querySelector('[data-filter="downloading"]');
-      if (activeFilterTab) activeFilterTab.classList.add("active");
       await paintCachedTasks();
       refresh();
     });
   });
 
-  updateTabLabels(); // Initial update
+  renderFilterTabs(); // Initial render based on current adapter
 }
 
-function updateTabLabels() {
-  // Update tab labels based on current adapter type
+// Get the enabled tabs for the current adapter
+function getEnabledTabs() {
   const device = nasList.find(n => n.id === currentNasId);
   const adapterType = device?.type || "synology";
+  const features = ADAPTER_FEATURES[adapterType];
+  return features ? features.tabs : ADAPTER_FEATURES.synology.tabs;
+}
 
-  const pausedTab = document.querySelector('[data-filter="paused"]');
-  if (pausedTab) {
-    const countSpan = pausedTab.querySelector(".tab-count");
-    const label = adapterType === "qbittorrent" ? "Stopped" : "Paused";
-    pausedTab.innerHTML = label + " " + countSpan.outerHTML;
+// Get pause/stop label for current adapter
+function getPausedLabel() {
+  const device = nasList.find(n => n.id === currentNasId);
+  const adapterType = device?.type || "synology";
+  const features = ADAPTER_FEATURES[adapterType];
+  return features ? features.pausedLabel : "Paused";
+}
+
+// Select a filter and update UI
+function selectFilter(filterType) {
+  document.querySelectorAll('[data-filter]').forEach(t => t.classList.remove("active"));
+  const activeTab = document.querySelector(`[data-filter="${filterType}"]`);
+  if (activeTab) activeTab.classList.add("active");
+  filter = filterType;
+  renderTasks();
+}
+
+// Render filter tabs based on current adapter capabilities
+function renderFilterTabs() {
+  const enabledTabs = getEnabledTabs();
+  const tabLabels = {
+    downloading: "DL",
+    seeding: "Seed",
+    paused: getPausedLabel(),
+    stalled: "Stalled",
+    finished: "Done",
+    error: "Error",
+    all: "All"
+  };
+
+  const tabsContainer = document.querySelector(".tabs");
+  if (!tabsContainer) return;
+
+  // Clear existing tabs
+  tabsContainer.innerHTML = "";
+
+  // Create tabs for enabled filters
+  enabledTabs.forEach(filterType => {
+    const button = document.createElement("button");
+    button.className = `tab ${filter === filterType ? "active" : ""}`;
+    button.dataset.filter = filterType;
+
+    const countSpan = document.createElement("span");
+    countSpan.className = "tab-count";
+    countSpan.id = `cnt-${filterType}`;
+    countSpan.textContent = "0";
+
+    button.textContent = tabLabels[filterType] + " ";
+    button.appendChild(countSpan);
+
+    button.addEventListener("click", () => selectFilter(filterType));
+    tabsContainer.appendChild(button);
+  });
+
+  // Add "All" tab at the end if not already included
+  if (!enabledTabs.includes("all")) {
+    const allButton = document.createElement("button");
+    allButton.className = "tab";
+    allButton.dataset.filter = "all";
+
+    const countSpan = document.createElement("span");
+    countSpan.className = "tab-count";
+    countSpan.id = "cnt-all";
+    countSpan.textContent = "0";
+
+    allButton.textContent = "All ";
+    allButton.appendChild(countSpan);
+
+    allButton.addEventListener("click", () => selectFilter("all"));
+    tabsContainer.appendChild(allButton);
   }
 
-  // Hide stalled tab for Synology (doesn't have stalled state)
-  const stalledTab = document.querySelector('[data-filter="stalled"]');
-  if (stalledTab) {
-    stalledTab.style.display = adapterType === "synology" ? "none" : "block";
-  }
+  // Restore counts
+  updateCounts();
 }
 
 // ── whitelist ──────────────────────────────────────────────────────────────
@@ -855,17 +932,8 @@ document.getElementById("importFile").addEventListener("change", async e => {
 
 // ── init ──────────────────────────────────────────────────────────────────
 
-// Tabs
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    filter = tab.dataset.filter;
-    renderNasTabs(); // Keep device tabs showing connection status
-    updateTabLabels(); // Update adapter-specific labels
-    renderTasks();
-  });
-});
+// Note: Filter tabs are now dynamically created by renderFilterTabs()
+// and click handlers are attached there, so no static initialization needed here.
 
 // Buttons
 document.getElementById("refreshBtn").addEventListener("click", refresh);
