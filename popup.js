@@ -448,6 +448,12 @@ function updateTabLabels() {
     const label = adapterType === "qbittorrent" ? "Stopped" : "Paused";
     pausedTab.innerHTML = label + " " + countSpan.outerHTML;
   }
+
+  // Hide stalled tab for Synology (doesn't have stalled state)
+  const stalledTab = document.querySelector('[data-filter="stalled"]');
+  if (stalledTab) {
+    stalledTab.style.display = adapterType === "synology" ? "none" : "block";
+  }
 }
 
 // ── whitelist ──────────────────────────────────────────────────────────────
