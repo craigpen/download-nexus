@@ -1,13 +1,14 @@
 # NAS Download Helper
 
-A browser extension for Edge/Chrome that intercepts magnet links and torrent files on web pages and sends them to your NAS device(s).
+A browser extension for Edge/Chrome that intercepts magnet links and torrent files on web pages and sends them to your torrent client or NAS device(s).
 
 ## Features
 
-- **Multi-NAS support**: Configure and manage multiple NAS devices (currently Synology; extensible for others)
+- **Multi-client support**: Configure and manage Synology NAS or qBittorrent clients
   - Add/edit/delete devices from the settings view in the popup (gear icon)
   - Each device has independent session and settings
   - Export/import config with option to exclude plaintext passwords
+  - Extensible architecture for adding more clients (Transmission, Deluge, etc.)
 - **Magnet link & torrent support**: Detects and handles both magnet links and `.torrent` files
   - Inline buttons next to links (no floating/overlapping)
   - NAS selector popup when multiple devices configured
@@ -87,6 +88,39 @@ The content script can be optimized by whitelisting specific domains where you f
 - **All targets**: `npm run build:all`
 
 Each build is ready to submit to the respective app store.
+
+### Testing with qBittorrent
+
+The extension now supports qBittorrent as an alternative to Synology NAS. To test with qBittorrent:
+
+**Option 1: Docker (Recommended)**
+```bash
+docker run -d \
+  --name qbittorrent \
+  -p 8080:8080 \
+  -e WEBUI_PORT=8080 \
+  qbittorrent/qbittorrent:latest
+```
+Then access `http://localhost:8080` (default: admin/adminadmin)
+
+**Option 2: Local Installation**
+- Download from https://www.qbittorrent.org/download
+- Run qBittorrent locally
+- Access Web UI at `http://localhost:8080` or configured port
+
+**Testing Steps:**
+1. Load the extension in developer mode (see Development section above)
+2. Click gear icon → "+ Add Device"
+3. Select "qBittorrent" from the Device Type dropdown
+4. Enter connection details:
+   - Device Name: e.g., "My qBit"
+   - Host: `localhost` (or your qBit server IP)
+   - Port: `8080` (or your configured port)
+   - Username/Password: qBit Web UI credentials
+5. Click "Test Connection" to verify
+6. Go back to main view
+7. Visit a torrent site and click a magnet link
+8. Confirm the torrent appears in qBittorrent Web UI
 
 ## Support Development
 
