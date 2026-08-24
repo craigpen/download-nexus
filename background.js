@@ -31,6 +31,24 @@ class SynologyAdapter extends NasAdapter {
     return { ok: true, version: data.data?.version_string ?? "" };
   }
 
+  _displayStatus(rawStatus) {
+    // Map Synology Download Station status to UI-compatible strings
+    const statusMap = {
+      "downloading": "downloading",    // DL tab
+      "completed": "finished",         // Done tab
+      "finished": "finished",          // Done tab
+      "active": "seeding",             // Seed tab (actively seeding)
+      "uploading": "seeding",          // Seed tab
+      "seeding": "seeding",            // Seed tab
+      "stopped": "paused",             // Paused tab (user stopped)
+      "paused": "paused",              // Paused tab
+      "inactive": "paused",            // Paused tab (inactive = paused by user)
+      "waiting": "paused",             // Paused tab (waiting = paused, waiting for resources)
+      "error": "error"                 // Error tab
+    };
+    return statusMap[rawStatus] || rawStatus;
+  }
+
   async listTasks() {
     const sid = await getSid(this.nasId, this.config);
     const url = `${baseUrl(this.config)}/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=list&additional=transfer&_sid=${sid}`;
@@ -38,7 +56,12 @@ class SynologyAdapter extends NasAdapter {
     const text = await resp.text();
     const data = JSON.parse(text);
     if (!data.success) throw new Error(`List tasks failed (DSM code ${data.error?.code ?? "?"})`);
-    return data.data.tasks || [];
+    const tasks = data.data.tasks || [];
+    // Map status values from Synology API to UI-compatible statuses
+    return tasks.map(t => ({
+      ...t,
+      status: this._displayStatus(t.status)
+    }));
   }
 
   async addDownload(uri, destination) {
