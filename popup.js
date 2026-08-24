@@ -91,11 +91,11 @@ function updateCounts() {
     if (el) el.textContent = v;
   }
 
-  // Total speeds
+  // Total speeds (support both normalized and Synology formats)
   let dn = 0, up = 0;
   for (const t of allTasks) {
-    dn += t.additional?.transfer?.speed_download || 0;
-    up += t.additional?.transfer?.speed_upload   || 0;
+    dn += (t.speed_down !== undefined) ? t.speed_down : (t.additional?.transfer?.speed_download || 0);
+    up += (t.speed_up !== undefined) ? t.speed_up : (t.additional?.transfer?.speed_upload || 0);
   }
   document.getElementById("totalDn").textContent = fmtSpeed(dn);
   document.getElementById("totalUp").textContent = fmtSpeed(up);
@@ -168,12 +168,13 @@ function renderTasks() {
 
   for (const task of visible) {
     seen.add(task.id);
+    // Support both normalized format (qBittorrent) and Synology format
     const transfer = task.additional?.transfer || {};
     const size     = task.size;
-    const dlSize   = transfer.size_downloaded || 0;
+    const dlSize   = task.downloaded !== undefined ? task.downloaded : (transfer.size_downloaded || 0);
     const pct      = size > 0 ? Math.min(100, Math.round(dlSize / size * 100)) : 0;
-    const spDn     = transfer.speed_download || 0;
-    const spUp     = transfer.speed_upload   || 0;
+    const spDn     = task.speed_down !== undefined ? task.speed_down : (transfer.speed_download || 0);
+    const spUp     = task.speed_up !== undefined ? task.speed_up : (transfer.speed_upload || 0);
     const eta      = spDn > 0 && size > dlSize ? Math.round((size - dlSize) / spDn) : 0;
     const isPaused = task.status === "paused" || task.status === "finished" || task.status === "error";
     const color    = progressColor(task.status);
