@@ -406,7 +406,7 @@ function renderNasTabs() {
   tabBar.innerHTML = nasList.map(nas => {
     const isActive = nas.id === currentNasId;
     const connStatus = nasConnStatus[nas.id] || "unknown";
-    const connIndicator = connStatus === "ok" ? "● Connected" : connStatus === "error" ? "● Offline" : "● …";
+    const connIndicator = connStatus === "ok" ? "Connected" : connStatus === "error" ? "Offline" : "…";
     const connColor = connStatus === "ok" ? "#4caf7d" : connStatus === "error" ? "#ff7b72" : "#8898b8";
     const nasName = escHtml(nas.name);
     const nasId = escHtml(nas.id);
