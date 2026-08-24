@@ -238,6 +238,33 @@ function escHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+// ── task cache (paint instantly on open, refresh in the background) ────────
+
+function loadCachedTasks(nasId) {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ taskCache: {} }, r => resolve(r.taskCache[nasId] || null));
+  });
+}
+
+function saveCachedTasks(nasId, tasks) {
+  chrome.storage.local.get({ taskCache: {} }, r => {
+    const cache = r.taskCache;
+    cache[nasId] = { tasks };
+    chrome.storage.local.set({ taskCache: cache });
+  });
+}
+
+async function paintCachedTasks() {
+  if (!currentNasId) return;
+  const cached = await loadCachedTasks(currentNasId);
+  allTasks = cached?.tasks || [];
+  document.getElementById("speedBar").style.display = "";
+  document.getElementById("tabBar").style.display   = "";
+  updateCounts();
+  renderTasks();
+  setStatus(cached ? "Showing cached data…" : "");
+}
+
 // ── data fetch ────────────────────────────────────────────────────────────
 
 function setConnStatus(nasId, ok) {
@@ -269,13 +296,14 @@ async function refresh() {
     const resp = await send({ type: "LIST_TASKS", nasId: currentNasId });
     if (!resp.ok) {
       setConnStatus(currentNasId, false);
-      showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
+      if (allTasks.length === 0) showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
       setStatus(resp.error, true);
       return;
     }
     setConnStatus(currentNasId, true);
     hideError();
     allTasks = resp.tasks;
+    saveCachedTasks(currentNasId, resp.tasks);
     document.getElementById("speedBar").style.display = "";
     document.getElementById("tabBar").style.display   = "";
     updateCounts();
@@ -283,7 +311,7 @@ async function refresh() {
     setStatus("");
   } catch (err) {
     setConnStatus(currentNasId, false);
-    showError("❌ Connection error", err.message);
+    if (allTasks.length === 0) showError("❌ Connection error", err.message);
     setStatus(err.message, true);
   }
 }
@@ -357,11 +385,11 @@ function renderNasTabs() {
   tabBar.style.display = "flex";
 
   tabBar.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
+    tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
       renderNasTabs();
-      allTasks = [];
       filter = "downloading";
+      await paintCachedTasks();
       refresh();
     });
   });
@@ -507,6 +535,7 @@ async function getCurrentDomain() {
   await loadNasList();
   getCurrentDomain();
   loadWhitelist();
+  await paintCachedTasks();
   refresh();
   pollTimer = setInterval(refresh, 5000);
 })();
