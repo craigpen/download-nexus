@@ -51,6 +51,11 @@ class SynologyAdapter extends NasAdapter {
 
     await synoAddDownload(this.config, this.nasId, uri, destination);
   }
+
+  async taskAction(action, ids) {
+    const sid = await getSid(this.nasId, this.config);
+    await taskAction(this.config, sid, action, ids);
+  }
 }
 
 class QBittorrentAdapter extends NasAdapter {
