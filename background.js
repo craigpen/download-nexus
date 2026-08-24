@@ -507,16 +507,15 @@ async function qbListTasks(s) {
 
   return data.map(torrent => ({
     id: torrent.hash,
-    name: torrent.name,
+    title: torrent.name,
     status: torrent.state, // "downloading", "uploading", etc.
     progress: torrent.progress * 100, // qBit uses 0-1, we use 0-100
+    size: torrent.total_size,
     downloaded: torrent.downloaded,
     uploaded: torrent.uploaded,
-    size: torrent.total_size,
     speed_down: torrent.dl_speed,
     speed_up: torrent.up_speed,
-    eta: torrent.eta,
-    added_on: torrent.added_on
+    eta: torrent.eta
   }));
 }
 
