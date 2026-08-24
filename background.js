@@ -68,7 +68,7 @@ class QBittorrentAdapter extends NasAdapter {
     let data = JSON.parse(text);
     if (!Array.isArray(data)) return [];
 
-    return data.map(t => ({
+    const tasks = data.map(t => ({
       id: t.hash,
       title: t.name,
       status: t.state,
@@ -80,6 +80,8 @@ class QBittorrentAdapter extends NasAdapter {
       speed_up: t.up_speed,
       eta: t.eta
     }));
+    dbg("QBittorrentAdapter.listTasks returning:", tasks.length, "tasks with fields:", tasks[0] ? Object.keys(tasks[0]) : "none");
+    return tasks;
   }
 
   async addDownload(uri, destination) {
