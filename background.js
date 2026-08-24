@@ -38,39 +38,7 @@ class SynologyAdapter extends NasAdapter {
     const text = await resp.text();
     const data = JSON.parse(text);
     if (!data.success) throw new Error(`List tasks failed (DSM code ${data.error?.code ?? "?"})`);
-
-    const tasks = data.data.tasks || [];
-    // Normalize Synology tasks to unified format
-    return tasks.map(t => ({
-      id: t.id,
-      title: t.title,
-      status: this._normalizeStatus(t.status),
-      progress: t.additional?.transfer?.progress_percentage ?? 0,
-      downloaded: t.additional?.transfer?.size_downloaded ?? 0,
-      uploaded: t.additional?.transfer?.size_uploaded ?? 0,
-      size: t.additional?.transfer?.size_total ?? 0,
-      speed_down: t.additional?.transfer?.speed_download ?? 0,
-      speed_up: t.additional?.transfer?.speed_upload ?? 0,
-      eta: t.additional?.transfer?.remaining_time ?? 0,
-      // Keep original for fallback compatibility
-      _original: t
-    }));
-  }
-
-  _normalizeStatus(synoStatus) {
-    // Map Synology Download Station status to unified format
-    const stateMap = {
-      "downloading": "downloading",
-      "uploading": "seeding",
-      "paused": "paused",
-      "finishing": "seeding",
-      "error": "error",
-      "waiting": "waiting",
-      "completed": "finished",
-      "seeding": "seeding",
-      "stopped": "paused"
-    };
-    return stateMap[synoStatus] || "waiting";
+    return data.data.tasks || [];
   }
 
   async addDownload(uri, destination) {
@@ -103,7 +71,7 @@ class QBittorrentAdapter extends NasAdapter {
     const tasks = data.map(t => ({
       id: t.hash,
       title: t.name,
-      status: this._normalizeStatus(t.state),
+      status: t.state,
       progress: t.progress * 100,
       downloaded: t.downloaded,
       uploaded: t.uploaded,
@@ -114,37 +82,6 @@ class QBittorrentAdapter extends NasAdapter {
     }));
     dbg("QBittorrentAdapter.listTasks returning:", tasks.length, "tasks with fields:", tasks[0] ? Object.keys(tasks[0]) : "none");
     return tasks;
-  }
-
-  _normalizeStatus(qbState) {
-    // Map qBittorrent states to standardized status names
-    const stateMap = {
-      // Downloading states (actively downloading)
-      downloading: "downloading",
-      forcedDL: "downloading",
-      metaDL: "downloading",
-      forcedMetaDL: "downloading",
-      allocating: "downloading",
-      // Paused states
-      stoppedDL: "paused",
-      stoppedUP: "paused",
-      // Stalled states (not actively downloading, waiting for peers)
-      stalledDL: "waiting",
-      stalledUP: "seeding",
-      // Seeding states
-      uploading: "seeding",
-      forcedUP: "seeding",
-      // Checking/queue states
-      queuedForChecking: "waiting",
-      checkingUP: "waiting",
-      checkingDL: "waiting",
-      checkingResumeData: "waiting",
-      moving: "waiting",
-      // Error state
-      missingFiles: "error",
-      error: "error"
-    };
-    return stateMap[qbState] || "waiting";
   }
 
   async addDownload(uri, destination) {
@@ -297,7 +234,7 @@ class TransmissionAdapter extends NasAdapter {
     return torrents.map(t => ({
       id: t.id.toString(),
       title: t.name,
-      status: this._normalizeStatus(t.status),
+      status: t.status,
       progress: t.percentDone * 100,
       downloaded: t.downloadedEver,
       uploaded: t.uploadedEver,
@@ -383,19 +320,6 @@ class TransmissionAdapter extends NasAdapter {
     if (data.result !== "success") {
       throw new Error(`Transmission action failed: ${data.result}`);
     }
-  }
-
-  _normalizeStatus(transmissionStatus) {
-    const stateMap = {
-      0: "paused",           // Stopped
-      1: "waiting",          // Check pending
-      2: "waiting",          // Checking
-      3: "waiting",          // Download pending
-      4: "downloading",      // Downloading
-      5: "waiting",          // Seed pending
-      6: "seeding"           // Seeding
-    };
-    return stateMap[transmissionStatus] || "waiting";
   }
 
   _baseUrl() {
