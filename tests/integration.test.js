@@ -199,11 +199,19 @@ describe('qBittorrent Integration Tests', () => {
 
         // Simulate what QBittorrentAdapter.listTasks() does
         const stateMap = {
+          // Downloading states (actively downloading)
           downloading: "downloading", forcedDL: "downloading", metaDL: "downloading",
+          allocating: "downloading",
+          // Paused states
           stoppedDL: "paused", stoppedUP: "paused",
-          stalledDL: "downloading", stalledUP: "seeding",
+          // Stalled states (not actively downloading)
+          stalledDL: "waiting", stalledUP: "seeding",
+          // Seeding states
           uploading: "seeding", forcedUP: "seeding",
+          // Checking/queue states
           queuedForChecking: "waiting", checkingUP: "waiting", checkingDL: "waiting",
+          checkingResumeData: "waiting", moving: "waiting",
+          // Error states
           missingFiles: "error", error: "error"
         };
         const normalizedStatus = stateMap[qbTorrent.state] || "waiting";

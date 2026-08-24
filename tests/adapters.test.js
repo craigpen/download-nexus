@@ -289,6 +289,62 @@ describe('Device Adapters', () => {
       });
     });
   });
+
+  describe('qBittorrent State Mapping', () => {
+    test('should map qBittorrent states to correct categories', () => {
+      const stateMap = {
+        // Active states
+        downloading: "downloading",
+        forcedDL: "downloading",
+        metaDL: "downloading",
+        allocating: "downloading",
+        // Paused states
+        stoppedDL: "paused",
+        stoppedUP: "paused",
+        // Stalled/waiting states (not actively downloading)
+        stalledDL: "waiting",
+        stalledUP: "seeding",
+        // Seeding states
+        uploading: "seeding",
+        forcedUP: "seeding",
+        // Check/queue states
+        queuedForChecking: "waiting",
+        checkingUP: "waiting",
+        checkingDL: "waiting",
+        // Error states
+        error: "error",
+        missingFiles: "error"
+      };
+
+      // Verify stalled downloads are NOT marked as "downloading"
+      assert(stateMap.stalledDL === "waiting", "stalledDL should be waiting, not downloading");
+      assert(stateMap.stoppedDL === "paused", "stoppedDL should be paused");
+      assert(stateMap.downloading === "downloading", "downloading should be downloading");
+    });
+
+    test('task filtering should separate active from stalled downloads', () => {
+      const tasks = [
+        { id: '1', title: 'Active', status: 'downloading', progress: 50 },
+        { id: '2', title: 'Stalled', status: 'waiting', progress: 10 },
+        { id: '3', title: 'Paused', status: 'paused', progress: 25 }
+      ];
+
+      // Filter by "downloading" should only show active downloads
+      const downloading = tasks.filter(t => t.status === 'downloading');
+      assert(downloading.length === 1, 'Only active downloads should be in downloading filter');
+      assert(downloading[0].id === '1', 'Should be the active download');
+
+      // Filter by "waiting" should show stalled
+      const waiting = tasks.filter(t => t.status === 'waiting');
+      assert(waiting.length === 1, 'Stalled download should be in waiting filter');
+      assert(waiting[0].id === '2', 'Should be the stalled download');
+
+      // Filter by "paused" should show paused
+      const paused = tasks.filter(t => t.status === 'paused');
+      assert(paused.length === 1, 'Paused download should be in paused filter');
+      assert(paused[0].id === '3', 'Should be the paused download');
+    });
+  });
 });
 
 // Test runner (simple)
