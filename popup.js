@@ -681,13 +681,27 @@ document.getElementById("whitelistModeToggle").addEventListener("change", async 
   await send({ type: "SET_WHITELIST_MODE", mode: whitelistMode });
 });
 
+function isValidDomainPattern(pattern) {
+  // Allow "*" for all domains
+  if (pattern === "*") return true;
+  // Allow "*.example.com" for wildcard subdomains
+  if (pattern.startsWith("*.")) {
+    const domain = pattern.slice(2); // Remove "*."
+    return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/.test(domain);
+  }
+  // Allow exact domain names
+  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/.test(pattern);
+}
+
 document.getElementById("whitelistTextarea").addEventListener("blur", async e => {
-  const domains = Array.from(new Set(
-    e.target.value.split("\n").map(d => d.trim().toLowerCase()).filter(Boolean)
+  const patterns = Array.from(new Set(
+    e.target.value.split("\n")
+      .map(p => p.trim().toLowerCase())
+      .filter(p => p && isValidDomainPattern(p))
   ));
-  whitelistSet = new Set(domains);
-  e.target.value = domains.join("\n");
-  await send({ type: "SET_WHITELIST", domains });
+  whitelistSet = new Set(patterns);
+  e.target.value = patterns.join("\n");
+  await send({ type: "SET_WHITELIST", domains: patterns });
   updateWhitelistUI();
 });
 

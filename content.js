@@ -15,11 +15,28 @@
   let nasListLoaded = false;
   let whitelistLoaded = false;
 
+  function isDomainWhitelisted(domain, patterns) {
+    // If no patterns, nothing is whitelisted
+    if (!patterns || patterns.length === 0) return false;
+    // "*" matches everything
+    if (patterns.includes("*")) return true;
+    // Check exact and wildcard matches
+    for (const pattern of patterns) {
+      if (pattern === domain) return true; // Exact match
+      if (pattern.startsWith("*.")) {
+        // Wildcard: *.example.com matches www.example.com, sub.example.com, but not example.com itself
+        const suffix = pattern.slice(1); // Remove the *, keep the .domain.com
+        if (domain.endsWith(suffix)) return true;
+      }
+    }
+    return false;
+  }
+
   function injectButtons() {
     if (!nasListLoaded || !whitelistLoaded) return; // Wait for both to load
 
     // Check if this domain should have buttons
-    if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
+    if (whitelistEnabled && !isDomainWhitelisted(currentDomain, whitelist)) return;
 
     document.querySelectorAll("a").forEach(processLink);
     scanTextNodes();

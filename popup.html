@@ -571,6 +571,16 @@
       margin-bottom: 10px;
     }
     .hint { font-weight: 400; }
+    code {
+      font-family: monospace;
+      font-size: 11px;
+      padding: 2px 4px;
+      border-radius: 3px;
+      background: rgba(0,0,0,0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      code { background: rgba(255,255,255,0.1); }
+    }
 
     .settings-field { display: block; margin-bottom: 10px; }
     .settings-field > span:first-child {
@@ -843,7 +853,8 @@
         <span class="switch"><input type="checkbox" id="whitelistModeToggle" /><span class="slider"></span></span>
         <span>Restrict to specific domains <span class="hint">(off = every website)</span></span>
       </label>
-      <textarea id="whitelistTextarea" placeholder="example.com&#10;another-site.org" style="display:none"></textarea>
+      <p class="settings-hint" style="margin-top: 6px; margin-bottom: 8px;">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
+      <textarea id="whitelistTextarea" placeholder="example.com&#10;*.example.com&#10;another-site.org" style="display:none"></textarea>
     </div>
 
     <div class="settings-section">
