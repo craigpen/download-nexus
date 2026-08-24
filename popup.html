@@ -800,9 +800,10 @@
         </label>
 
         <label class="settings-field">
-          <span>NAS Type</span>
+          <span>Device Type</span>
           <select id="nasType" required>
             <option value="synology">Synology</option>
+            <option value="qbittorrent">qBittorrent</option>
           </select>
         </label>
 
@@ -832,7 +833,7 @@
           <input type="password" id="nasPassword" placeholder="••••••••" autocomplete="current-password" />
         </label>
 
-        <label class="settings-field">
+        <label class="settings-field" id="destinationField">
           <span>Download Destination <span class="hint">optional</span></span>
           <input type="text" id="nasDestination" placeholder="/volume1/downloads" />
         </label>

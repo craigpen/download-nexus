@@ -28,11 +28,26 @@ class SynologyAdapter extends NasAdapter {
   }
 }
 
+class QBittorrentAdapter extends NasAdapter {
+  async addDownload(uri, destination) {
+    const isMagnet = uri.startsWith("magnet:");
+    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+
+    if (!isMagnet && !isTorrentUrl) {
+      throw new Error("Invalid URI: must be a magnet link or .torrent URL");
+    }
+
+    await qbAddDownload(this.config, this.nasId, uri);
+  }
+}
+
 function getAdapter(nasId, config) {
   const type = config.type || "synology";
   switch (type) {
     case "synology":
       return new SynologyAdapter(nasId, config);
+    case "qbittorrent":
+      return new QBittorrentAdapter(nasId, config);
     default:
       throw new Error(`Unknown NAS type: ${type}`);
   }
@@ -302,6 +317,85 @@ async function nasCall(nasId, s, apiFn) {
   }
 }
 
+// ── qBittorrent API ────────────────────────────────────────────────────────
+
+async function qbLogin(s) {
+  const url = `${baseUrl(s)}/api/v2/auth/login`;
+  const body = new URLSearchParams({
+    username: s.username,
+    password: s.password
+  });
+  const resp = await fetch(url, { method: "POST", body, credentials: "include" });
+  if (!resp.ok) throw new Error(`qBit auth failed: ${resp.status}`);
+  const text = await resp.text();
+  if (text.toLowerCase().includes("ok")) return true;
+  throw new Error("qBit auth failed: invalid response");
+}
+
+async function qbFetch(s, path, options = {}) {
+  const url = `${baseUrl(s)}/api/v2${path}`;
+  const resp = await fetch(url, { credentials: "include", ...options });
+  if (resp.status === 403) throw new Error("qBit auth failed");
+  if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
+  return resp;
+}
+
+async function qbCall(deviceId, s, apiFn) {
+  try {
+    return await apiFn();
+  } catch (err) {
+    if (err.message.includes("auth failed")) {
+      dbg("WARN", "qBit session lost, re-authenticating");
+      await qbLogin(s);
+      return await apiFn();
+    }
+    throw err;
+  }
+}
+
+async function qbAddDownload(s, deviceId, uri) {
+  // Validate URI
+  if (!isValidMagnetURI(uri) && !isValidTorrentURL(uri)) {
+    dbg("ERROR", "Invalid URI rejected", uri.slice(0, 80));
+    throw new Error("Invalid URI format (must be magnet link or .torrent URL)");
+  }
+
+  // Convert .torrent URL to magnet if needed
+  let finalUri = uri;
+  if (isValidTorrentURL(uri)) {
+    dbg("INFO", "Converting .torrent URL to magnet", uri.slice(0, 80));
+    try {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      finalUri = await torrentToMagnet(torrentBuffer);
+      dbg("INFO", "Torrent converted to magnet", finalUri.slice(0, 80));
+    } catch (err) {
+      throw new Error(`Failed to parse torrent: ${err.message}`);
+    }
+  }
+
+  // qBittorrent API: POST /api/v2/torrents/add with magnet link
+  await qbCall(deviceId, s, async () => {
+    const formData = new FormData();
+    formData.append("urls", finalUri);
+
+    const resp = await qbFetch(s, "/torrents/add", {
+      method: "POST",
+      body: formData
+    });
+
+    const text = await resp.text();
+    dbg("INFO", "qBit add torrent response", text);
+    // qBittorrent returns "Ok." on success or error text otherwise
+    if (text.toLowerCase() === "ok." || text.toLowerCase() === "ok") {
+      dbg("INFO", "qBit add download successful", finalUri.slice(0, 80));
+    } else if (text.toLowerCase().includes("already")) {
+      dbg("WARN", "qBit: torrent already added", finalUri.slice(0, 80));
+    } else {
+      throw new Error(`qBit add torrent failed: ${text.slice(0, 200)}`);
+    }
+  });
+}
+
 // ── Torrent file parser ───────────────────────────────────────────────────
 // Converts .torrent files to magnet links
 
@@ -503,28 +597,38 @@ async function downloadTorrentFile(url) {
 // ── test connection ────────────────────────────────────────────────────────
 
 async function testConnection(nasId, s) {
-  dbg("INFO", "TEST_CONNECTION start", `${s.https ? "https" : "http"}://${s.host}:${s.port}`);
-  // Always do a fresh login for the test so we can verify credentials
-  await removeSid(nasId);
+  const type = s.type || "synology";
+  dbg("INFO", "TEST_CONNECTION start", `${type} @ ${s.https ? "https" : "http"}://${s.host}:${s.port}`);
   try {
     if (!s || !s.host || !s.port || !s.username) {
       throw new Error("Settings incomplete: missing host, port, or username");
     }
-    const sid = await getSid(nasId, s, true);
-    const infoUrl = `${baseUrl(s)}/DownloadStation/info.cgi?api=SYNO.DownloadStation.Info&version=1&method=getinfo&_sid=${sid}`;
-    const ir   = await nasFetch("DS_INFO", infoUrl, { credentials: "include" });
-    const text = await ir.text();
-    dbg("INFO", "DS_INFO body", text.slice(0, 300));
-    let data;
-    try { data = JSON.parse(text); }
-    catch(e) { throw new Error(`DS info response not JSON: ${text.slice(0, 120)}`); }
-    if (data.success) {
-      dbg("INFO", "TEST_CONNECTION success", `DS version: ${data.data?.version_string}`);
-      // Store the sid so subsequent sends reuse it
-      await storeSid(nasId, sid);
-      return { ok: true, version: data.data?.version_string ?? "", log: [...debugLog] };
+
+    if (type === "qbittorrent") {
+      // qBittorrent: test by attempting to login
+      await qbLogin(s);
+      dbg("INFO", "TEST_CONNECTION success (qBittorrent)");
+      return { ok: true, version: "qBittorrent", log: [...debugLog] };
     } else {
-      throw new Error(`Download Station error code ${data.error?.code ?? "?"}`);
+      // Synology: test by fetching DownloadStation info
+      // Always do a fresh login for the test so we can verify credentials
+      await removeSid(nasId);
+      const sid = await getSid(nasId, s, true);
+      const infoUrl = `${baseUrl(s)}/DownloadStation/info.cgi?api=SYNO.DownloadStation.Info&version=1&method=getinfo&_sid=${sid}`;
+      const ir   = await nasFetch("DS_INFO", infoUrl, { credentials: "include" });
+      const text = await ir.text();
+      dbg("INFO", "DS_INFO body", text.slice(0, 300));
+      let data;
+      try { data = JSON.parse(text); }
+      catch(e) { throw new Error(`DS info response not JSON: ${text.slice(0, 120)}`); }
+      if (data.success) {
+        dbg("INFO", "TEST_CONNECTION success", `DS version: ${data.data?.version_string}`);
+        // Store the sid so subsequent sends reuse it
+        await storeSid(nasId, sid);
+        return { ok: true, version: data.data?.version_string ?? "", log: [...debugLog] };
+      } else {
+        throw new Error(`Download Station error code ${data.error?.code ?? "?"}`);
+      }
     }
   } catch (err) {
     const msg = err?.message || String(err) || "Unknown error";

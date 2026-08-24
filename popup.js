@@ -530,6 +530,12 @@ function showNasFormView() {
   document.getElementById("nasForm").classList.add("show");
 }
 
+function updateDestinationFieldVisibility() {
+  const type = document.getElementById("nasType").value;
+  const destinationField = document.getElementById("destinationField");
+  destinationField.style.display = type === "synology" ? "" : "none";
+}
+
 function editNas(nasId) {
   editingNasId = nasId;
   const nas = nasList.find(n => n.id === nasId);
@@ -548,6 +554,7 @@ function editNas(nasId) {
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
+  updateDestinationFieldVisibility();
   showNasFormView();
   updateTestButtonState();
 }
@@ -567,6 +574,7 @@ function addNewNas() {
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
+  updateDestinationFieldVisibility();
   showNasFormView();
   updateTestButtonState();
 }
@@ -617,6 +625,8 @@ document.getElementById("deleteNasBtn").addEventListener("click", e => {
   e.preventDefault();
   if (confirm("Are you sure you want to delete this NAS device?")) deleteNasDevice(editingNasId);
 });
+
+document.getElementById("nasType").addEventListener("change", updateDestinationFieldVisibility);
 
 function updateTestButtonState() {
   const password = document.getElementById("nasPassword").value.trim();
