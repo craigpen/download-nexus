@@ -326,13 +326,17 @@ async function qbLogin(s) {
   body.append('password', s.password);
 
   console.log("[qbLogin] URL:", url);
-  console.log("[qbLogin] Sending form body with username/password");
+  console.log("[qbLogin] Sending POST with username/password");
   try {
     const resp = await fetch(url, {
       method: "POST",
       body: body,
+      credentials: "include",
+      mode: "cors",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "*/*",
+        "User-Agent": "curl/8.19.0"
       }
     });
     console.log("[qbLogin] Response:", resp.status, resp.statusText);
