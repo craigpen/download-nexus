@@ -198,10 +198,20 @@ describe('qBittorrent Integration Tests', () => {
         console.log('Raw qBittorrent torrent:', JSON.stringify(qbTorrent, null, 2));
 
         // Simulate what QBittorrentAdapter.listTasks() does
+        const stateMap = {
+          downloading: "downloading", forcedDL: "downloading", metaDL: "downloading",
+          stoppedDL: "paused", stoppedUP: "paused",
+          stalledDL: "downloading", stalledUP: "seeding",
+          uploading: "seeding", forcedUP: "seeding",
+          queuedForChecking: "waiting", checkingUP: "waiting", checkingDL: "waiting",
+          missingFiles: "error", error: "error"
+        };
+        const normalizedStatus = stateMap[qbTorrent.state] || "waiting";
+
         const mappedTask = {
           id: qbTorrent.hash,
           title: qbTorrent.name,
-          status: qbTorrent.state,
+          status: normalizedStatus,
           progress: qbTorrent.progress * 100,
           downloaded: qbTorrent.downloaded,
           uploaded: qbTorrent.uploaded,
