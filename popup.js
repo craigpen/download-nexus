@@ -1,18 +1,35 @@
 // popup.js — Task manager + device settings
 
-// Adapter feature configuration - defines tabs and labels for each adapter
+// Adapter feature configuration - defines tabs, labels, and action capabilities for each adapter
+// Actions: pause (stop active transfer), resume (start/retry paused/stalled task), delete (remove task)
 const ADAPTER_FEATURES = {
   synology: {
     tabs: ["downloading", "seeding", "paused", "finished", "error"],
-    pausedLabel: "Paused"
+    pausedLabel: "Paused",
+    // Action support per state (true = action valid for that state)
+    actions: {
+      pause: ["downloading", "seeding"],          // Can pause active transfers
+      resume: ["paused", "error"],                // Can resume paused or error tasks
+      delete: ["downloading", "seeding", "paused", "finished", "error"]  // Can always delete
+    }
   },
   qbittorrent: {
     tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
-    pausedLabel: "Stopped"
+    pausedLabel: "Stopped",
+    actions: {
+      pause: ["downloading", "seeding", "uploading", "allocating", "forcedDL", "forcedUP", "metaDL", "forcedMetaDL"],
+      resume: ["paused", "stalled", "error"],
+      delete: ["downloading", "seeding", "paused", "stalled", "finished", "error"]
+    }
   },
   transmission: {
     tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
-    pausedLabel: "Paused"
+    pausedLabel: "Paused",
+    actions: {
+      pause: ["downloading", "seeding", "uploading", "downloading-wait", "seeding-wait"],
+      resume: ["paused", "stalled", "error"],
+      delete: ["downloading", "seeding", "paused", "stalled", "finished", "error"]
+    }
   }
 };
 
@@ -140,7 +157,16 @@ function updateCounts() {
   document.getElementById("taskCountLabel").textContent = `${allTasks.length} task${allTasks.length !== 1 ? "s" : ""}`;
 }
 
+// Get action capabilities for current adapter
+function getAdapterActions() {
+  const device = nasList.find(n => n.id === currentNasId);
+  const adapterType = device?.type || "synology";
+  const features = ADAPTER_FEATURES[adapterType];
+  return features?.actions || ADAPTER_FEATURES.synology.actions;
+}
+
 // Define valid actions for each task status
+// Uses generic rules that work across all adapters; can be overridden per-adapter if needed
 function canPauseTask(status) {
   // Can pause if actively transferring
   const activeStates = ["downloading", "seeding", "uploading", "allocating", "forcedDL", "forcedUP", "metaDL", "forcedMetaDL"];
@@ -152,6 +178,16 @@ function canResumeTask(status) {
   const resumableStates = ["paused", "stalled", "error"];
   return resumableStates.includes(status);
 }
+
+// Alternative: use adapter-specific action rules (uncomment to switch)
+// function canPauseTask(status) {
+//   const actions = getAdapterActions();
+//   return actions.pause?.includes(status) ?? false;
+// }
+// function canResumeTask(status) {
+//   const actions = getAdapterActions();
+//   return actions.resume?.includes(status) ?? false;
+// }
 
 function getVisibleTasks() {
   const filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
