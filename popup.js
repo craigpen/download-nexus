@@ -652,7 +652,7 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
     username: document.getElementById("nasUsername").value.trim(),
     password: document.getElementById("nasPassword").value,
     destination: document.getElementById("nasDestination").value.trim(),
-    type: "synology"
+    type: document.getElementById("nasType").value
   };
 
   try {
