@@ -844,6 +844,8 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
     filter = tab.dataset.filter;
+    renderNasTabs(); // Keep device tabs showing connection status
+    updateTabLabels(); // Update adapter-specific labels
     renderTasks();
   });
 });
