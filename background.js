@@ -373,6 +373,37 @@ async function qbCall(deviceId, s, apiFn) {
   }
 }
 
+async function qbListTasks(s) {
+  const resp = await qbFetch(s, "/torrents/info");
+  const text = await resp.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`qBit list response not JSON: ${text.slice(0, 120)}`);
+  }
+
+  // Convert qBittorrent torrents to generic task format
+  if (!Array.isArray(data)) {
+    dbg("WARN", "qBit torrents/info returned non-array", typeof data);
+    return [];
+  }
+
+  return data.map(torrent => ({
+    id: torrent.hash,
+    name: torrent.name,
+    status: torrent.state, // "downloading", "uploading", etc.
+    progress: torrent.progress * 100, // qBit uses 0-1, we use 0-100
+    downloaded: torrent.downloaded,
+    uploaded: torrent.uploaded,
+    size: torrent.total_size,
+    speed_down: torrent.dl_speed,
+    speed_up: torrent.up_speed,
+    eta: torrent.eta,
+    added_on: torrent.added_on
+  }));
+}
+
 async function qbAddDownload(s, deviceId, uri) {
   // Validate URI
   if (!isValidMagnetURI(uri) && !isValidTorrentURL(uri)) {
@@ -784,9 +815,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       (async () => {
         const s = await getNasById(msg.nasId);
         if (!s) return sendResponse({ ok: false, error: "NAS not found" });
-        nasCall(msg.nasId, s, sid => listTasks(s, sid))
-          .then(tasks => sendResponse({ ok: true, tasks }))
-          .catch(e => sendResponse({ ok: false, error: e.message }));
+
+        const type = s.type || "synology";
+        if (type === "qbittorrent") {
+          qbCall(msg.nasId, s, async () => {
+            const tasks = await qbListTasks(s);
+            return tasks;
+          })
+            .then(tasks => sendResponse({ ok: true, tasks }))
+            .catch(e => sendResponse({ ok: false, error: e.message }));
+        } else {
+          nasCall(msg.nasId, s, sid => listTasks(s, sid))
+            .then(tasks => sendResponse({ ok: true, tasks }))
+            .catch(e => sendResponse({ ok: false, error: e.message }));
+        }
       })();
       return true;
     }
