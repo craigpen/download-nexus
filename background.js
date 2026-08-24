@@ -146,18 +146,34 @@ async function getWhitelist() {
   });
 }
 
+async function setWhitelist(list) {
+  return new Promise(resolve => chrome.storage.sync.set({ whitelist: list }, resolve));
+}
+
 async function addToWhitelist(domain) {
   const list = await getWhitelist();
   if (!list.includes(domain)) {
     list.push(domain);
-    return new Promise(resolve => chrome.storage.sync.set({ whitelist: list }, resolve));
+    return setWhitelist(list);
   }
 }
 
 async function removeFromWhitelist(domain) {
-  let list = await getWhitelist();
-  list = list.filter(d => d !== domain);
-  return new Promise(resolve => chrome.storage.sync.set({ whitelist: list }, resolve));
+  const list = await getWhitelist();
+  return setWhitelist(list.filter(d => d !== domain));
+}
+
+// "all" (default) scans every page; "restricted" scans only domains in the
+// whitelist array. Kept as an explicit flag (not derived from list length)
+// so the list survives toggling back and forth between modes.
+async function getWhitelistMode() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ whitelistMode: "all" }, r => resolve(r.whitelistMode));
+  });
+}
+
+async function setWhitelistMode(mode) {
+  return new Promise(resolve => chrome.storage.sync.set({ whitelistMode: mode }, resolve));
 }
 
 // ── persistent session ─────────────────────────────────────────────────────
@@ -662,7 +678,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "GET_WHITELIST") {
-      getWhitelist().then(list => sendResponse({ list }));
+      Promise.all([getWhitelist(), getWhitelistMode()])
+        .then(([list, mode]) => sendResponse({ list, mode }));
       return true;
     }
     if (msg.type === "ADD_WHITELIST") {
@@ -671,6 +688,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     if (msg.type === "REMOVE_WHITELIST") {
       removeFromWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (msg.type === "SET_WHITELIST") {
+      setWhitelist(msg.domains).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (msg.type === "SET_WHITELIST_MODE") {
+      setWhitelistMode(msg.mode).then(() => sendResponse({ ok: true }));
       return true;
     }
     if (msg.type === "ADD_NAS") {
