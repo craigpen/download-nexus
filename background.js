@@ -56,6 +56,12 @@ class SynologyAdapter extends NasAdapter {
     const sid = await getSid(this.nasId, this.config);
     await taskAction(this.config, sid, action, ids);
   }
+
+  _displayStatus(rawStatus) {
+    // Synology Download Station status values pass through directly
+    // as they already match UI tab names: paused, finished, downloading, error
+    return rawStatus;
+  }
 }
 
 class QBittorrentAdapter extends NasAdapter {

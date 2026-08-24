@@ -61,19 +61,18 @@
 
 ## Synology Download Station
 
-### Status
-**UNKNOWN** - No mapping documentation in code
-- Adapter returns raw API response without mapping
-- Need to determine actual state values from API
-- No tests showing what states are returned
+### All Possible States
+| State | Current Mapping | Tab | Issue |
+|-------|-----------------|-----|-------|
+| `paused` | Pass through | Paused | ✓ |
+| `finished` | Pass through | Done | ✓ |
+| `downloading` | Pass through | DL | ✓ |
+| `error` | Pass through | Error | ✓ |
 
-**Potential states** (based on common download manager patterns):
-- `downloading`
-- `uploading` / `seeding`
-- `paused`
-- `waiting` / `queued`
-- `finished` / `completed`
-- `error`
+**Status:** FULLY MAPPED ✓
+- All 4 states map directly to UI tabs
+- No special handling needed
+- Synology API state names already match UI tab names
 
 ---
 
