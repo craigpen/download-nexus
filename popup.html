@@ -848,7 +848,7 @@
         </label>
 
         <div style="display:flex;gap:8px;margin-top:2px">
-          <button type="button" class="footer-btn" id="testNasBtn" style="flex:1;padding:7px">🔗 Test Connection</button>
+          <button type="button" class="footer-btn" id="testNasBtn" style="flex:1;padding:7px">Test Connection</button>
         </div>
         <div id="testNasStatus" class="settings-status"></div>
 
@@ -858,8 +858,8 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">🔒 Content Script Whitelist</div>
-      <p class="settings-hint">By default, the extension scans every page you visit for magnet and torrent links. Adding a domain below switches it into restricted mode: <strong>it will then only scan the domains you've whitelisted, and stop scanning everywhere else.</strong> Remove every domain to go back to scanning everywhere.</p>
+      <div class="settings-label">Content Script Whitelist</div>
+      <p class="settings-hint">Adding a domain switches from scanning every page to scanning only whitelisted domains. Remove all domains to scan everywhere again.</p>
       <div id="whitelistModeSettings" class="whitelist-mode"></div>
       <div class="settings-list" id="whitelistListSettings"></div>
       <div class="settings-row-inline">
@@ -869,15 +869,15 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">💾 Backup &amp; Restore</div>
+      <div class="settings-label">Backup &amp; Restore</div>
       <p class="settings-hint">Export your NAS devices and whitelist to a file. Useful before reinstalling the extension.</p>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="exportWithPasswords" /><span class="slider"></span></span>
         <span>Include passwords <span class="hint">(plaintext, faster restore but less secure)</span></span>
       </label>
       <div style="display:flex;gap:8px">
-        <button type="button" class="footer-btn primary" id="exportBtn" style="flex:1;padding:7px">💾 Export</button>
-        <button type="button" class="footer-btn primary" id="importBtn" style="flex:1;padding:7px">📂 Import</button>
+        <button type="button" class="footer-btn primary" id="exportBtn" style="flex:1;padding:7px">Export</button>
+        <button type="button" class="footer-btn primary" id="importBtn" style="flex:1;padding:7px">Import</button>
       </div>
       <input type="file" id="importFile" accept=".json" style="display:none" />
       <div id="importStatus" class="settings-status"></div>
