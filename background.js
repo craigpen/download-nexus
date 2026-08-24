@@ -673,16 +673,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       removeFromWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
       return true;
     }
-    if (msg.type === "CHECK_CONNECTION") {
-      (async () => {
-        const s = await getNasById(msg.nasId);
-        if (!s) return sendResponse({ ok: false, error: "NAS not found" });
-        testConnection(msg.nasId, s)
-          .then(result => sendResponse(result))
-          .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
-      })();
-      return true;
-    }
     if (msg.type === "ADD_NAS") {
       addNas(msg.nas).then(() => sendResponse({ ok: true }));
       return true;
