@@ -239,7 +239,8 @@ class TransmissionAdapter extends NasAdapter {
     return torrents.map(t => ({
       id: t.id.toString(),
       title: t.name,
-      status: t.status,
+      status: this._statusString(t.status),
+      rawStatus: t.status,
       progress: t.percentDone * 100,
       downloaded: t.downloadedEver,
       uploaded: t.uploadedEver,
@@ -325,6 +326,20 @@ class TransmissionAdapter extends NasAdapter {
     if (data.result !== "success") {
       throw new Error(`Transmission action failed: ${data.result}`);
     }
+  }
+
+  _statusString(numericStatus) {
+    // Map Transmission numeric status to UI-compatible string
+    const stateMap = {
+      0: "paused",       // Stopped
+      1: "checking",     // Check pending
+      2: "checking",     // Checking
+      3: "downloading",  // Download pending (treated as downloading for UI)
+      4: "downloading",  // Downloading
+      5: "seeding",      // Seed pending (treated as seeding for UI)
+      6: "seeding"       // Seeding
+    };
+    return stateMap[numericStatus] || "paused";
   }
 
   _baseUrl() {
