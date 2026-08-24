@@ -972,7 +972,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === "TEST_CONNECTION") {
       (async () => {
         try {
-          const adapter = getAdapter(msg.nasId, msg.settings);
+          // If settings provided, use them; otherwise look up by nasId
+          const settings = msg.settings || await getNasById(msg.nasId);
+          if (!settings) return sendResponse({ ok: false, error: "Device not found" });
+
+          const adapter = getAdapter(msg.nasId, settings);
           const result = await adapter.testConnection();
           sendResponse({ ok: result.ok, version: result.version });
         } catch (e) {
