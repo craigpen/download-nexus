@@ -104,7 +104,7 @@ function setStatus(msg, isErr) {
 }
 
 function updateCounts() {
-  const counts = { all: allTasks.length, downloading: 0, seeding: 0, paused: 0, waiting: 0, finished: 0, error: 0 };
+  const counts = { all: allTasks.length, downloading: 0, seeding: 0, paused: 0, finished: 0, error: 0 };
   for (const t of allTasks) {
     if (counts[t.status] !== undefined) counts[t.status]++;
   }
