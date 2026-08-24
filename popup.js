@@ -537,6 +537,7 @@ async function showMainView() {
   document.getElementById("backIcon").style.display = "none";
   document.getElementById("settingsBtn").title = "Settings";
   await paintCachedTasks();
+  updateWhitelistUI();
   refresh();
   if (!pollTimer) pollTimer = setInterval(refresh, 5000);
 }
