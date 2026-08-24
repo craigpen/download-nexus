@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/craigpen/nas-download-helper#readme",
   "devDependencies": {
-    "@types/chrome": "^0.1.43"
+    "@types/chrome": "^0.1.43",
+    "sharp": "^0.35.3"
   }
 }
