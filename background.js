@@ -76,7 +76,8 @@ class QBittorrentAdapter extends NasAdapter {
     const tasks = data.map(t => ({
       id: t.hash,
       title: t.name,
-      status: t.state,
+      status: this._displayStatus(t.state),
+      rawStatus: t.state,
       progress: t.progress * 100,
       downloaded: t.downloaded,
       uploaded: t.uploaded,
@@ -87,6 +88,14 @@ class QBittorrentAdapter extends NasAdapter {
     }));
     dbg("QBittorrentAdapter.listTasks returning:", tasks.length, "tasks with fields:", tasks[0] ? Object.keys(tasks[0]) : "none");
     return tasks;
+  }
+
+  _displayStatus(rawState) {
+    // Map qBittorrent states to UI-friendly display statuses
+    // Stalled states get their own "stalled" tab
+    if (rawState === "stalledDL" || rawState === "stalledUP") return "stalled";
+    // All other states pass through as-is (downloading, seeding, paused, etc.)
+    return rawState;
   }
 
   async addDownload(uri, destination) {
