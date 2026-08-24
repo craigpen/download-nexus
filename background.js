@@ -110,6 +110,32 @@ class QBittorrentAdapter extends NasAdapter {
     });
   }
 
+  async taskAction(action, ids) {
+    const actionMap = {
+      "pause": "pause",
+      "resume": "resume",
+      "delete": "deletePerm"  // qBittorrent: deletePerm = delete with files
+    };
+
+    const qbAction = actionMap[action];
+    if (!qbAction) throw new Error(`Unknown action: ${action}`);
+
+    await this._call(async () => {
+      const params = new URLSearchParams();
+      params.append("hashes", ids.join("|"));
+      const path = action === "delete" ? `/torrents/${qbAction}` : `/torrents/${qbAction}`;
+      const resp = await this._fetch(path, {
+        method: "POST",
+        body: params,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      });
+      const text = await resp.text();
+      if (text && !text.toLowerCase().match(/^ok\.?$/)) {
+        throw new Error(`qBit action failed: ${text}`);
+      }
+    });
+  }
+
   // Private methods
   async _login() {
     const url = `${this._baseUrl()}/api/v2/auth/login`;
@@ -940,9 +966,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       (async () => {
         const s = await getNasById(msg.nasId);
         if (!s) return sendResponse({ ok: false, error: "NAS not found" });
-        nasCall(msg.nasId, s, sid => taskAction(s, sid, msg.action, msg.ids))
-          .then(() => sendResponse({ ok: true }))
-          .catch(e => sendResponse({ ok: false, error: e.message }));
+
+        try {
+          const adapter = getAdapter(msg.nasId, s);
+          await adapter.taskAction(msg.action, msg.ids);
+          sendResponse({ ok: true });
+        } catch (e) {
+          sendResponse({ ok: false, error: e.message });
+        }
       })();
       return true;
     }
