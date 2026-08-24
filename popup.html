@@ -853,8 +853,10 @@
         <span class="switch"><input type="checkbox" id="whitelistModeToggle" /><span class="slider"></span></span>
         <span>Restrict to specific domains <span class="hint">(off = every website)</span></span>
       </label>
-      <p class="settings-hint" style="margin-top: 6px; margin-bottom: 8px;">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
-      <textarea id="whitelistTextarea" placeholder="example.com&#10;*.example.com&#10;another-site.org" style="display:none"></textarea>
+      <div id="whitelistHelp" style="display:none">
+        <p class="settings-hint" style="margin-top: 6px; margin-bottom: 8px;">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
+        <textarea id="whitelistTextarea" placeholder="example.com&#10;*.example.com&#10;another-site.org"></textarea>
+      </div>
     </div>
 
     <div class="settings-section">
