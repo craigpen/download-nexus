@@ -325,11 +325,19 @@ async function qbLogin(s) {
     username: s.username,
     password: s.password
   });
-  const resp = await fetch(url, { method: "POST", body, credentials: "include" });
-  if (!resp.ok) throw new Error(`qBit auth failed: ${resp.status}`);
-  const text = await resp.text();
-  if (text.toLowerCase().includes("ok")) return true;
-  throw new Error("qBit auth failed: invalid response");
+  const resp = await fetch(url, {
+    method: "POST",
+    body,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }
+  });
+
+  // qBittorrent returns 204 (No Content) on successful login, 401/403 on auth failure
+  if (resp.status === 204 || resp.status === 200) return true;
+  if (resp.status === 401 || resp.status === 403) throw new Error(`qBit auth failed: invalid credentials`);
+  throw new Error(`qBit auth failed: HTTP ${resp.status}`);
 }
 
 async function qbFetch(s, path, options = {}) {
