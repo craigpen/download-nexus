@@ -33,11 +33,33 @@ function fmtEta(seconds) {
   return `${Math.floor(seconds/3600)}h ${Math.floor((seconds%3600)/60)}m`;
 }
 
+// Get display text for status based on adapter type
+function getStatusDisplayText(status, nasId) {
+  if (!nasId) return status;
+  const device = nasList.find(n => n.id === nasId);
+  if (!device) return status;
+
+  const adapterType = device.type || "synology";
+  // qBittorrent uses "stopped" terminology instead of "paused"
+  if (adapterType === "qbittorrent" && status === "paused") {
+    return "stopped";
+  }
+  return status;
+}
+
+// Get pause button text for adapter type
+function getAdapterPauseText(nasId) {
+  const device = nasList.find(n => n.id === nasId);
+  const adapterType = device?.type || "synology";
+  return adapterType === "qbittorrent" ? "Stop" : "Pause";
+}
+
 function statusClass(status) {
   const map = {
     downloading: "s-downloading",
     seeding:     "s-seeding",
     paused:      "s-paused",
+    stopped:     "s-paused",
     finished:    "s-finished",
     error:       "s-error",
     waiting:     "s-waiting"
@@ -208,7 +230,7 @@ function renderTasks() {
           <span class="status-dot ${statusClass(task.status)}"></span>
           <span class="task-name" title="${escHtml(task.title)}">${escHtml(task.title)}</span>
           <div class="task-actions">
-            <button class="task-btn pause-btn"  title="Pause"  style="${isPaused ? "display:none" : ""}">⏸</button>
+            <button class="task-btn pause-btn"  title="${getAdapterPauseText(currentNasId)}"  style="${isPaused ? "display:none" : ""}">⏸</button>
             <button class="task-btn resume-btn" title="Resume" style="${isPaused ? "" : "display:none"}">▶</button>
             <button class="task-btn danger delete-btn" title="Delete">✕</button>
           </div>
@@ -401,11 +423,27 @@ function renderNasTabs() {
     tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
       renderNasTabs();
+      updateTabLabels(); // Update tab labels for this adapter
       filter = "downloading";
       await paintCachedTasks();
       refresh();
     });
   });
+
+  updateTabLabels(); // Initial update
+}
+
+function updateTabLabels() {
+  // Update tab labels based on current adapter type
+  const device = nasList.find(n => n.id === currentNasId);
+  const adapterType = device?.type || "synology";
+
+  const pausedTab = document.querySelector('[data-filter="paused"]');
+  if (pausedTab && adapterType === "qbittorrent") {
+    pausedTab.textContent = "Stopped " + pausedTab.querySelector(".tab-count").outerHTML;
+  } else if (pausedTab) {
+    pausedTab.textContent = "Paused " + pausedTab.querySelector(".tab-count").outerHTML;
+  }
 }
 
 // ── whitelist ──────────────────────────────────────────────────────────────
