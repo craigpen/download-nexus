@@ -665,10 +665,12 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
 function renderWhitelistSettings() {
   const toggle = document.getElementById("whitelistModeToggle");
   const textarea = document.getElementById("whitelistTextarea");
-  if (!toggle || !textarea) return;
+  const helpDiv = document.getElementById("whitelistHelp");
+  if (!toggle || !textarea || !helpDiv) return;
 
   toggle.checked = whitelistMode === "restricted";
-  textarea.style.display = toggle.checked ? "" : "none";
+  const showContent = toggle.checked ? "" : "none";
+  helpDiv.style.display = showContent;
   // Don't clobber what the user is actively typing.
   if (document.activeElement !== textarea) {
     textarea.value = Array.from(whitelistSet).join("\n");
