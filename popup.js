@@ -921,9 +921,22 @@ async function getCurrentDomain() {
   }
 }
 
+// Check connection status for all devices
+async function checkAllDeviceConnections() {
+  for (const nas of nasList) {
+    try {
+      const resp = await send({ type: "TEST_CONNECTION", nasId: nas.id });
+      setConnStatus(nas.id, resp.ok);
+    } catch (e) {
+      setConnStatus(nas.id, false);
+    }
+  }
+}
+
 // Initial load + 5s poll while popup is open
 (async () => {
   await loadNasList();
+  checkAllDeviceConnections(); // Check all device statuses on open
   getCurrentDomain();
   loadWhitelist();
   await paintCachedTasks();
