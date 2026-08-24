@@ -277,7 +277,7 @@ class TransmissionAdapter extends NasAdapter {
       }
     };
 
-    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+    const resp = await fetch(`${this._baseUrl()}/transmission/rpc`, {
       method: "POST",
       headers,
       body: JSON.stringify(body)
@@ -337,7 +337,7 @@ class TransmissionAdapter extends NasAdapter {
       }
     };
 
-    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+    const resp = await fetch(`${this._baseUrl()}/transmission/rpc`, {
       method: "POST",
       headers,
       body: JSON.stringify(body)
@@ -373,7 +373,7 @@ class TransmissionAdapter extends NasAdapter {
       }
     };
 
-    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+    const resp = await fetch(`${this._baseUrl()}/transmission/rpc`, {
       method: "POST",
       headers,
       body: JSON.stringify(body)
@@ -410,7 +410,7 @@ class TransmissionAdapter extends NasAdapter {
     };
     if (auth) headers["Authorization"] = `Basic ${btoa(auth)}`;
 
-    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+    const resp = await fetch(`${this._baseUrl()}/transmission/rpc`, {
       method: "POST",
       headers,
       body: JSON.stringify({ method: "session-get" })
