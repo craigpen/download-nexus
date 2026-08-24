@@ -320,23 +320,20 @@ async function nasCall(nasId, s, apiFn) {
 // ── qBittorrent API ────────────────────────────────────────────────────────
 
 async function qbLogin(s) {
-  const url = `${baseUrl(s)}/api/v2/auth/login`;
+  const scheme = s.https ? "https" : "http";
+  const url = `${scheme}://${s.host}:${s.port}/api/v2/auth/login`;
   const body = new URLSearchParams();
   body.append('username', s.username);
   body.append('password', s.password);
 
-  console.log("[qbLogin] URL:", url);
-  console.log("[qbLogin] Sending POST with username/password");
+  console.log("[qbLogin] Attempting login to", url);
   try {
     const resp = await fetch(url, {
       method: "POST",
       body: body,
       credentials: "include",
-      mode: "cors",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "*/*",
-        "User-Agent": "curl/8.19.0"
+        "Content-Type": "application/x-www-form-urlencoded"
       }
     });
     console.log("[qbLogin] Response:", resp.status, resp.statusText);
@@ -355,7 +352,8 @@ async function qbLogin(s) {
 }
 
 async function qbFetch(s, path, options = {}) {
-  const url = `${baseUrl(s)}/api/v2${path}`;
+  const scheme = s.https ? "https" : "http";
+  const url = `${scheme}://${s.host}:${s.port}/api/v2${path}`;
   const resp = await fetch(url, { ...options });
   if (resp.status === 403) throw new Error("qBit auth failed");
   if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
