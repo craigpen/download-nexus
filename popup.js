@@ -5,6 +5,7 @@ let filter        = "downloading";
 let pollTimer     = null;
 let currentDomain = null;
 let whitelistSet  = new Set();
+let whitelistMode = "all"; // "all" | "restricted"
 let nasList       = [];
 let currentNasId  = null;
 let nasConnStatus = {}; // Track connection status per NAS
@@ -405,6 +406,7 @@ async function loadWhitelist() {
   try {
     const resp = await send({ type: "GET_WHITELIST" });
     whitelistSet = new Set(resp.list || []);
+    whitelistMode = resp.mode === "restricted" ? "restricted" : "all";
     updateWhitelistUI();
     renderWhitelistSettings();
   } catch (err) {
@@ -661,52 +663,32 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
 // ── settings: whitelist management ──────────────────────────────────────────
 
 function renderWhitelistSettings() {
-  const modeEl = document.getElementById("whitelistModeSettings");
-  const container = document.getElementById("whitelistListSettings");
-  if (!modeEl || !container) return;
+  const toggle = document.getElementById("whitelistModeToggle");
+  const textarea = document.getElementById("whitelistTextarea");
+  if (!toggle || !textarea) return;
 
-  const list = Array.from(whitelistSet);
-  if (list.length === 0) {
-    modeEl.className = "whitelist-mode everywhere";
-    modeEl.textContent = "Scanning every website (default)";
-  } else {
-    modeEl.className = "whitelist-mode restricted";
-    modeEl.textContent = `Restricted mode — scanning only ${list.length} whitelisted domain${list.length !== 1 ? "s" : ""}`;
+  toggle.checked = whitelistMode === "restricted";
+  textarea.style.display = toggle.checked ? "" : "none";
+  // Don't clobber what the user is actively typing.
+  if (document.activeElement !== textarea) {
+    textarea.value = Array.from(whitelistSet).join("\n");
   }
-
-  if (list.length === 0) {
-    container.innerHTML = '<div class="settings-empty">No domains whitelisted.</div>';
-    return;
-  }
-  container.innerHTML = list.map(domain => `
-    <div class="settings-list-item">
-      <span class="mono">${escHtml(domain)}</span>
-      <button type="button" class="mini-delete-btn" data-domain="${escHtml(domain)}">Remove</button>
-    </div>
-  `).join("");
-  container.querySelectorAll(".mini-delete-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      await send({ type: "REMOVE_WHITELIST", domain: btn.dataset.domain });
-      whitelistSet.delete(btn.dataset.domain);
-      renderWhitelistSettings();
-      updateWhitelistUI();
-    });
-  });
 }
 
-document.getElementById("whitelistAddBtnSettings").addEventListener("click", async () => {
-  const input = document.getElementById("whitelistInputSettings");
-  const domain = input.value.trim().toLowerCase();
-  if (!domain) return;
-  await send({ type: "ADD_WHITELIST", domain });
-  whitelistSet.add(domain);
-  input.value = "";
+document.getElementById("whitelistModeToggle").addEventListener("change", async e => {
+  whitelistMode = e.target.checked ? "restricted" : "all";
   renderWhitelistSettings();
-  updateWhitelistUI();
+  await send({ type: "SET_WHITELIST_MODE", mode: whitelistMode });
 });
 
-document.getElementById("whitelistInputSettings").addEventListener("keypress", e => {
-  if (e.key === "Enter") document.getElementById("whitelistAddBtnSettings").click();
+document.getElementById("whitelistTextarea").addEventListener("blur", async e => {
+  const domains = Array.from(new Set(
+    e.target.value.split("\n").map(d => d.trim().toLowerCase()).filter(Boolean)
+  ));
+  whitelistSet = new Set(domains);
+  e.target.value = domains.join("\n");
+  await send({ type: "SET_WHITELIST", domains });
+  updateWhitelistUI();
 });
 
 // ── settings: backup / restore ──────────────────────────────────────────────

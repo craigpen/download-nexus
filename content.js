@@ -11,7 +11,7 @@
   let nasTooltip = "Send to NAS";
   let whitelist = [];
   let currentDomain = window.location.hostname;
-  let whitelistEnabled = false; // True if whitelist has domains
+  let whitelistEnabled = false; // True when restricted mode is on
   let nasListLoaded = false;
   let whitelistLoaded = false;
 
@@ -40,7 +40,7 @@
   // Load whitelist
   chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
     whitelist = resp?.list || [];
-    whitelistEnabled = whitelist.length > 0;
+    whitelistEnabled = resp?.mode === "restricted";
     whitelistLoaded = true;
     injectButtons();
   });
