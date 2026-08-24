@@ -11,7 +11,10 @@
     "zip": "npm run zip:chrome && npm run zip:firefox",
     "zip:chrome": "node scripts/create-zip.js chrome",
     "zip:firefox": "node scripts/create-zip.js firefox",
-    "package": "npm run build:all && npm run zip"
+    "package": "npm run build:all && npm run zip",
+    "test": "jest",
+    "test:adapters": "jest tests/adapters.test.js",
+    "test:watch": "jest --watch"
   },
   "repository": {
     "type": "git",
@@ -27,6 +30,17 @@
   "homepage": "https://github.com/craigpen/nas-download-helper#readme",
   "devDependencies": {
     "@types/chrome": "^0.1.43",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "background.js",
+      "popup.js",
+      "content.js",
+      "!dist/**"
+    ]
   }
 }
