@@ -3,8 +3,6 @@
 (function () {
   "use strict";
 
-  console.log("[NAS] Content script loaded on", window.location.hostname);
-
   const ATTR      = "data-syno-injected";
   const TEXT_ATTR = "data-syno-text-injected";
 
@@ -21,19 +19,14 @@
     if (!nasListLoaded || !whitelistLoaded) return; // Wait for both to load
 
     // Check if this domain should have buttons
-    if (whitelistEnabled && !whitelist.includes(currentDomain)) {
-      console.log("[NAS] Domain not whitelisted, skipping injection");
-      return;
-    }
+    if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
 
-    console.log("[NAS] Injecting buttons on", currentDomain);
     document.querySelectorAll("a").forEach(processLink);
     scanTextNodes();
   }
 
   // Load NAS list
   chrome.runtime.sendMessage({ type: "GET_NAS_LIST" }, resp => {
-    console.log("[NAS] GET_NAS_LIST response:", resp);
     nasDevices = resp?.list || [];
     if (nasDevices.length === 1) {
       nasTooltip = `Send to ${nasDevices[0].name}`;
@@ -46,10 +39,8 @@
 
   // Load whitelist
   chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
-    console.log("[NAS] GET_WHITELIST response:", resp);
     whitelist = resp?.list || [];
     whitelistEnabled = whitelist.length > 0;
-    console.log("[NAS] Whitelist enabled:", whitelistEnabled, "Current domain:", currentDomain, "In whitelist:", whitelist.includes(currentDomain));
     whitelistLoaded = true;
     injectButtons();
   });
@@ -290,8 +281,6 @@
     // Check whitelist: if enabled, only scan on whitelisted domains
     if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
 
-    console.log("[NAS] scanTextNodes() starting, looking for magnet/torrent links in text nodes");
-
     const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_TEXT,
@@ -305,9 +294,6 @@
           }
           const v = node.nodeValue;
           const found = (v.includes("magnet:?") || v.includes(".torrent"));
-          if (found) {
-            console.log("[NAS] Found magnet/torrent link in text node:", v.slice(0, 100));
-          }
           return found ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
       }
@@ -315,7 +301,6 @@
 
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    console.log("[NAS] Found", nodes.length, "text nodes with magnet/torrent links");
 
     for (const node of nodes) {
       let skip = false;
@@ -339,10 +324,8 @@
       while ((m = TORRENT_RE.exec(text)) !== null) {
         matches.push({ url: m[0], index: m.index, length: m[0].length, type: "torrent" });
       }
-      console.log("[NAS] Regex matched", matches.length, "links in this text node");
       if (!matches.length) continue;
       matches.sort((a, b) => a.index - b.index);
-      console.log("[NAS] Creating pills and buttons for", matches.length, "links");
 
       const frag = document.createDocumentFragment();
       let cursor = 0;
