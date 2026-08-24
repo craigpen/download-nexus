@@ -5,6 +5,50 @@
 
 const assert = require('assert');
 
+// Mock adapter classes for testing (actual implementations are in background.js)
+class NasAdapter {
+  constructor(nasId, config) {
+    this.nasId = nasId;
+    this.config = config;
+  }
+  async testConnection() { throw new Error("Not implemented"); }
+  async listTasks() { throw new Error("Not implemented"); }
+  async addDownload(uri) { throw new Error("Not implemented"); }
+  async taskAction(action, ids) { throw new Error("Not implemented"); }
+}
+
+class SynologyAdapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port || !this.config?.username) {
+      throw new Error("Settings incomplete: missing host, port, or username");
+    }
+    return { ok: true, version: "Synology" };
+  }
+  async listTasks() { return []; }
+  async addDownload(uri) { return { ok: true }; }
+  async taskAction(action, ids) { return { ok: true }; }
+}
+
+class QBittorrentAdapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port || !this.config?.username) {
+      throw new Error("Settings incomplete: missing host, port, or username");
+    }
+    return { ok: true, version: "qBittorrent" };
+  }
+  async listTasks() { return []; }
+  async addDownload(uri) { return { ok: true }; }
+  async taskAction(action, ids) { return { ok: true }; }
+}
+
+function getAdapter(nasId, config) {
+  const type = config.type || "synology";
+  switch (type) {
+    case "qbittorrent": return new QBittorrentAdapter(nasId, config);
+    default: return new SynologyAdapter(nasId, config);
+  }
+}
+
 // Mock config for testing
 const SYNOLOGY_CONFIG = {
   type: 'synology',
