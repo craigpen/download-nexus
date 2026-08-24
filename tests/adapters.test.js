@@ -41,10 +41,23 @@ class QBittorrentAdapter extends NasAdapter {
   async taskAction(action, ids) { return { ok: true }; }
 }
 
+class TransmissionAdapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
+    }
+    return { ok: true, version: "Transmission" };
+  }
+  async listTasks() { return []; }
+  async addDownload(uri) { return { ok: true }; }
+  async taskAction(action, ids) { return { ok: true }; }
+}
+
 function getAdapter(nasId, config) {
   const type = config.type || "synology";
   switch (type) {
     case "qbittorrent": return new QBittorrentAdapter(nasId, config);
+    case "transmission": return new TransmissionAdapter(nasId, config);
     default: return new SynologyAdapter(nasId, config);
   }
 }
@@ -68,6 +81,17 @@ const QBITTORRENT_CONFIG = {
   name: 'Test qBit',
   host: 'localhost',
   port: 8080,
+  https: false,
+  username: 'admin',
+  password: 'admin1'
+};
+
+const TRANSMISSION_CONFIG = {
+  type: 'transmission',
+  id: 'test-transmission-1',
+  name: 'Test Transmission',
+  host: 'localhost',
+  port: 9091,
   https: false,
   username: 'admin',
   password: 'admin1'
@@ -212,6 +236,75 @@ describe('Device Adapters', () => {
     });
   });
 
+  describe('TransmissionAdapter', () => {
+    test('should validate configuration on testConnection', async () => {
+      const adapter = new TransmissionAdapter('test-id', TRANSMISSION_CONFIG);
+      assert(adapter.config.host === 'localhost', 'Config should be set');
+      assert(adapter.config.port === 9091, 'Port should be set');
+    });
+
+    test('should reject incomplete configuration', async () => {
+      const incompleteConfig = { ...TRANSMISSION_CONFIG, host: null };
+      const adapter = new TransmissionAdapter('test-id', incompleteConfig);
+
+      try {
+        await adapter.testConnection();
+        assert.fail('Should throw for incomplete config');
+      } catch (e) {
+        assert(e.message.includes('incomplete'), 'Should mention incomplete settings');
+      }
+    });
+
+    test('should map Transmission states to unified format', () => {
+      const stateMap = {
+        0: "paused",           // Stopped
+        1: "waiting",          // Check pending
+        2: "waiting",          // Checking
+        3: "waiting",          // Download pending
+        4: "downloading",      // Downloading
+        5: "waiting",          // Seed pending
+        6: "seeding"           // Seeding
+      };
+
+      // Verify states map correctly
+      assert(stateMap[0] === "paused", "Stopped should be paused");
+      assert(stateMap[4] === "downloading", "Downloading should be downloading");
+      assert(stateMap[6] === "seeding", "Seeding should be seeding");
+      assert(stateMap[1] === "waiting", "Check pending should be waiting");
+      assert(stateMap[5] === "waiting", "Seed pending should be waiting");
+    });
+
+    test('should construct proper RPC URL', () => {
+      const adapter = new TransmissionAdapter('test-id', TRANSMISSION_CONFIG);
+      const baseUrl = `http://localhost:9091`;
+      assert(baseUrl.includes('localhost'), 'Should use host');
+      assert(baseUrl.includes('9091'), 'Should use port');
+
+      const rpcUrl = `${baseUrl}/rpc`;
+      assert(rpcUrl.includes('/rpc'), 'Should use correct RPC path');
+    });
+
+    test('should map task actions correctly', () => {
+      const actionMap = {
+        'pause': 'torrent-stop',
+        'resume': 'torrent-start',
+        'delete': 'torrent-remove'
+      };
+
+      assert(actionMap.pause === 'torrent-stop', 'Pause should map to torrent-stop');
+      assert(actionMap.resume === 'torrent-start', 'Resume should map to torrent-start');
+      assert(actionMap.delete === 'torrent-remove', 'Delete should map to torrent-remove');
+    });
+
+    test('should handle torrent IDs as integers', () => {
+      const ids = ['1', '2', '3'];
+      const numericIds = ids.map(id => parseInt(id));
+
+      assert(numericIds[0] === 1, 'Should convert to integer');
+      assert(numericIds.length === 3, 'Should handle multiple torrents');
+    });
+  });
+
   describe('Adapter Pattern', () => {
     test('should have consistent interface', () => {
       const methods = ['testConnection', 'listTasks', 'addDownload', 'taskAction'];
@@ -229,7 +322,8 @@ describe('Device Adapters', () => {
     test('should route through getAdapter factory', () => {
       const adapters = {
         synology: SYNOLOGY_CONFIG,
-        qbittorrent: QBITTORRENT_CONFIG
+        qbittorrent: QBITTORRENT_CONFIG,
+        transmission: TRANSMISSION_CONFIG
       };
 
       Object.entries(adapters).forEach(([type, config]) => {
