@@ -285,6 +285,16 @@ function renderWhitelist() {
   chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
     const list = resp?.list || [];
     whitelistSet = new Set(list); // Keep in sync for export
+
+    const modeEl = $("whitelistMode");
+    if (list.length === 0) {
+      modeEl.className = "whitelist-mode everywhere";
+      modeEl.textContent = "🌐 Scanning every website (default)";
+    } else {
+      modeEl.className = "whitelist-mode restricted";
+      modeEl.textContent = `📌 Restricted mode — scanning only ${list.length} whitelisted domain${list.length !== 1 ? "s" : ""}`;
+    }
+
     const container = $("whitelistList");
     if (list.length === 0) {
       container.innerHTML = '<div class="whitelist-empty">No domains whitelisted. Whitelist will be populated as you add domains.</div>';
