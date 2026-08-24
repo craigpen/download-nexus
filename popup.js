@@ -309,6 +309,11 @@ async function refresh() {
     setConnStatus(currentNasId, true);
     hideError();
     allTasks = resp.tasks;
+    console.log("Popup received tasks:", resp.tasks.length, "tasks");
+    if (resp.tasks.length > 0) {
+      console.log("First task fields:", Object.keys(resp.tasks[0]));
+      console.log("First task data:", resp.tasks[0]);
+    }
     saveCachedTasks(currentNasId, resp.tasks);
     document.getElementById("speedBar").style.display = "";
     document.getElementById("tabBar").style.display   = "";
