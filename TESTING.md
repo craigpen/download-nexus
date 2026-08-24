@@ -74,11 +74,77 @@ npm run test:watch
 - [ ] Resume button resumes task
 - [ ] Delete button removes task
 
+#### Transmission
+- [ ] Connection test succeeds with valid credentials
+- [ ] Task list loads and displays correctly
+- [ ] Torrent names display in task list
+- [ ] Stop button stops task
+- [ ] Start button starts task
+- [ ] Delete button removes task
+
 #### Multi-Device
 - [ ] Can add both Synology and qBittorrent devices
 - [ ] Tabs show both devices
 - [ ] Switching tabs shows correct task lists
 - [ ] Each device operates independently
+
+### Integration Testing
+
+Integration tests verify actual API calls against real device instances.
+
+#### qBittorrent Integration Tests
+
+Start a qBittorrent Docker container:
+
+```bash
+docker run -d -p 8080:8080 \
+  -e WEBUI_PORT=8080 \
+  linuxserver/qbittorrent:latest
+```
+
+Run tests:
+
+```bash
+npm run test:integration
+```
+
+This verifies:
+- API connection and authentication
+- Task list retrieval
+- Task action endpoints (pause, resume, delete)
+- Data format consistency
+- State mapping to unified format
+
+#### Transmission Integration Tests
+
+Start a Transmission Docker container:
+
+```bash
+docker run -d -p 9091:9091 \
+  -e TZ=UTC \
+  linuxserver/transmission:latest
+```
+
+Run tests:
+
+```bash
+npm run test:transmission
+```
+
+This verifies:
+- RPC connection and session ID handling
+- Torrent list retrieval
+- Torrent action endpoints (stop, start, remove)
+- Data format consistency
+- State mapping (0-6) to unified format
+
+#### Docker Compose (All Services)
+
+Run all services together:
+
+```bash
+docker-compose up
+```
 
 ### End-to-End Testing
 
@@ -126,16 +192,88 @@ jobs:
 
 When adding a new device adapter (e.g., Transmission, Deluge):
 
-1. Create `class TransmissionAdapter extends DeviceAdapter`
-2. Implement all required methods:
-   - `async testConnection()`
-   - `async listTasks()`
-   - `async addDownload(uri)`
-   - `async taskAction(action, ids)`
-3. Ensure task data matches standard format (id, title, status, progress, size)
-4. Update message handlers to use `getAdapter()` factory
-5. Add tests to `tests/adapters.test.js` for new adapter
-6. Update `getAdapter()` switch statement in background.js
+### 1. Create Adapter Class
+
+```javascript
+class TransmissionAdapter extends NasAdapter {
+  async testConnection() { /* ... */ }
+  async listTasks() { /* ... */ }
+  async addDownload(uri) { /* ... */ }
+  async taskAction(action, ids) { /* ... */ }
+  _normalizeStatus(deviceState) { /* ... */ }
+}
+```
+
+### 2. Implement State Normalization
+
+Map device-specific states to unified format:
+
+```javascript
+_normalizeStatus(deviceState) {
+  const stateMap = {
+    // Map device states to: downloading, seeding, paused, waiting, finished, error
+  };
+  return stateMap[deviceState] || "waiting";
+}
+```
+
+Unified state set:
+- `downloading` - actively downloading or queued to download
+- `seeding` - actively seeding or queued to seed
+- `paused` - explicitly stopped/paused by user
+- `waiting` - queued, checking, verifying (not user-paused)
+- `finished` - completed (100% downloaded)
+- `error` - error state
+
+### 3. Normalize Task Data
+
+All adapters must return tasks with this format:
+
+```javascript
+{
+  id: "unique-id",           // string: hash, ID, or name
+  title: "Torrent Name",      // string: human-readable title
+  status: "downloading",      // string: unified status
+  progress: 50,               // number: 0-100 percentage
+  downloaded: 536870912,      // number: bytes
+  uploaded: 0,                // number: bytes
+  size: 1073741824,           // number: bytes
+  speed_down: 1048576,        // number: bytes/sec
+  speed_up: 0,                // number: bytes/sec
+  eta: 512                    // number: seconds
+}
+```
+
+### 4. Register Adapter
+
+Update `background.js` `getAdapter()` factory:
+
+```javascript
+case "transmission":
+  return new TransmissionAdapter(nasId, config);
+```
+
+### 5. Add UI Support
+
+Update `popup.html` device type selector:
+
+```html
+<option value="transmission">Transmission</option>
+```
+
+### 6. Add Tests
+
+Create unit tests in `tests/adapters.test.js`:
+- Configuration validation
+- State mapping verification
+- URL/API endpoint construction
+- Action mapping
+
+Create integration tests:
+- Real API connection
+- Task retrieval
+- Task actions (pause, resume, delete)
+- Data format verification
 
 ## Debugging
 

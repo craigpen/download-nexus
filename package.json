@@ -15,6 +15,7 @@
     "test": "jest",
     "test:adapters": "jest tests/adapters.test.js",
     "test:integration": "jest tests/integration.test.js",
+    "test:transmission": "jest tests/transmission-integration.test.js",
     "test:all": "jest",
     "test:watch": "jest --watch"
   },
