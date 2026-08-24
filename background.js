@@ -38,7 +38,39 @@ class SynologyAdapter extends NasAdapter {
     const text = await resp.text();
     const data = JSON.parse(text);
     if (!data.success) throw new Error(`List tasks failed (DSM code ${data.error?.code ?? "?"})`);
-    return data.data.tasks || [];
+
+    const tasks = data.data.tasks || [];
+    // Normalize Synology tasks to unified format
+    return tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      status: this._normalizeStatus(t.status),
+      progress: t.additional?.transfer?.progress_percentage ?? 0,
+      downloaded: t.additional?.transfer?.size_downloaded ?? 0,
+      uploaded: t.additional?.transfer?.size_uploaded ?? 0,
+      size: t.additional?.transfer?.size_total ?? 0,
+      speed_down: t.additional?.transfer?.speed_download ?? 0,
+      speed_up: t.additional?.transfer?.speed_upload ?? 0,
+      eta: t.additional?.transfer?.remaining_time ?? 0,
+      // Keep original for fallback compatibility
+      _original: t
+    }));
+  }
+
+  _normalizeStatus(synoStatus) {
+    // Map Synology Download Station status to unified format
+    const stateMap = {
+      "downloading": "downloading",
+      "uploading": "seeding",
+      "paused": "paused",
+      "finishing": "seeding",
+      "error": "error",
+      "waiting": "waiting",
+      "completed": "finished",
+      "seeding": "seeding",
+      "stopped": "paused"
+    };
+    return stateMap[synoStatus] || "waiting";
   }
 
   async addDownload(uri, destination) {
@@ -216,6 +248,181 @@ class QBittorrentAdapter extends NasAdapter {
   }
 }
 
+class TransmissionAdapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
+    }
+    const url = `${this._baseUrl()}/rpc`;
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    });
+    if (!resp.ok) throw new Error(`Transmission connection failed: HTTP ${resp.status}`);
+    return { ok: true, version: "Transmission", type: "Transmission" };
+  }
+
+  async listTasks() {
+    const auth = this.config.username ? `${this.config.username}:${this.config.password}` : null;
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Transmission-Session-Id": await this._getSessionId()
+    };
+    if (auth) headers["Authorization"] = `Basic ${btoa(auth)}`;
+
+    const body = {
+      method: "torrent-get",
+      arguments: {
+        fields: ["id", "name", "status", "percentDone", "downloadedEver", "uploadedEver", "totalSize", "rateDownload", "rateUpload", "eta"]
+      }
+    };
+
+    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    if (resp.status === 409) {
+      // Session ID expired, retry
+      return this.listTasks();
+    }
+
+    const data = await resp.json();
+    if (!data.result || data.result !== "success") {
+      throw new Error(`Transmission get torrents failed: ${data.result}`);
+    }
+
+    const torrents = data.arguments?.torrents || [];
+    return torrents.map(t => ({
+      id: t.id.toString(),
+      title: t.name,
+      status: this._normalizeStatus(t.status),
+      progress: t.percentDone * 100,
+      downloaded: t.downloadedEver,
+      uploaded: t.uploadedEver,
+      size: t.totalSize,
+      speed_down: t.rateDownload,
+      speed_up: t.rateUpload,
+      eta: t.eta > 0 ? t.eta : 0
+    }));
+  }
+
+  async addDownload(uri, destination) {
+    const isMagnet = uri.startsWith("magnet:");
+    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+
+    if (!isMagnet && !isTorrentUrl) {
+      throw new Error("Invalid URI: must be a magnet link or .torrent URL");
+    }
+
+    const auth = this.config.username ? `${this.config.username}:${this.config.password}` : null;
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Transmission-Session-Id": await this._getSessionId()
+    };
+    if (auth) headers["Authorization"] = `Basic ${btoa(auth)}`;
+
+    let filename = null;
+    if (isTorrentUrl) {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      filename = Buffer.from(torrentBuffer).toString("base64");
+    }
+
+    const body = {
+      method: "torrent-add",
+      arguments: {
+        ...(isMagnet ? { filename: uri } : { metainfo: filename }),
+        ...(destination ? { "download-dir": destination } : {})
+      }
+    };
+
+    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    const data = await resp.json();
+    if (data.result !== "success") {
+      throw new Error(`Transmission add torrent failed: ${data.result}`);
+    }
+  }
+
+  async taskAction(action, ids) {
+    const actionMap = {
+      "pause": "torrent-stop",
+      "resume": "torrent-start",
+      "delete": "torrent-remove"
+    };
+
+    const transmissionAction = actionMap[action];
+    if (!transmissionAction) throw new Error(`Unknown action: ${action}`);
+
+    const auth = this.config.username ? `${this.config.username}:${this.config.password}` : null;
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Transmission-Session-Id": await this._getSessionId()
+    };
+    if (auth) headers["Authorization"] = `Basic ${btoa(auth)}`;
+
+    const body = {
+      method: transmissionAction,
+      arguments: {
+        ids: ids.map(id => parseInt(id))
+      }
+    };
+
+    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    const data = await resp.json();
+    if (data.result !== "success") {
+      throw new Error(`Transmission action failed: ${data.result}`);
+    }
+  }
+
+  _normalizeStatus(transmissionStatus) {
+    const stateMap = {
+      0: "paused",           // Stopped
+      1: "waiting",          // Check pending
+      2: "waiting",          // Checking
+      3: "waiting",          // Download pending
+      4: "downloading",      // Downloading
+      5: "waiting",          // Seed pending
+      6: "seeding"           // Seeding
+    };
+    return stateMap[transmissionStatus] || "waiting";
+  }
+
+  _baseUrl() {
+    const scheme = this.config.https ? "https" : "http";
+    return `${scheme}://${this.config.host}:${this.config.port}`;
+  }
+
+  async _getSessionId() {
+    const auth = this.config.username ? `${this.config.username}:${this.config.password}` : null;
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (auth) headers["Authorization"] = `Basic ${btoa(auth)}`;
+
+    const resp = await fetch(`${this._baseUrl()}/rpc`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ method: "session-get" })
+    });
+
+    const sessionId = resp.headers.get("X-Transmission-Session-Id");
+    if (sessionId) return sessionId;
+
+    throw new Error("Failed to get Transmission session ID");
+  }
+}
+
 function getAdapter(nasId, config) {
   const type = config.type || "synology";
   switch (type) {
@@ -223,6 +430,8 @@ function getAdapter(nasId, config) {
       return new SynologyAdapter(nasId, config);
     case "qbittorrent":
       return new QBittorrentAdapter(nasId, config);
+    case "transmission":
+      return new TransmissionAdapter(nasId, config);
     default:
       throw new Error(`Unknown NAS type: ${type}`);
   }
