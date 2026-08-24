@@ -439,10 +439,10 @@ function updateTabLabels() {
   const adapterType = device?.type || "synology";
 
   const pausedTab = document.querySelector('[data-filter="paused"]');
-  if (pausedTab && adapterType === "qbittorrent") {
-    pausedTab.textContent = "Stopped " + pausedTab.querySelector(".tab-count").outerHTML;
-  } else if (pausedTab) {
-    pausedTab.textContent = "Paused " + pausedTab.querySelector(".tab-count").outerHTML;
+  if (pausedTab) {
+    const countSpan = pausedTab.querySelector(".tab-count");
+    const label = adapterType === "qbittorrent" ? "Stopped" : "Paused";
+    pausedTab.innerHTML = label + " " + countSpan.outerHTML;
   }
 }
 
