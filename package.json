@@ -14,6 +14,8 @@
     "package": "npm run build:all && npm run zip",
     "test": "jest",
     "test:adapters": "jest tests/adapters.test.js",
+    "test:integration": "jest tests/integration.test.js",
+    "test:all": "jest",
     "test:watch": "jest --watch"
   },
   "repository": {
