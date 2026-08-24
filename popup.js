@@ -476,8 +476,8 @@ async function showMainView() {
   document.getElementById("settingsView").classList.remove("show");
   document.getElementById("mainView").classList.add("show");
   document.getElementById("headerTitle").textContent = "NAS Download Helper";
-  document.getElementById("mainHeaderControls").style.display = "";
-  document.getElementById("gearIcon").style.display = "";
+  document.getElementById("mainHeaderControls").style.display = "flex";
+  document.getElementById("gearIcon").style.display = "block";
   document.getElementById("backIcon").style.display = "none";
   document.getElementById("settingsBtn").title = "Settings";
   await paintCachedTasks();
