@@ -727,6 +727,25 @@ function updateDestinationFieldVisibility() {
   destinationField.style.display = type === "synology" ? "" : "none";
 }
 
+function updateFormDefaultsForType() {
+  const type = document.getElementById("nasType").value;
+
+  // Set type-specific defaults
+  if (type === "synology") {
+    document.getElementById("nasUsername").placeholder = "admin";
+    document.getElementById("nasPort").value = "5000";
+    document.getElementById("nasHttps").checked = false;
+  } else if (type === "qbittorrent") {
+    document.getElementById("nasUsername").placeholder = "admin (optional)";
+    document.getElementById("nasPort").value = "8080";
+    document.getElementById("nasHttps").checked = false;
+  } else if (type === "transmission") {
+    document.getElementById("nasUsername").placeholder = "(optional)";
+    document.getElementById("nasPort").value = "9091";
+    document.getElementById("nasHttps").checked = false;
+  }
+}
+
 function editNas(nasId) {
   editingNasId = nasId;
   const nas = nasList.find(n => n.id === nasId);
@@ -757,14 +776,13 @@ function addNewNas() {
   document.getElementById("nasName").value = "";
   document.getElementById("nasType").value = "synology";
   document.getElementById("nasHost").value = "192.168.0.1";
-  document.getElementById("nasPort").value = "5000";
-  document.getElementById("nasHttps").checked = false;
-  document.getElementById("nasUsername").value = "admin";
+  document.getElementById("nasUsername").value = "";
   document.getElementById("nasPassword").value = "";
   document.getElementById("nasDestination").value = "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
+  updateFormDefaultsForType();
   updateDestinationFieldVisibility();
   showNasFormView();
   updateTestButtonState();
@@ -779,10 +797,14 @@ async function deleteNasDevice(nasId) {
 
 document.getElementById("nasForm").addEventListener("submit", async e => {
   e.preventDefault();
+  const nasType = document.getElementById("nasType").value;
   const password = document.getElementById("nasPassword").value;
+  const username = document.getElementById("nasUsername").value.trim();
   const statusEl = document.getElementById("nasFormStatus");
-  if (!password) {
-    statusEl.textContent = "Password is required";
+
+  // Synology requires password; Transmission is optional (can run without auth)
+  if (nasType === "synology" && !password) {
+    statusEl.textContent = "Password is required for Synology";
     statusEl.className = "settings-status err";
     setTimeout(() => { statusEl.textContent = ""; }, 4000);
     return;
@@ -817,7 +839,10 @@ document.getElementById("deleteNasBtn").addEventListener("click", e => {
   if (confirm("Are you sure you want to delete this NAS device?")) deleteNasDevice(editingNasId);
 });
 
-document.getElementById("nasType").addEventListener("change", updateDestinationFieldVisibility);
+document.getElementById("nasType").addEventListener("change", () => {
+  updateDestinationFieldVisibility();
+  updateFormDefaultsForType();
+});
 
 function updateTestButtonState() {
   const password = document.getElementById("nasPassword").value.trim();
