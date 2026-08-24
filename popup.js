@@ -465,6 +465,12 @@ async function loadWhitelist() {
 }
 
 function updateWhitelistUI() {
+  // Show whitelist button only when whitelist mode is "restricted"
+  const whitelistDropdown = document.getElementById("whitelistDropdown");
+  if (whitelistDropdown) {
+    whitelistDropdown.style.display = whitelistMode === "restricted" ? "block" : "none";
+  }
+
   if (!currentDomain) return;
   const isWhitelisted = whitelistSet.has(currentDomain);
   const actionBtn = document.getElementById("whitelistAction");
