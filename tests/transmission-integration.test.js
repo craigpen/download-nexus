@@ -20,7 +20,7 @@ const TRANSMISSION_CONFIG = {
   password: 'transmission'
 };
 
-const RPC_BASE = `http://${TRANSMISSION_CONFIG.host}:${TRANSMISSION_CONFIG.port}/rpc`;
+const RPC_BASE = `http://${TRANSMISSION_CONFIG.host}:${TRANSMISSION_CONFIG.port}/transmission/rpc`;
 let sessionId = null;
 
 async function transmissionRpc(method, args = {}) {
@@ -37,13 +37,28 @@ async function transmissionRpc(method, args = {}) {
     arguments: args
   };
 
-  const resp = await fetch(RPC_BASE, {
+  let resp = await fetch(RPC_BASE, {
     method: 'POST',
     headers,
     body: JSON.stringify(body)
   });
 
-  // Extract session ID from response
+  // If we get 409, the session ID is in the header
+  if (resp.status === 409) {
+    const newSessionId = resp.headers.get('X-Transmission-Session-Id');
+    if (newSessionId) {
+      sessionId = newSessionId;
+      headers['X-Transmission-Session-Id'] = sessionId;
+      // Retry with new session ID
+      resp = await fetch(RPC_BASE, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+    }
+  }
+
+  // Extract session ID from response if available
   const newSessionId = resp.headers.get('X-Transmission-Session-Id');
   if (newSessionId) {
     sessionId = newSessionId;
@@ -53,7 +68,8 @@ async function transmissionRpc(method, args = {}) {
   try {
     return JSON.parse(text);
   } catch {
-    return { result: 'parse-error', text };
+    // If JSON parsing fails, try to extract session ID and return error
+    return { result: 'parse-error', text, status: resp.status };
   }
 }
 
