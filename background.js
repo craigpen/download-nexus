@@ -16,6 +16,31 @@ class NasAdapter {
 }
 
 class SynologyAdapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port || !this.config?.username) {
+      throw new Error("Settings incomplete: missing host, port, or username");
+    }
+    await removeSid(this.nasId);
+    const sid = await getSid(this.nasId, this.config, true);
+    const infoUrl = `${baseUrl(this.config)}/DownloadStation/info.cgi?api=SYNO.DownloadStation.Info&version=1&method=getinfo&_sid=${sid}`;
+    const resp = await nasFetch("DS_INFO", infoUrl, { credentials: "include" });
+    const text = await resp.text();
+    const data = JSON.parse(text);
+    if (!data.success) throw new Error(`Download Station error code ${data.error?.code ?? "?"}`);
+    await storeSid(this.nasId, sid);
+    return { ok: true, version: data.data?.version_string ?? "" };
+  }
+
+  async listTasks() {
+    const sid = await getSid(this.nasId, this.config);
+    const url = `${baseUrl(this.config)}/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=list&additional=transfer&_sid=${sid}`;
+    const resp = await nasFetch("LIST_TASKS", url, { credentials: "include" });
+    const text = await resp.text();
+    const data = JSON.parse(text);
+    if (!data.success) throw new Error(`List tasks failed (DSM code ${data.error?.code ?? "?"})`);
+    return data.data.tasks || [];
+  }
+
   async addDownload(uri, destination) {
     const isMagnet = uri.startsWith("magnet:");
     const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
@@ -29,6 +54,35 @@ class SynologyAdapter extends NasAdapter {
 }
 
 class QBittorrentAdapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port || !this.config?.username) {
+      throw new Error("Settings incomplete: missing host, port, or username");
+    }
+    await this._login();
+    return { ok: true, version: "qBittorrent", type: "qBittorrent" };
+  }
+
+  async listTasks() {
+    const resp = await this._fetch("/torrents/info");
+    const text = await resp.text();
+    let data = JSON.parse(text);
+    if (!Array.isArray(data)) return [];
+
+    return data.map(t => ({
+      id: t.hash,
+      name: t.name,
+      status: t.state,
+      progress: t.progress * 100,
+      downloaded: t.downloaded,
+      uploaded: t.uploaded,
+      size: t.total_size,
+      speed_down: t.dl_speed,
+      speed_up: t.up_speed,
+      eta: t.eta,
+      added_on: t.added_on
+    }));
+  }
+
   async addDownload(uri, destination) {
     const isMagnet = uri.startsWith("magnet:");
     const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
@@ -37,7 +91,69 @@ class QBittorrentAdapter extends NasAdapter {
       throw new Error("Invalid URI: must be a magnet link or .torrent URL");
     }
 
-    await qbAddDownload(this.config, this.nasId, uri);
+    let finalUri = uri;
+    if (isTorrentUrl) {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      finalUri = await torrentToMagnet(torrentBuffer);
+    }
+
+    await this._call(async () => {
+      const formData = new FormData();
+      formData.append("urls", finalUri);
+      const resp = await this._fetch("/torrents/add", {
+        method: "POST",
+        body: formData
+      });
+      const text = await resp.text();
+      if (!text.toLowerCase().match(/^ok\.?$/)) {
+        throw new Error(`qBit add torrent failed: ${text}`);
+      }
+    });
+  }
+
+  // Private methods
+  async _login() {
+    const url = `${this._baseUrl()}/api/v2/auth/login`;
+    const body = new URLSearchParams();
+    body.append('username', this.config.username);
+    body.append('password', this.config.password);
+
+    const resp = await fetch(url, {
+      method: "POST",
+      body,
+      credentials: "include",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }
+    });
+
+    if (resp.status !== 204 && resp.status !== 200) {
+      const text = await resp.text();
+      throw new Error(`qBit auth failed: HTTP ${resp.status}: ${text}`);
+    }
+  }
+
+  async _fetch(path, options = {}) {
+    const url = `${this._baseUrl()}/api/v2${path}`;
+    const resp = await fetch(url, { ...options });
+    if (resp.status === 403) throw new Error("qBit auth failed");
+    if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
+    return resp;
+  }
+
+  async _call(apiFn) {
+    try {
+      return await apiFn();
+    } catch (err) {
+      if (err.message.includes("auth failed")) {
+        await this._login();
+        return await apiFn();
+      }
+      throw err;
+    }
+  }
+
+  _baseUrl() {
+    const scheme = this.config.https ? "https" : "http";
+    return `${scheme}://${this.config.host}:${this.config.port}`;
   }
 }
 
@@ -796,19 +912,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "TEST_CONNECTION") {
-      dbg("INFO", "TEST_CONNECTION handler called with nasId:", msg.nasId);
-      console.warn("[TEST_CONNECTION] Received with settings:", msg.settings);
-      testConnection(msg.nasId, msg.settings)
-        .then(result => {
-          console.log("[TEST_CONNECTION] Result:", result.ok ? "success" : result.error);
-          dbg("INFO", "TEST_CONNECTION sending response", result.ok ? "success" : result.error);
-          sendResponse(result);
-        })
-        .catch(e => {
-          console.error("[TEST_CONNECTION] Exception:", e.message);
-          dbg("ERROR", "TEST_CONNECTION catch block", e.message);
-          sendResponse({ ok: false, error: e.message, log: [...debugLog] });
-        });
+      (async () => {
+        try {
+          const adapter = getAdapter(msg.nasId, msg.settings);
+          const result = await adapter.testConnection();
+          sendResponse({ ok: result.ok, version: result.version });
+        } catch (e) {
+          sendResponse({ ok: false, error: e.message });
+        }
+      })();
       return true;
     }
     if (msg.type === "LIST_TASKS") {
@@ -816,18 +928,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const s = await getNasById(msg.nasId);
         if (!s) return sendResponse({ ok: false, error: "NAS not found" });
 
-        const type = s.type || "synology";
-        if (type === "qbittorrent") {
-          qbCall(msg.nasId, s, async () => {
-            const tasks = await qbListTasks(s);
-            return tasks;
-          })
-            .then(tasks => sendResponse({ ok: true, tasks }))
-            .catch(e => sendResponse({ ok: false, error: e.message }));
-        } else {
-          nasCall(msg.nasId, s, sid => listTasks(s, sid))
-            .then(tasks => sendResponse({ ok: true, tasks }))
-            .catch(e => sendResponse({ ok: false, error: e.message }));
+        try {
+          const adapter = getAdapter(msg.nasId, s);
+          const tasks = await adapter.listTasks();
+          sendResponse({ ok: true, tasks });
+        } catch (e) {
+          sendResponse({ ok: false, error: e.message });
         }
       })();
       return true;
