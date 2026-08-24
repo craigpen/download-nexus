@@ -321,28 +321,38 @@ async function nasCall(nasId, s, apiFn) {
 
 async function qbLogin(s) {
   const url = `${baseUrl(s)}/api/v2/auth/login`;
-  const body = new URLSearchParams({
-    username: s.username,
-    password: s.password
-  });
-  const resp = await fetch(url, {
-    method: "POST",
-    body,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    }
-  });
+  const body = new URLSearchParams();
+  body.append('username', s.username);
+  body.append('password', s.password);
 
-  // qBittorrent returns 204 (No Content) on successful login, 401/403 on auth failure
-  if (resp.status === 204 || resp.status === 200) return true;
-  if (resp.status === 401 || resp.status === 403) throw new Error(`qBit auth failed: invalid credentials`);
-  throw new Error(`qBit auth failed: HTTP ${resp.status}`);
+  console.log("[qbLogin] URL:", url);
+  console.log("[qbLogin] Sending form body with username/password");
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      body: body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+      }
+    });
+    console.log("[qbLogin] Response:", resp.status, resp.statusText);
+    const respText = await resp.text();
+    console.log("[qbLogin] Body:", respText.slice(0, 50));
+
+    if (resp.status === 204 || resp.status === 200) {
+      console.log("[qbLogin] SUCCESS");
+      return true;
+    }
+    throw new Error(`HTTP ${resp.status}: ${respText.slice(0, 100)}`);
+  } catch (err) {
+    console.error("[qbLogin] FAILED:", err.message);
+    throw new Error(`qBit auth failed: ${err.message}`);
+  }
 }
 
 async function qbFetch(s, path, options = {}) {
   const url = `${baseUrl(s)}/api/v2${path}`;
-  const resp = await fetch(url, { credentials: "include", ...options });
+  const resp = await fetch(url, { ...options });
   if (resp.status === 403) throw new Error("qBit auth failed");
   if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
   return resp;
@@ -753,13 +763,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "TEST_CONNECTION") {
-      dbg("INFO", "TEST_CONNECTION handler called");
+      dbg("INFO", "TEST_CONNECTION handler called with nasId:", msg.nasId);
+      console.warn("[TEST_CONNECTION] Received with settings:", msg.settings);
       testConnection(msg.nasId, msg.settings)
         .then(result => {
+          console.log("[TEST_CONNECTION] Result:", result.ok ? "success" : result.error);
           dbg("INFO", "TEST_CONNECTION sending response", result.ok ? "success" : result.error);
           sendResponse(result);
         })
         .catch(e => {
+          console.error("[TEST_CONNECTION] Exception:", e.message);
           dbg("ERROR", "TEST_CONNECTION catch block", e.message);
           sendResponse({ ok: false, error: e.message, log: [...debugLog] });
         });
