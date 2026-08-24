@@ -1,4 +1,4 @@
-// popup.js — Download Station task manager + settings
+// popup.js — Task manager + device settings
 
 let allTasks      = [];
 let filter        = "downloading";
@@ -658,7 +658,7 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
   try {
     const resp = await send({ type: "TEST_CONNECTION", nasId, settings });
     if (resp?.ok) {
-      el.textContent = `Connected! Download Station ${resp.version}`;
+      el.textContent = `Connected! ${resp.version}`;
       el.className = "settings-status ok";
     } else {
       el.textContent = resp?.error ?? "Unknown error";
