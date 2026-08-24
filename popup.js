@@ -240,26 +240,13 @@ function escHtml(str) {
 
 // ── data fetch ────────────────────────────────────────────────────────────
 
-async function checkConnection() {
-  if (!currentNasId) return false;
-  try {
-    const resp = await send({ type: "CHECK_CONNECTION", nasId: currentNasId });
-    if (resp.ok) {
-      nasConnStatus[currentNasId] = "ok";
-      document.getElementById("connStatus").className = "ok";
-      document.getElementById("connStatus").textContent = "● Connected";
-      renderNasTabs(); // Update tabs with status
-      return true;
-    } else {
-      throw new Error(resp.error || "Unknown error");
-    }
-  } catch (err) {
-    nasConnStatus[currentNasId] = "error";
-    document.getElementById("connStatus").className = "error";
-    document.getElementById("connStatus").textContent = "● Offline";
-    renderNasTabs(); // Update tabs with status
-    return false;
+function setConnStatus(nasId, ok) {
+  nasConnStatus[nasId] = ok ? "ok" : "error";
+  if (nasId === currentNasId) {
+    document.getElementById("connStatus").className = ok ? "ok" : "error";
+    document.getElementById("connStatus").textContent = ok ? "● Connected" : "● Offline";
   }
+  renderNasTabs(); // Update tabs with status
 }
 
 function showError(title, detail) {
@@ -281,10 +268,12 @@ async function refresh() {
   try {
     const resp = await send({ type: "LIST_TASKS", nasId: currentNasId });
     if (!resp.ok) {
+      setConnStatus(currentNasId, false);
       showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
       setStatus(resp.error, true);
       return;
     }
+    setConnStatus(currentNasId, true);
     hideError();
     allTasks = resp.tasks;
     document.getElementById("speedBar").style.display = "";
@@ -293,6 +282,7 @@ async function refresh() {
     renderTasks();
     setStatus("");
   } catch (err) {
+    setConnStatus(currentNasId, false);
     showError("❌ Connection error", err.message);
     setStatus(err.message, true);
   }
@@ -372,7 +362,6 @@ function renderNasTabs() {
       renderNasTabs();
       allTasks = [];
       filter = "downloading";
-      checkConnection();
       refresh();
     });
   });
@@ -518,7 +507,6 @@ async function getCurrentDomain() {
   await loadNasList();
   getCurrentDomain();
   loadWhitelist();
-  checkConnection();
   refresh();
   pollTimer = setInterval(refresh, 5000);
 })();
