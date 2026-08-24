@@ -685,9 +685,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       deleteNas(msg.nasId).then(() => sendResponse({ ok: true }));
       return true;
     }
-    if (msg.type === "GET_LOG") {
-      sendResponse({ log: [...debugLog] });
-    }
   } catch (err) {
     dbg("ERROR", "Message listener error", err.message);
     sendResponse({ ok: false, error: err.message, log: [...debugLog] });
