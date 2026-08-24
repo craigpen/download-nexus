@@ -87,7 +87,7 @@ class QBittorrentAdapter extends NasAdapter {
   _normalizeStatus(qbState) {
     // Map qBittorrent states to standardized status names
     const stateMap = {
-      // Downloading states
+      // Downloading states (actively downloading)
       downloading: "downloading",
       forcedDL: "downloading",
       metaDL: "downloading",
@@ -96,12 +96,13 @@ class QBittorrentAdapter extends NasAdapter {
       // Paused states
       stoppedDL: "paused",
       stoppedUP: "paused",
-      // Stalled states (treated as downloading/seeding)
-      stalledDL: "downloading",
+      // Stalled states (not actively downloading, waiting for peers)
+      stalledDL: "waiting",
       stalledUP: "seeding",
       // Seeding states
       uploading: "seeding",
       forcedUP: "seeding",
+      // Checking/queue states
       queuedForChecking: "waiting",
       checkingUP: "waiting",
       checkingDL: "waiting",
