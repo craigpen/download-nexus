@@ -140,6 +140,19 @@ function updateCounts() {
   document.getElementById("taskCountLabel").textContent = `${allTasks.length} task${allTasks.length !== 1 ? "s" : ""}`;
 }
 
+// Define valid actions for each task status
+function canPauseTask(status) {
+  // Can pause if actively transferring
+  const activeStates = ["downloading", "seeding", "uploading", "allocating", "forcedDL", "forcedUP", "metaDL", "forcedMetaDL"];
+  return activeStates.includes(status);
+}
+
+function canResumeTask(status) {
+  // Can resume if paused or stalled
+  const resumableStates = ["paused", "stalled", "error"];
+  return resumableStates.includes(status);
+}
+
 function getVisibleTasks() {
   const filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
 
@@ -165,8 +178,8 @@ function getVisibleTasks() {
 
 function updateFooterButtons() {
   const visible = getVisibleTasks();
-  const pauseCount = visible.filter(t => t.status === "downloading").length;
-  const resumeCount = visible.filter(t => t.status === "paused").length;
+  const pauseCount = visible.filter(t => canPauseTask(t.status)).length;
+  const resumeCount = visible.filter(t => canResumeTask(t.status)).length;
   const pauseBtn = document.getElementById("pauseAllBtn");
   const resumeBtn = document.getElementById("resumeAllBtn");
 
@@ -216,7 +229,8 @@ function renderTasks() {
     const spDn     = task.speed_down !== undefined ? task.speed_down : (transfer.speed_download || 0);
     const spUp     = task.speed_up !== undefined ? task.speed_up : (transfer.speed_upload || 0);
     const eta      = spDn > 0 && size > dlSize ? Math.round((size - dlSize) / spDn) : 0;
-    const isPaused = task.status === "paused" || task.status === "finished" || task.status === "error";
+    const canPause = canPauseTask(task.status);
+    const canResume = canResumeTask(task.status);
     const color    = progressColor(task.status);
 
     if (existing[task.id]) {
@@ -233,8 +247,8 @@ function renderTasks() {
       row.querySelector(".status-dot").className  = `status-dot ${statusClass(task.status)}`;
       const pauseBtn  = row.querySelector(".pause-btn");
       const resumeBtn = row.querySelector(".resume-btn");
-      if (pauseBtn)  pauseBtn.style.display  = isPaused ? "none" : "";
-      if (resumeBtn) resumeBtn.style.display = isPaused ? "" : "none";
+      if (pauseBtn)  pauseBtn.style.display  = canPause ? "" : "none";
+      if (resumeBtn) resumeBtn.style.display = canResume ? "" : "none";
       fragment.appendChild(row);
     } else {
       // Create new row
@@ -246,8 +260,8 @@ function renderTasks() {
           <span class="status-dot ${statusClass(task.status)}"></span>
           <span class="task-name" title="${escHtml(task.title)}">${escHtml(task.title)}</span>
           <div class="task-actions">
-            <button class="task-btn pause-btn"  title="${getAdapterPauseText(currentNasId)}"  style="${isPaused ? "display:none" : ""}">⏸</button>
-            <button class="task-btn resume-btn" title="Resume" style="${isPaused ? "" : "display:none"}">▶</button>
+            <button class="task-btn pause-btn"  title="${getAdapterPauseText(currentNasId)}"  style="${canPause ? "" : "display:none"}">⏸</button>
+            <button class="task-btn resume-btn" title="Resume" style="${canResume ? "" : "display:none"}">▶</button>
             <button class="task-btn danger delete-btn" title="Delete">✕</button>
           </div>
         </div>
@@ -943,13 +957,13 @@ document.getElementById("retryBtn").addEventListener("click", refresh);
 
 document.getElementById("pauseAllBtn").addEventListener("click", () => {
   const visible = getVisibleTasks();
-  const ids = visible.filter(t => t.status === "downloading").map(t => t.id);
+  const ids = visible.filter(t => canPauseTask(t.status)).map(t => t.id);
   if (ids.length) taskAction("pause", ids);
 });
 
 document.getElementById("resumeAllBtn").addEventListener("click", () => {
   const visible = getVisibleTasks();
-  const ids = visible.filter(t => t.status === "paused").map(t => t.id);
+  const ids = visible.filter(t => canResumeTask(t.status)).map(t => t.id);
   if (ids.length) taskAction("resume", ids);
 });
 
