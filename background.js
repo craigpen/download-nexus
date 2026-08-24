@@ -852,7 +852,7 @@ async function sendDownload(uri, nasId = null) {
     const adapter = getAdapter(nasId, s);
     await adapter.addDownload(uri);
     const displayName = isMagnet ? decodeName(uri) : extractFileName(uri);
-    notify("✅ Sent to Download Station", displayName || uri.slice(0, 80));
+    notify(`✅ Sent to ${s.name}`, displayName || uri.slice(0, 80));
   } catch (err) {
     notify("❌ NAS error", err.message);
     dbg("ERROR", "SEND_DOWNLOAD failed", err.message);
