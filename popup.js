@@ -581,7 +581,7 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
   const password = document.getElementById("nasPassword").value;
   const statusEl = document.getElementById("nasFormStatus");
   if (!password) {
-    statusEl.textContent = "⚠️ Password is required";
+    statusEl.textContent = "Password is required";
     statusEl.className = "settings-status err";
     setTimeout(() => { statusEl.textContent = ""; }, 4000);
     return;
@@ -605,7 +605,7 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
     await send({ type: "ADD_NAS", nas: { id: nasId, ...nasConfig } });
   }
 
-  statusEl.textContent = "✅ Device saved!";
+  statusEl.textContent = "Device saved!";
   statusEl.className = "settings-status ok";
   await loadNasList();
   setTimeout(() => { showNasListView(); }, 500);
@@ -628,7 +628,7 @@ document.getElementById("nasPassword").addEventListener("input", updateTestButto
 
 document.getElementById("testNasBtn").addEventListener("click", async () => {
   const el = document.getElementById("testNasStatus");
-  el.textContent = "⏳ Connecting…";
+  el.textContent = "Connecting…";
   el.className = "settings-status";
 
   const nasId = editingNasId || `test-${Date.now()}`;
@@ -646,14 +646,14 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
   try {
     const resp = await send({ type: "TEST_CONNECTION", nasId, settings });
     if (resp?.ok) {
-      el.textContent = `✅ Connected! Download Station ${resp.version}`;
+      el.textContent = `Connected! Download Station ${resp.version}`;
       el.className = "settings-status ok";
     } else {
-      el.textContent = `❌ ${resp?.error ?? "Unknown error"}`;
+      el.textContent = resp?.error ?? "Unknown error";
       el.className = "settings-status err";
     }
   } catch (err) {
-    el.textContent = `❌ Extension error: ${err.message}`;
+    el.textContent = `Extension error: ${err.message}`;
     el.className = "settings-status err";
   }
 });
@@ -668,10 +668,10 @@ function renderWhitelistSettings() {
   const list = Array.from(whitelistSet);
   if (list.length === 0) {
     modeEl.className = "whitelist-mode everywhere";
-    modeEl.textContent = "🌐 Scanning every website (default)";
+    modeEl.textContent = "Scanning every website (default)";
   } else {
     modeEl.className = "whitelist-mode restricted";
-    modeEl.textContent = `📌 Restricted mode — scanning only ${list.length} whitelisted domain${list.length !== 1 ? "s" : ""}`;
+    modeEl.textContent = `Restricted mode — scanning only ${list.length} whitelisted domain${list.length !== 1 ? "s" : ""}`;
   }
 
   if (list.length === 0) {
@@ -769,13 +769,13 @@ document.getElementById("importFile").addEventListener("change", async e => {
       }
     }
 
-    el.textContent = "✅ Config imported successfully!";
+    el.textContent = "Config imported successfully!";
     el.className = "settings-status ok";
     await loadNasList();
     await loadWhitelist();
     setTimeout(() => { el.textContent = ""; }, 2000);
   } catch (err) {
-    el.textContent = `❌ Import failed: ${err.message}`;
+    el.textContent = `Import failed: ${err.message}`;
     el.className = "settings-status err";
   }
 
