@@ -5,7 +5,7 @@ A browser extension for Edge/Chrome that intercepts magnet links and torrent fil
 ## Features
 
 - **Multi-NAS support**: Configure and manage multiple NAS devices (currently Synology; extensible for others)
-  - Add/edit/delete devices in options page
+  - Add/edit/delete devices from the settings view in the popup (gear icon)
   - Each device has independent session and settings
   - Export/import config with option to exclude plaintext passwords
 - **Magnet link & torrent support**: Detects and handles both magnet links and `.torrent` files
@@ -22,7 +22,7 @@ A browser extension for Edge/Chrome that intercepts magnet links and torrent fil
   - Only scans whitelisted domains for performance
 - **Light/Dark theme**: Auto-detects browser/OS preference
 - **Error handling**: Graceful error messages with retry functionality
-- **Debug logging**: Built-in debug log for troubleshooting (hidden by default)
+- **Instant popup load**: Last known task list is cached and painted immediately on open, then refreshed live
 
 ## Security
 
@@ -39,7 +39,7 @@ This extension stores NAS device credentials (hostname, port, username, password
 
 ### Adding NAS Devices
 
-1. Open extension options (gear icon)
+1. Open the extension popup and click the gear icon to switch to Settings
 2. Click **"+ Add NAS Device"**
 3. Select device type (currently **Synology** available)
 4. Enter device details:
@@ -75,10 +75,10 @@ The content script can be optimized by whitelisting specific domains where you f
 4. Go to `edge://extensions` or `chrome://extensions`
 5. Enable Developer Mode
 6. Click "Load unpacked" and select `dist/chrome-mv3/`
-7. Click the extension icon and go to options (gear icon)
+7. Click the extension icon, then the gear icon to open Settings
 8. Click **"+ Add NAS Device"** and configure your NAS
 9. Test the connection to verify settings
-10. Back in the popup, your NAS task queue should load
+10. Click back — your NAS task queue should load
 
 ### Building for Different Browsers
 
@@ -107,7 +107,6 @@ Your support helps fund continued improvements and feature development.
 
 ### File Structure
 - **background.js**: Service worker handling API calls, session management, and NAS CRUD operations
-- **popup.html/popup.js**: Popup UI for viewing/managing tasks with tabs per NAS device
-- **options.html/options.js**: Settings page for adding/editing/deleting NAS devices and managing whitelist
+- **popup.html/popup.js**: Popup UI — task manager view plus an in-popup Settings view (gear icon) for adding/editing/deleting NAS devices, managing the whitelist, and backup/restore
 - **content.js**: Injects UI buttons next to magnet/torrent links on web pages
 - **manifest.json**: Extension configuration and permissions

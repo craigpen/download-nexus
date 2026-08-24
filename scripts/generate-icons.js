@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Regenerates icons/icon{16,48,128}.png from the cloud-download glyph
-// used throughout the UI (options.html header, popup.html header).
+// used throughout popup.html (header, notifications, toolbar icon).
 
 const fs = require('fs');
 const path = require('path');

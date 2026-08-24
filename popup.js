@@ -1,13 +1,14 @@
-// popup.js — Download Station task manager
+// popup.js — Download Station task manager + settings
 
-let allTasks     = [];
-let filter       = "downloading";
-let pollTimer    = null;
+let allTasks      = [];
+let filter        = "downloading";
+let pollTimer     = null;
 let currentDomain = null;
-let whitelistSet = new Set();
-let nasList      = [];
-let currentNasId = null;
+let whitelistSet  = new Set();
+let nasList       = [];
+let currentNasId  = null;
 let nasConnStatus = {}; // Track connection status per NAS
+let editingNasId  = null;
 
 // ── utilities ─────────────────────────────────────────────────────────────
 
@@ -49,6 +50,15 @@ function progressColor(status) {
   if (status === "finished") return "#4caf7d";
   if (status === "paused")   return "#e3b341";
   return "#5b9cf6";
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ── messaging ─────────────────────────────────────────────────────────────
@@ -230,14 +240,6 @@ function renderTasks() {
   updateFooterButtons();
 }
 
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 // ── task cache (paint instantly on open, refresh in the background) ────────
 
 function loadCachedTasks(nasId) {
@@ -329,7 +331,7 @@ async function taskAction(action, ids) {
   }
 }
 
-// ── NAS management ────────────────────────────────────────────────────────
+// ── NAS management (shared between main tabs and settings) ─────────────────
 
 async function loadNasList() {
   return new Promise(resolve => {
@@ -345,13 +347,15 @@ async function loadNasList() {
       } else {
         // NAS configured
         document.getElementById("noNasContainer").classList.remove("show");
+        document.getElementById("taskList").style.display = "";
         // Set current NAS to first in list if not set
-        if (!currentNasId) {
+        if (!currentNasId || !nasList.some(n => n.id === currentNasId)) {
           currentNasId = nasList[0].id;
         }
       }
 
       renderNasTabs(); // Render tabs after setting currentNasId
+      renderSettingsNasList();
       resolve(nasList);
     });
   });
@@ -402,6 +406,7 @@ async function loadWhitelist() {
     const resp = await send({ type: "GET_WHITELIST" });
     whitelistSet = new Set(resp.list || []);
     updateWhitelistUI();
+    renderWhitelistSettings();
   } catch (err) {
     console.error("[NAS] Failed to load whitelist:", err);
   }
@@ -443,10 +448,339 @@ async function toggleWhitelist() {
       whitelistSet.add(currentDomain);
     }
     updateWhitelistUI();
+    renderWhitelistSettings();
   } catch (err) {
     console.error("[NAS] Whitelist update error:", err);
   }
 }
+
+// ── settings: view toggle ───────────────────────────────────────────────────
+
+function showSettings() {
+  document.getElementById("mainView").classList.remove("show");
+  document.getElementById("settingsView").classList.add("show");
+  document.getElementById("headerTitle").textContent = "Settings";
+  document.getElementById("mainHeaderControls").style.display = "none";
+  document.getElementById("gearIcon").style.display = "none";
+  document.getElementById("backIcon").style.display = "";
+  document.getElementById("settingsBtn").title = "Back";
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  showNasListView();
+  renderSettingsNasList();
+  renderWhitelistSettings();
+}
+
+async function showMainView() {
+  document.getElementById("settingsView").classList.remove("show");
+  document.getElementById("mainView").classList.add("show");
+  document.getElementById("headerTitle").textContent = "NAS Download Helper";
+  document.getElementById("mainHeaderControls").style.display = "";
+  document.getElementById("gearIcon").style.display = "";
+  document.getElementById("backIcon").style.display = "none";
+  document.getElementById("settingsBtn").title = "Settings";
+  await paintCachedTasks();
+  refresh();
+  if (!pollTimer) pollTimer = setInterval(refresh, 5000);
+}
+
+// ── settings: NAS device list ───────────────────────────────────────────────
+
+function renderSettingsNasList() {
+  const container = document.getElementById("settingsNasList");
+  if (!container) return;
+  if (nasList.length === 0) {
+    container.innerHTML = '<div class="settings-empty">No NAS devices configured yet.</div>';
+    return;
+  }
+  container.innerHTML = nasList.map(nas => `
+    <div class="nas-item" data-nas-id="${escHtml(nas.id)}">
+      <div class="nas-item-info">
+        <div class="nas-item-name">${escHtml(nas.name)}</div>
+        <div class="nas-item-host">${escHtml(nas.host)}:${escHtml(String(nas.port))}</div>
+      </div>
+      <button type="button" class="mini-delete-btn" data-nas-id="${escHtml(nas.id)}">✕</button>
+    </div>
+  `).join("");
+
+  container.querySelectorAll(".nas-item").forEach(item => {
+    item.addEventListener("click", e => {
+      if (e.target.classList.contains("mini-delete-btn")) return;
+      editNas(item.dataset.nasId);
+    });
+  });
+  container.querySelectorAll(".mini-delete-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const nas = nasList.find(n => n.id === btn.dataset.nasId);
+      if (confirm(`Delete "${nas?.name}"?`)) deleteNasDevice(btn.dataset.nasId);
+    });
+  });
+}
+
+function showNasListView() {
+  document.getElementById("settingsNasListWrap").style.display = "";
+  document.getElementById("nasForm").classList.remove("show");
+  editingNasId = null;
+}
+
+function showNasFormView() {
+  document.getElementById("settingsNasListWrap").style.display = "none";
+  document.getElementById("nasForm").classList.add("show");
+}
+
+function editNas(nasId) {
+  editingNasId = nasId;
+  const nas = nasList.find(n => n.id === nasId);
+  if (!nas) return;
+
+  document.getElementById("formTitle").textContent = `Edit ${nas.name}`;
+  document.getElementById("deleteNasBtn").style.display = "";
+  document.getElementById("nasName").value = nas.name;
+  document.getElementById("nasType").value = nas.type || "synology";
+  document.getElementById("nasHost").value = nas.host;
+  document.getElementById("nasPort").value = nas.port;
+  document.getElementById("nasHttps").checked = nas.https;
+  document.getElementById("nasUsername").value = nas.username;
+  document.getElementById("nasPassword").value = nas.password;
+  document.getElementById("nasDestination").value = nas.destination || "";
+  document.getElementById("nasFormStatus").textContent = "";
+  document.getElementById("testNasStatus").textContent = "";
+
+  showNasFormView();
+  updateTestButtonState();
+}
+
+function addNewNas() {
+  editingNasId = null;
+  document.getElementById("formTitle").textContent = "Add NAS Device";
+  document.getElementById("deleteNasBtn").style.display = "none";
+  document.getElementById("nasName").value = "";
+  document.getElementById("nasType").value = "synology";
+  document.getElementById("nasHost").value = "192.168.0.1";
+  document.getElementById("nasPort").value = "5000";
+  document.getElementById("nasHttps").checked = false;
+  document.getElementById("nasUsername").value = "admin";
+  document.getElementById("nasPassword").value = "";
+  document.getElementById("nasDestination").value = "";
+  document.getElementById("nasFormStatus").textContent = "";
+  document.getElementById("testNasStatus").textContent = "";
+
+  showNasFormView();
+  updateTestButtonState();
+}
+
+async function deleteNasDevice(nasId) {
+  await send({ type: "DELETE_NAS", nasId });
+  if (currentNasId === nasId) currentNasId = null;
+  await loadNasList();
+  showNasListView();
+}
+
+document.getElementById("nasForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const password = document.getElementById("nasPassword").value;
+  const statusEl = document.getElementById("nasFormStatus");
+  if (!password) {
+    statusEl.textContent = "⚠️ Password is required";
+    statusEl.className = "settings-status err";
+    setTimeout(() => { statusEl.textContent = ""; }, 4000);
+    return;
+  }
+
+  const nasConfig = {
+    type: document.getElementById("nasType").value,
+    name: document.getElementById("nasName").value.trim(),
+    host: document.getElementById("nasHost").value.trim(),
+    port: document.getElementById("nasPort").value.trim(),
+    https: document.getElementById("nasHttps").checked,
+    username: document.getElementById("nasUsername").value.trim(),
+    password,
+    destination: document.getElementById("nasDestination").value.trim()
+  };
+
+  if (editingNasId) {
+    await send({ type: "UPDATE_NAS", nasId: editingNasId, updates: nasConfig });
+  } else {
+    const nasId = `synology-${Date.now()}`;
+    await send({ type: "ADD_NAS", nas: { id: nasId, ...nasConfig } });
+  }
+
+  statusEl.textContent = "✅ Device saved!";
+  statusEl.className = "settings-status ok";
+  await loadNasList();
+  setTimeout(() => { showNasListView(); }, 500);
+});
+
+document.getElementById("deleteNasBtn").addEventListener("click", e => {
+  e.preventDefault();
+  if (confirm("Are you sure you want to delete this NAS device?")) deleteNasDevice(editingNasId);
+});
+
+function updateTestButtonState() {
+  const password = document.getElementById("nasPassword").value.trim();
+  const testBtn = document.getElementById("testNasBtn");
+  const hasPassword = password.length > 0;
+  testBtn.disabled = !hasPassword;
+  testBtn.title = hasPassword ? "Test connection to this NAS" : "Enter a password to test connection";
+}
+
+document.getElementById("nasPassword").addEventListener("input", updateTestButtonState);
+
+document.getElementById("testNasBtn").addEventListener("click", async () => {
+  const el = document.getElementById("testNasStatus");
+  el.textContent = "⏳ Connecting…";
+  el.className = "settings-status";
+
+  const nasId = editingNasId || `test-${Date.now()}`;
+  const settings = {
+    name: document.getElementById("nasName").value.trim() || "Test NAS",
+    host: document.getElementById("nasHost").value.trim(),
+    port: document.getElementById("nasPort").value.trim(),
+    https: document.getElementById("nasHttps").checked,
+    username: document.getElementById("nasUsername").value.trim(),
+    password: document.getElementById("nasPassword").value,
+    destination: document.getElementById("nasDestination").value.trim(),
+    type: "synology"
+  };
+
+  try {
+    const resp = await send({ type: "TEST_CONNECTION", nasId, settings });
+    if (resp?.ok) {
+      el.textContent = `✅ Connected! Download Station ${resp.version}`;
+      el.className = "settings-status ok";
+    } else {
+      el.textContent = `❌ ${resp?.error ?? "Unknown error"}`;
+      el.className = "settings-status err";
+    }
+  } catch (err) {
+    el.textContent = `❌ Extension error: ${err.message}`;
+    el.className = "settings-status err";
+  }
+});
+
+// ── settings: whitelist management ──────────────────────────────────────────
+
+function renderWhitelistSettings() {
+  const modeEl = document.getElementById("whitelistModeSettings");
+  const container = document.getElementById("whitelistListSettings");
+  if (!modeEl || !container) return;
+
+  const list = Array.from(whitelistSet);
+  if (list.length === 0) {
+    modeEl.className = "whitelist-mode everywhere";
+    modeEl.textContent = "🌐 Scanning every website (default)";
+  } else {
+    modeEl.className = "whitelist-mode restricted";
+    modeEl.textContent = `📌 Restricted mode — scanning only ${list.length} whitelisted domain${list.length !== 1 ? "s" : ""}`;
+  }
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="settings-empty">No domains whitelisted.</div>';
+    return;
+  }
+  container.innerHTML = list.map(domain => `
+    <div class="settings-list-item">
+      <span class="mono">${escHtml(domain)}</span>
+      <button type="button" class="mini-delete-btn" data-domain="${escHtml(domain)}">Remove</button>
+    </div>
+  `).join("");
+  container.querySelectorAll(".mini-delete-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await send({ type: "REMOVE_WHITELIST", domain: btn.dataset.domain });
+      whitelistSet.delete(btn.dataset.domain);
+      renderWhitelistSettings();
+      updateWhitelistUI();
+    });
+  });
+}
+
+document.getElementById("whitelistAddBtnSettings").addEventListener("click", async () => {
+  const input = document.getElementById("whitelistInputSettings");
+  const domain = input.value.trim().toLowerCase();
+  if (!domain) return;
+  await send({ type: "ADD_WHITELIST", domain });
+  whitelistSet.add(domain);
+  input.value = "";
+  renderWhitelistSettings();
+  updateWhitelistUI();
+});
+
+document.getElementById("whitelistInputSettings").addEventListener("keypress", e => {
+  if (e.key === "Enter") document.getElementById("whitelistAddBtnSettings").click();
+});
+
+// ── settings: backup / restore ──────────────────────────────────────────────
+
+function exportConfig() {
+  const includePasswords = document.getElementById("exportWithPasswords").checked;
+
+  const nasListExport = nasList.map(nas => {
+    const copy = { ...nas };
+    if (!includePasswords) delete copy.password;
+    return copy;
+  });
+
+  const config = {
+    version: 1,
+    nasList: nasListExport,
+    whitelist: Array.from(whitelistSet)
+  };
+
+  const json = JSON.stringify(config, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nas-download-helper-config-${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("exportBtn").addEventListener("click", exportConfig);
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+
+document.getElementById("importFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const el = document.getElementById("importStatus");
+
+  try {
+    const text = await file.text();
+    const config = JSON.parse(text);
+
+    if (config.version !== 1) throw new Error("Unsupported config version");
+
+    if (config.nasList && Array.isArray(config.nasList)) {
+      for (const importedNas of config.nasList) {
+        const existing = nasList.find(n => n.name === importedNas.name);
+        if (existing) {
+          await send({ type: "UPDATE_NAS", nasId: existing.id, updates: importedNas });
+        } else {
+          await send({ type: "ADD_NAS", nas: importedNas });
+        }
+      }
+    }
+
+    if (config.whitelist && Array.isArray(config.whitelist)) {
+      for (const domain of config.whitelist) {
+        await send({ type: "ADD_WHITELIST", domain });
+      }
+    }
+
+    el.textContent = "✅ Config imported successfully!";
+    el.className = "settings-status ok";
+    await loadNasList();
+    await loadWhitelist();
+    setTimeout(() => { el.textContent = ""; }, 2000);
+  } catch (err) {
+    el.textContent = `❌ Import failed: ${err.message}`;
+    el.className = "settings-status err";
+  }
+
+  e.target.value = "";
+});
 
 // ── init ──────────────────────────────────────────────────────────────────
 
@@ -478,12 +812,13 @@ document.getElementById("resumeAllBtn").addEventListener("click", () => {
 });
 
 document.getElementById("settingsBtn").addEventListener("click", () => {
-  chrome.runtime.openOptionsPage();
+  const inSettings = document.getElementById("settingsView").classList.contains("show");
+  if (inSettings) showMainView(); else showSettings();
 });
 
-document.getElementById("configureBtn").addEventListener("click", () => {
-  chrome.runtime.openOptionsPage();
-});
+document.getElementById("configureBtn").addEventListener("click", showSettings);
+document.getElementById("addNasBtn").addEventListener("click", addNewNas);
+document.getElementById("backToListBtn").addEventListener("click", showNasListView);
 
 document.getElementById("openDSBtn").addEventListener("click", () => {
   if (!currentNasId) return;
