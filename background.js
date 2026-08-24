@@ -70,7 +70,7 @@ class QBittorrentAdapter extends NasAdapter {
 
     return data.map(t => ({
       id: t.hash,
-      name: t.name,
+      title: t.name,
       status: t.state,
       progress: t.progress * 100,
       downloaded: t.downloaded,
@@ -78,8 +78,7 @@ class QBittorrentAdapter extends NasAdapter {
       size: t.total_size,
       speed_down: t.dl_speed,
       speed_up: t.up_speed,
-      eta: t.eta,
-      added_on: t.added_on
+      eta: t.eta
     }));
   }
 
