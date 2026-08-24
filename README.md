@@ -7,7 +7,7 @@ A browser extension for Edge/Chrome that intercepts magnet links and torrent fil
 - **Multi-NAS support**: Configure and manage multiple NAS devices (currently Synology; extensible for others)
   - Add/edit/delete devices in options page
   - Each device has independent session and settings
-  - Export/import config with optional password protection
+  - Export/import config with option to exclude plaintext passwords
 - **Magnet link & torrent support**: Detects and handles both magnet links and `.torrent` files
   - Inline buttons next to links (no floating/overlapping)
   - NAS selector popup when multiple devices configured
@@ -26,7 +26,7 @@ A browser extension for Edge/Chrome that intercepts magnet links and torrent fil
 
 ## Security
 
-- **CSRF Protection**: Validates magnet URI format and torrent URLs before sending; user confirmation required
+- **CSRF Protection**: Validates magnet URI format and torrent URLs before sending
 - **Credentials Validation**: Warns if password is empty; Test Connection button disabled without password
 - **URL Validation**: Defense-in-depth with validation in both content script and background service worker
 - **Secure Session Management**: Reuses authentication session to avoid repeated credential exposure
