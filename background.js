@@ -92,9 +92,9 @@ class QBittorrentAdapter extends NasAdapter {
 
   _displayStatus(rawState) {
     // Map qBittorrent states to UI-friendly display statuses
-    // Stalled states get their own "stalled" tab
     if (rawState === "stalledDL" || rawState === "stalledUP") return "stalled";
-    // All other states pass through as-is (downloading, seeding, paused, etc.)
+    if (rawState === "stoppedDL" || rawState === "stoppedUP") return "paused";
+    // All other states pass through as-is (downloading, seeding, etc.)
     return rawState;
   }
 
