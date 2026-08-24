@@ -111,10 +111,11 @@ class QBittorrentAdapter extends NasAdapter {
   }
 
   async taskAction(action, ids) {
+    // qBittorrent API v2 action endpoints
     const actionMap = {
-      "pause": "pause",
-      "resume": "resume",
-      "delete": "deletePerm"  // qBittorrent: deletePerm = delete with files
+      "pause": "stop",      // qBittorrent uses /stop not /pause
+      "resume": "start",    // qBittorrent uses /start not /resume
+      "delete": "deletePerm"
     };
 
     const qbAction = actionMap[action];
@@ -123,15 +124,15 @@ class QBittorrentAdapter extends NasAdapter {
     await this._call(async () => {
       const params = new URLSearchParams();
       params.append("hashes", ids.join("|"));
-      const path = action === "delete" ? `/torrents/${qbAction}` : `/torrents/${qbAction}`;
-      const resp = await this._fetch(path, {
+      const resp = await this._fetch(`/torrents/${qbAction}`, {
         method: "POST",
         body: params,
         headers: { "Content-Type": "application/x-www-form-urlencoded" }
       });
       const text = await resp.text();
-      if (text && !text.toLowerCase().match(/^ok\.?$/)) {
-        throw new Error(`qBit action failed: ${text}`);
+      // qBittorrent returns empty response (200) on success
+      if (!resp.ok) {
+        throw new Error(`qBit action failed: HTTP ${resp.status}`);
       }
     });
   }
