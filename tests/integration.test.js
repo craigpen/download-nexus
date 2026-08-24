@@ -188,6 +188,44 @@ describe('qBittorrent Integration Tests', () => {
           `Progress should be 0-1, got ${torrent.progress}`);
       }
     }, 10000);
+
+    test('should map qBittorrent fields to adapter format', async () => {
+      await qbApi('POST', '/auth/login', QB_CONFIG);
+      const resp = await qbApi('GET', '/torrents/info');
+
+      if (resp.json && resp.json.length > 0) {
+        const qbTorrent = resp.json[0];
+        console.log('Raw qBittorrent torrent:', JSON.stringify(qbTorrent, null, 2));
+
+        // Simulate what QBittorrentAdapter.listTasks() does
+        const mappedTask = {
+          id: qbTorrent.hash,
+          title: qbTorrent.name,
+          status: qbTorrent.state,
+          progress: qbTorrent.progress * 100,
+          downloaded: qbTorrent.downloaded,
+          uploaded: qbTorrent.uploaded,
+          size: qbTorrent.total_size,
+          speed_down: qbTorrent.dlspeed,
+          speed_up: qbTorrent.upspeed,
+          eta: qbTorrent.eta
+        };
+
+        console.log('Mapped task:', JSON.stringify(mappedTask, null, 2));
+
+        // Verify all fields are present in mapped format
+        assert(mappedTask.id, 'Task should have id');
+        assert(mappedTask.title, 'Task should have title');
+        assert(mappedTask.status, 'Task should have status');
+        assert(typeof mappedTask.progress === 'number', 'progress should be number (0-100)');
+        assert(mappedTask.progress >= 0 && mappedTask.progress <= 100,
+          `Progress should be 0-100, got ${mappedTask.progress}`);
+        assert(typeof mappedTask.downloaded === 'number', 'downloaded should be number');
+        assert(typeof mappedTask.size === 'number', 'size should be number');
+        assert(typeof mappedTask.speed_down === 'number', `speed_down should be number, got ${typeof mappedTask.speed_down}: ${mappedTask.speed_down}`);
+        assert(typeof mappedTask.speed_up === 'number', `speed_up should be number, got ${typeof mappedTask.speed_up}: ${mappedTask.speed_up}`);
+      }
+    }, 10000);
   });
 
   describe('Error Handling', () => {

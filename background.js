@@ -76,8 +76,8 @@ class QBittorrentAdapter extends NasAdapter {
       downloaded: t.downloaded,
       uploaded: t.uploaded,
       size: t.total_size,
-      speed_down: t.dl_speed,
-      speed_up: t.up_speed,
+      speed_down: t.dlspeed,
+      speed_up: t.upspeed,
       eta: t.eta
     }));
     dbg("QBittorrentAdapter.listTasks returning:", tasks.length, "tasks with fields:", tasks[0] ? Object.keys(tasks[0]) : "none");
