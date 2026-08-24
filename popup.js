@@ -727,23 +727,35 @@ function updateDestinationFieldVisibility() {
   destinationField.style.display = type === "synology" ? "" : "none";
 }
 
-function updateFormDefaultsForType() {
+function updateFormFieldsForType() {
   const type = document.getElementById("nasType").value;
+  const usernameField = document.getElementById("usernameField");
+  const passwordField = document.getElementById("passwordField");
+  const usernameInput = document.getElementById("nasUsername");
+  const passwordInput = document.getElementById("nasPassword");
 
-  // Set type-specific defaults
+  // Synology and qBittorrent require username/password
+  const needsAuth = type === "synology" || type === "qbittorrent";
+
+  usernameField.style.display = needsAuth ? "" : "none";
+  passwordField.style.display = needsAuth ? "" : "none";
+
+  // Update required attribute and placeholders based on adapter type
   if (type === "synology") {
-    document.getElementById("nasUsername").placeholder = "admin";
     document.getElementById("nasPort").value = "5000";
-    document.getElementById("nasHttps").checked = false;
+    usernameInput.placeholder = "admin";
+    usernameInput.required = true;
+    passwordInput.required = true;
   } else if (type === "qbittorrent") {
-    document.getElementById("nasUsername").placeholder = "admin (optional)";
     document.getElementById("nasPort").value = "8080";
-    document.getElementById("nasHttps").checked = false;
+    usernameInput.placeholder = "admin";
+    usernameInput.required = true;
+    passwordInput.required = true;
   } else if (type === "transmission") {
-    document.getElementById("nasUsername").placeholder = "(optional)";
     document.getElementById("nasPort").value = "9091";
-    document.getElementById("nasHttps").checked = false;
   }
+
+  document.getElementById("nasHttps").checked = false;
 }
 
 function editNas(nasId) {
@@ -782,7 +794,7 @@ function addNewNas() {
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
-  updateFormDefaultsForType();
+  updateFormFieldsForType();
   updateDestinationFieldVisibility();
   showNasFormView();
   updateTestButtonState();
@@ -797,18 +809,10 @@ async function deleteNasDevice(nasId) {
 
 document.getElementById("nasForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const nasType = document.getElementById("nasType").value;
-  const password = document.getElementById("nasPassword").value;
-  const username = document.getElementById("nasUsername").value.trim();
   const statusEl = document.getElementById("nasFormStatus");
 
-  // Synology requires password; Transmission is optional (can run without auth)
-  if (nasType === "synology" && !password) {
-    statusEl.textContent = "Password is required for Synology";
-    statusEl.className = "settings-status err";
-    setTimeout(() => { statusEl.textContent = ""; }, 4000);
-    return;
-  }
+  // Form validation is now handled by HTML required attributes per adapter type
+  // (Synology/qBittorrent require username/password, Transmission doesn't show them)
 
   const nasConfig = {
     type: document.getElementById("nasType").value,
@@ -841,7 +845,7 @@ document.getElementById("deleteNasBtn").addEventListener("click", e => {
 
 document.getElementById("nasType").addEventListener("change", () => {
   updateDestinationFieldVisibility();
-  updateFormDefaultsForType();
+  updateFormFieldsForType();
 });
 
 function updateTestButtonState() {
