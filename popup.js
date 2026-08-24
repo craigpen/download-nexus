@@ -487,11 +487,12 @@ function renderFilterTabs() {
     all: "All"
   };
 
-  const tabsContainer = document.querySelector(".tabs");
+  const tabsContainer = document.getElementById("tabBar");
   if (!tabsContainer) return;
 
-  // Clear existing tabs
+  // Clear existing tabs and show container
   tabsContainer.innerHTML = "";
+  tabsContainer.style.display = "flex";
 
   // Create tabs for enabled filters
   enabledTabs.forEach(filterType => {
