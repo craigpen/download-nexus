@@ -71,7 +71,7 @@ class QBittorrentAdapter extends NasAdapter {
     const tasks = data.map(t => ({
       id: t.hash,
       title: t.name,
-      status: t.state,
+      status: this._normalizeStatus(t.state),
       progress: t.progress * 100,
       downloaded: t.downloaded,
       uploaded: t.uploaded,
@@ -82,6 +82,36 @@ class QBittorrentAdapter extends NasAdapter {
     }));
     dbg("QBittorrentAdapter.listTasks returning:", tasks.length, "tasks with fields:", tasks[0] ? Object.keys(tasks[0]) : "none");
     return tasks;
+  }
+
+  _normalizeStatus(qbState) {
+    // Map qBittorrent states to standardized status names
+    const stateMap = {
+      // Downloading states
+      downloading: "downloading",
+      forcedDL: "downloading",
+      metaDL: "downloading",
+      forcedMetaDL: "downloading",
+      allocating: "downloading",
+      // Paused states
+      stoppedDL: "paused",
+      stoppedUP: "paused",
+      // Stalled states (treated as downloading/seeding)
+      stalledDL: "downloading",
+      stalledUP: "seeding",
+      // Seeding states
+      uploading: "seeding",
+      forcedUP: "seeding",
+      queuedForChecking: "waiting",
+      checkingUP: "waiting",
+      checkingDL: "waiting",
+      checkingResumeData: "waiting",
+      moving: "waiting",
+      // Error state
+      missingFiles: "error",
+      error: "error"
+    };
+    return stateMap[qbState] || "waiting";
   }
 
   async addDownload(uri, destination) {
