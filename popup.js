@@ -1,7 +1,7 @@
 // popup.js — Task manager + device settings
 
 // Adapter feature configuration - defines tabs, labels, and action capabilities for each adapter
-// Actions: pause (stop active transfer), resume (start/retry paused/stalled task), delete (remove task)
+// Actions: pause (stop active transfer), resume (start/retry paused/stalled task), delete (remove task, preserves files)
 const ADAPTER_FEATURES = {
   synology: {
     tabs: ["downloading", "seeding", "paused", "finished", "error"],
@@ -307,7 +307,7 @@ function renderTasks() {
           <div class="task-actions">
             <button class="task-btn pause-btn"  title="${getAdapterPauseText(currentNasId)}"  style="${canPause ? "" : "display:none"}">⏸</button>
             <button class="task-btn resume-btn" title="Resume" style="${canResume ? "" : "display:none"}">▶</button>
-            <button class="task-btn danger delete-btn" title="Delete">✕</button>
+            <button class="task-btn danger delete-btn" title="Remove task">✕</button>
           </div>
         </div>
         <div class="task-mid">
@@ -326,7 +326,7 @@ function renderTasks() {
       row.querySelector(".pause-btn").addEventListener("click", () => taskAction("pause",  [task.id]));
       row.querySelector(".resume-btn").addEventListener("click", () => taskAction("resume", [task.id]));
       row.querySelector(".delete-btn").addEventListener("click", () => {
-        if (confirm(`Delete "${task.title}"?`)) taskAction("delete", [task.id]);
+        if (confirm(`Remove task "${task.title}"? (files will be preserved)`)) taskAction("delete", [task.id]);
       });
       fragment.appendChild(row);
     }
