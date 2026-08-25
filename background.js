@@ -495,13 +495,13 @@ class DelugeAdapter extends NasAdapter {
 
   async taskAction(action, ids) {
     if (action === "pause") {
-      const resp = await this._rpc("core.pause_torrent", [ids]);
+      const resp = await this._rpc("core.pause_torrents", [ids]);
       if (resp.error) throw new Error(`Deluge pause failed: ${resp.error.message}`);
     } else if (action === "resume") {
-      const resp = await this._rpc("core.resume_torrent", [ids]);
+      const resp = await this._rpc("core.resume_torrents", [ids]);
       if (resp.error) throw new Error(`Deluge resume failed: ${resp.error.message}`);
     } else if (action === "delete") {
-      const resp = await this._rpc("core.remove_torrent", [ids, true]);
+      const resp = await this._rpc("core.remove_torrents", [ids, true]);
       if (resp.error) throw new Error(`Deluge delete failed: ${resp.error.message}`);
     }
   }
