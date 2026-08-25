@@ -763,9 +763,9 @@ function updateFormFieldsForType() {
     passwordInput.required = true;
   } else if (type === "deluge") {
     document.getElementById("nasPort").value = "8112";
-    usernameInput.placeholder = "admin (optional)";
+    usernameInput.placeholder = "Not used for JSON RPC";
     usernameInput.required = false;
-    passwordInput.required = false;
+    passwordInput.required = true;  // Deluge RPC only needs password
   } else if (type === "transmission") {
     document.getElementById("nasPort").value = "9091";
   }
