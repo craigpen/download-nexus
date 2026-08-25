@@ -955,12 +955,53 @@ document.getElementById("whitelistTextarea").addEventListener("blur", async e =>
 
 // ── settings: backup / restore ──────────────────────────────────────────────
 
-function exportConfig() {
-  const includePasswords = document.getElementById("exportWithPasswords").checked;
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" }, keyMaterial, 256);
+  return crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encryptConfig(config, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const enc = new TextEncoder();
+  const plaintext = enc.encode(JSON.stringify(config));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+  const encrypted = {
+    encrypted: true,
+    salt: Array.from(salt),
+    iv: Array.from(iv),
+    data: Array.from(new Uint8Array(ciphertext))
+  };
+  return JSON.stringify(encrypted);
+}
+
+async function decryptConfig(encryptedJson, password) {
+  const encrypted = JSON.parse(encryptedJson);
+  if (!encrypted.encrypted) throw new Error("File is not encrypted");
+  const salt = new Uint8Array(encrypted.salt);
+  const iv = new Uint8Array(encrypted.iv);
+  const key = await deriveKey(password, salt);
+  const ciphertext = new Uint8Array(encrypted.data);
+  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+  const dec = new TextDecoder();
+  return JSON.parse(dec.decode(plaintext));
+}
+
+async function exportConfig() {
+  const shouldEncrypt = document.getElementById("encryptExport").checked;
+  let password = null;
+
+  if (shouldEncrypt) {
+    password = prompt("Enter a password to encrypt your backup:");
+    if (password === null) return;
+    if (!password) { alert("Password cannot be empty"); return; }
+  }
 
   const nasListExport = nasList.map(nas => {
     const copy = { ...nas };
-    if (!includePasswords) delete copy.password;
     return copy;
   });
 
@@ -970,16 +1011,27 @@ function exportConfig() {
     whitelist: Array.from(whitelistSet)
   };
 
-  const json = JSON.stringify(config, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `nas-download-helper-config-${new Date().toISOString().split("T")[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  try {
+    let content;
+    if (shouldEncrypt) {
+      content = await encryptConfig(config, password);
+    } else {
+      content = JSON.stringify(config, null, 2);
+    }
+
+    const blob = new Blob([content], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const suffix = shouldEncrypt ? "-encrypted" : "";
+    a.download = `nas-download-helper-config-${new Date().toISOString().split("T")[0]}${suffix}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(`Export failed: ${err.message}`);
+  }
 }
 
 document.getElementById("exportBtn").addEventListener("click", exportConfig);
@@ -992,7 +1044,21 @@ document.getElementById("importFile").addEventListener("change", async e => {
 
   try {
     const text = await file.text();
-    const config = JSON.parse(text);
+    let config;
+
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.encrypted) {
+        const password = prompt("This backup is encrypted. Enter the password:");
+        if (password === null) throw new Error("Decryption cancelled");
+        config = await decryptConfig(text, password);
+      } else {
+        config = parsed;
+      }
+    } catch (err) {
+      if (err.message.includes("Decryption")) throw err;
+      throw new Error("Invalid backup file format");
+    }
 
     if (config.version !== 1) throw new Error("Unsupported config version");
 
