@@ -584,7 +584,8 @@ const DEFAULT_NAS_SYNOLOGY = {
 // ── debug log ──────────────────────────────────────────────────────────────
 
 const debugLog = [];
-self.debugLog = debugLog; // Expose for CDP access
+let logBuffer = [];
+let flushTimer = null;
 
 function dbg(level, msg, detail) {
   const entry = {
@@ -595,11 +596,38 @@ function dbg(level, msg, detail) {
   };
   debugLog.push(entry);
   if (debugLog.length > 200) debugLog.shift();
+
+  const logLine = `[${entry.ts}] [${level}] ${msg}${detail ? ' | ' + detail : ''}`;
   console[level === "ERROR" ? "error" : level === "WARN" ? "warn" : "log"](
     `[NAS][${level}] ${msg}`, detail ?? ""
   );
-  // Store in chrome.storage for CDP inspector access
-  chrome.storage.local.set({ debugLog: [...debugLog] }).catch(() => {});
+
+  // Buffer log for storage (append-only pattern like hang-time)
+  logBuffer.push(logLine);
+  if (!flushTimer) {
+    flushTimer = setTimeout(() => _flushLogs(), 500);
+  }
+}
+
+async function _flushLogs() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (logBuffer.length === 0) return;
+
+  try {
+    const newLogs = logBuffer.join('\n');
+    const existing = await new Promise(r => chrome.storage.local.get('nas_debug_logs', d => r(d.nas_debug_logs || '')));
+    const allLogs = existing ? existing + '\n' + newLogs : newLogs;
+    await new Promise((r, e) => chrome.storage.local.set({ nas_debug_logs: allLogs }, () => {
+      if (chrome.runtime.lastError) e(chrome.runtime.lastError);
+      else r();
+    }));
+    logBuffer = [];
+  } catch (error) {
+    console.error('[NAS] Failed to flush logs:', error);
+  }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
