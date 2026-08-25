@@ -1008,7 +1008,8 @@ async function exportConfig() {
   const config = {
     version: 1,
     nasList: nasListExport,
-    whitelist: Array.from(whitelistSet)
+    whitelist: Array.from(whitelistSet),
+    whitelistMode: whitelistMode
   };
 
   try {
@@ -1077,6 +1078,10 @@ document.getElementById("importFile").addEventListener("change", async e => {
       for (const domain of config.whitelist) {
         await send({ type: "ADD_WHITELIST", domain });
       }
+    }
+
+    if (config.whitelistMode) {
+      await send({ type: "SET_WHITELIST_MODE", mode: config.whitelistMode });
     }
 
     el.textContent = "Config imported successfully!";
