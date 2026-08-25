@@ -776,6 +776,7 @@ function editNas(nasId) {
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
+  updateFormFieldsForType();
   updateDestinationFieldVisibility();
   showNasFormView();
   updateTestButtonState();
