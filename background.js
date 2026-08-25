@@ -598,6 +598,8 @@ function dbg(level, msg, detail) {
   console[level === "ERROR" ? "error" : level === "WARN" ? "warn" : "log"](
     `[NAS][${level}] ${msg}`, detail ?? ""
   );
+  // Store in chrome.storage for CDP inspector access
+  chrome.storage.local.set({ debugLog: [...debugLog] }).catch(() => {});
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
