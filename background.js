@@ -312,7 +312,7 @@ class TransmissionAdapter extends NasAdapter {
     let filename = null;
     if (isTorrentUrl) {
       const torrentBuffer = await downloadTorrentFile(uri);
-      filename = Buffer.from(torrentBuffer).toString("base64");
+      filename = arrayBufferToBase64(torrentBuffer);
     }
 
     const body = {
@@ -486,7 +486,7 @@ class DelugeAdapter extends NasAdapter {
     let filedata = null;
     if (isTorrentUrl) {
       const torrentBuffer = await downloadTorrentFile(uri);
-      filedata = Buffer.from(torrentBuffer).toString("base64");
+      filedata = arrayBufferToBase64(torrentBuffer);
     }
 
     const options = {};
@@ -1159,6 +1159,15 @@ async function downloadTorrentFile(url) {
   const resp = await fetch(url, { credentials: "omit" });
   if (!resp.ok) throw new Error(`Failed to download torrent: HTTP ${resp.status}`);
   return resp.arrayBuffer();
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // ── test connection ────────────────────────────────────────────────────────
