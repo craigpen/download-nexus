@@ -1285,9 +1285,9 @@ async function taskAction(s, sid, action, ids) {
     id:      ids.join(","),
     _sid:    sid
   });
-  // For delete action, don't delete the files (non-destructive)
+  // For delete action, delete the torrent file but not the downloads (non-destructive)
   if (action === "delete") {
-    params.append("delete_file", "false");
+    params.append("delete_file", "true");
   }
   const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
   const resp = await nasFetch(`TASK_${action.toUpperCase()}`, url, {
