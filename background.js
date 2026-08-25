@@ -408,6 +408,11 @@ class TransmissionAdapter extends NasAdapter {
 }
 
 class DelugeAdapter extends NasAdapter {
+  constructor(nasId, config) {
+    super(nasId, config);
+    this._sessionCookie = null;
+  }
+
   _baseUrl() {
     const scheme = this.config.https ? "https" : "http";
     return `${scheme}://${this.config.host}:${this.config.port}`;
@@ -418,9 +423,9 @@ class DelugeAdapter extends NasAdapter {
       throw new Error("Settings incomplete: missing host or port");
     }
     try {
-      // Deluge doesn't require auth for test, but we'll try to call a simple method
-      const resp = await this._rpc("daemon.login", [this.config.username || "", this.config.password || "", 2]);
-      if (resp.error) throw new Error(resp.error.message || "Auth failed");
+      // Test by authenticating with the RPC endpoint
+      const resp = await this._rpc("auth.login", [this.config.password || ""]);
+      if (!resp.result) throw new Error("Authentication failed");
       return { ok: true, version: "Deluge" };
     } catch (err) {
       throw new Error(`Deluge connection failed: ${err.message}`);
@@ -501,17 +506,47 @@ class DelugeAdapter extends NasAdapter {
   }
 
   async _rpc(method, params = []) {
-    const payload = { method, params, id: 1 };
+    // Deluge RPC via web UI JSON endpoint
+    // Note: Cookies are not automatically managed in Node.js fetch, so use credentials: 'include'
+    const payload = { method, params, id: Date.now() };
     const url = `${this._baseUrl()}/json`;
 
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      };
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
+      // Add session cookie if we have one
+      if (this._sessionCookie) {
+        headers["Cookie"] = this._sessionCookie;
+      }
+
+      const resp = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        credentials: "include"
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      // Extract and store session cookie from response
+      const setCookie = resp.headers.get("set-cookie");
+      if (setCookie) {
+        this._sessionCookie = setCookie.split(";")[0];
+      }
+
+      const data = await resp.json();
+
+      // Deluge returns { result: ... } or { error: ... }
+      if (data.error) {
+        throw new Error(data.error.message || "RPC error");
+      }
+      return data;
+    } catch (err) {
+      throw new Error(`Deluge RPC failed: ${err.message}`);
+    }
   }
 }
 

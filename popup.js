@@ -837,7 +837,7 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
     port: document.getElementById("nasPort").value.trim(),
     https: document.getElementById("nasHttps").checked,
     username: document.getElementById("nasUsername").value.trim(),
-    password,
+    password: document.getElementById("nasPassword").value,
     destination: document.getElementById("nasDestination").value.trim()
   };
 
