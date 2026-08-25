@@ -109,7 +109,7 @@ describe('Deluge Integration Tests', () => {
       return;
     }
 
-    const result = await delugeRpc('core.pause_torrent', [[torrentId]]);
+    const result = await delugeRpc('core.pause_torrents', [[torrentId]]);
     console.log('Pause result:', result);
 
     assert.ok(result !== null);
@@ -123,7 +123,7 @@ describe('Deluge Integration Tests', () => {
       return;
     }
 
-    const result = await delugeRpc('core.resume_torrent', [[torrentId]]);
+    const result = await delugeRpc('core.resume_torrents', [[torrentId]]);
     console.log('Resume result:', result);
 
     assert.ok(result !== null);
@@ -137,7 +137,7 @@ describe('Deluge Integration Tests', () => {
       return;
     }
 
-    const result = await delugeRpc('core.remove_torrent', [[torrentId], true]);
+    const result = await delugeRpc('core.remove_torrents', [[torrentId], true]);
     console.log('Remove result:', result);
 
     assert.ok(result !== null);
