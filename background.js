@@ -584,6 +584,8 @@ const DEFAULT_NAS_SYNOLOGY = {
 // ── debug log ──────────────────────────────────────────────────────────────
 
 const debugLog = [];
+self.debugLog = debugLog; // Expose for CDP access
+
 function dbg(level, msg, detail) {
   const entry = {
     ts: new Date().toISOString().replace("T", " ").slice(0, 23),
