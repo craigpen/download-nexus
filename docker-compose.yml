@@ -28,3 +28,20 @@ services:
       - /tmp/transmission:/config
       - /tmp/transmission/downloads:/downloads
     restart: unless-stopped
+
+  deluge:
+    image: linuxserver/deluge:latest
+    container_name: deluge-test
+    ports:
+      - "8112:8112"
+      - "6881:6881"
+      - "6881:6881/udp"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - DELUGE_LOGLEVEL=info
+    volumes:
+      - /tmp/deluge:/config
+      - /tmp/deluge/downloads:/downloads
+    restart: unless-stopped

@@ -30,6 +30,15 @@ const ADAPTER_FEATURES = {
       resume: ["paused", "stalled", "error"],
       delete: ["downloading", "seeding", "paused", "stalled", "finished", "error"]
     }
+  },
+  deluge: {
+    tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
+    pausedLabel: "Paused",
+    actions: {
+      pause: ["downloading", "seeding"],
+      resume: ["paused", "stalled", "error"],
+      delete: ["downloading", "seeding", "paused", "stalled", "finished", "error"]
+    }
   }
 };
 
@@ -734,8 +743,9 @@ function updateFormFieldsForType() {
   const usernameInput = document.getElementById("nasUsername");
   const passwordInput = document.getElementById("nasPassword");
 
-  // Synology and qBittorrent require username/password
-  const needsAuth = type === "synology" || type === "qbittorrent";
+  // Synology and qBittorrent require username/password; Transmission hides them
+  // Deluge shows them but they're optional
+  const needsAuth = type === "synology" || type === "qbittorrent" || type === "deluge";
 
   usernameField.style.display = needsAuth ? "" : "none";
   passwordField.style.display = needsAuth ? "" : "none";
@@ -751,6 +761,11 @@ function updateFormFieldsForType() {
     usernameInput.placeholder = "admin";
     usernameInput.required = true;
     passwordInput.required = true;
+  } else if (type === "deluge") {
+    document.getElementById("nasPort").value = "8112";
+    usernameInput.placeholder = "admin (optional)";
+    usernameInput.required = false;
+    passwordInput.required = false;
   } else if (type === "transmission") {
     document.getElementById("nasPort").value = "9091";
   }
