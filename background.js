@@ -424,6 +424,7 @@ class DelugeAdapter extends NasAdapter {
     }
     try {
       // Test by authenticating with the RPC endpoint
+      // Note: Deluge JSON RPC auth.login only takes password (not username)
       const resp = await this._rpc("auth.login", [this.config.password || ""]);
       if (!resp.result) throw new Error("Authentication failed");
       return { ok: true, version: "Deluge" };
