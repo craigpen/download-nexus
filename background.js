@@ -1316,6 +1316,12 @@ async function taskAction(s, sid, action, ids) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   try {
+    // Handle log retrieval (for debugging)
+    if (msg.type === "GET_LOGS") {
+      sendResponse({ logs: [...debugLog] });
+      return;
+    }
+
     dbg("INFO", "Message received", msg.type);
 
     if (msg.type === "SEND_MAGNET") {
