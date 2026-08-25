@@ -162,7 +162,7 @@ class QBittorrentAdapter extends NasAdapter {
     const actionMap = {
       "pause": "stop",      // qBittorrent uses /stop not /pause
       "resume": "start",    // qBittorrent uses /start not /resume
-      "delete": "deletePerm"
+      "delete": "delete"    // qBittorrent uses /delete endpoint
     };
 
     const qbAction = actionMap[action];
@@ -171,6 +171,9 @@ class QBittorrentAdapter extends NasAdapter {
     await this._call(async () => {
       const params = new URLSearchParams();
       params.append("hashes", ids.join("|"));
+      if (action === "delete") {
+        params.append("deleteFiles", "true");
+      }
       const resp = await this._fetch(`/torrents/${qbAction}`, {
         method: "POST",
         body: params,
