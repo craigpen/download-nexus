@@ -172,7 +172,7 @@ class QBittorrentAdapter extends NasAdapter {
       const params = new URLSearchParams();
       params.append("hashes", ids.join("|"));
       if (action === "delete") {
-        params.append("deleteFiles", "true");
+        params.append("deleteFiles", "false");
       }
       const resp = await this._fetch(`/torrents/${qbAction}`, {
         method: "POST",
@@ -504,7 +504,7 @@ class DelugeAdapter extends NasAdapter {
       const resp = await this._rpc("core.resume_torrents", [ids]);
       if (resp.error) throw new Error(`Deluge resume failed: ${resp.error.message}`);
     } else if (action === "delete") {
-      const resp = await this._rpc("core.remove_torrents", [ids, true]);
+      const resp = await this._rpc("core.remove_torrents", [ids, false]);
       if (resp.error) throw new Error(`Deluge delete failed: ${resp.error.message}`);
     }
   }
@@ -1285,6 +1285,10 @@ async function taskAction(s, sid, action, ids) {
     id:      ids.join(","),
     _sid:    sid
   });
+  // For delete action, don't delete the files (non-destructive)
+  if (action === "delete") {
+    params.append("delete_file", "false");
+  }
   const url  = `${baseUrl(s)}/DownloadStation/task.cgi`;
   const resp = await nasFetch(`TASK_${action.toUpperCase()}`, url, {
     method:  "POST",
