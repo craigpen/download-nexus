@@ -436,7 +436,7 @@ class DelugeAdapter extends NasAdapter {
   async listTasks() {
     const resp = await this._rpc("core.get_torrents_status", [
       {},
-      ["name", "state", "progress", "total_done", "total_uploaded", "total_size", "download_rate", "upload_rate", "eta", "time_added"]
+      ["name", "state", "progress", "total_done", "total_uploaded", "total_size", "download_payload_rate", "upload_payload_rate", "eta", "time_added"]
     ]);
 
     if (resp.error) throw new Error(`Deluge list failed: ${resp.error.message}`);
@@ -451,8 +451,8 @@ class DelugeAdapter extends NasAdapter {
       downloaded: t.total_done || 0,
       uploaded: t.total_uploaded || 0,
       size: t.total_size || 0,
-      speed_down: t.download_rate || 0,
-      speed_up: t.upload_rate || 0,
+      speed_down: t.download_payload_rate || 0,
+      speed_up: t.upload_payload_rate || 0,
       eta: t.eta > 0 ? t.eta : 0,
       additional: { time_added: t.time_added || 0 }
     }));
