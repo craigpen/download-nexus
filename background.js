@@ -407,6 +407,114 @@ class TransmissionAdapter extends NasAdapter {
   }
 }
 
+class DelugeAdapter extends NasAdapter {
+  _baseUrl() {
+    const scheme = this.config.https ? "https" : "http";
+    return `${scheme}://${this.config.host}:${this.config.port}`;
+  }
+
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
+    }
+    try {
+      // Deluge doesn't require auth for test, but we'll try to call a simple method
+      const resp = await this._rpc("daemon.login", [this.config.username || "", this.config.password || "", 2]);
+      if (resp.error) throw new Error(resp.error.message || "Auth failed");
+      return { ok: true, version: "Deluge" };
+    } catch (err) {
+      throw new Error(`Deluge connection failed: ${err.message}`);
+    }
+  }
+
+  async listTasks() {
+    const resp = await this._rpc("core.get_torrents_status", [
+      {},
+      ["name", "state", "progress", "total_done", "total_uploaded", "total_size", "download_rate", "upload_rate", "eta", "time_added"]
+    ]);
+
+    if (resp.error) throw new Error(`Deluge list failed: ${resp.error.message}`);
+
+    const torrents = resp.result || {};
+    return Object.entries(torrents).map(([hash, t]) => ({
+      id: hash,
+      title: t.name,
+      status: this._displayStatus(t.state),
+      rawStatus: t.state,
+      progress: (t.progress || 0) * 100,
+      downloaded: t.total_done || 0,
+      uploaded: t.total_uploaded || 0,
+      size: t.total_size || 0,
+      speed_down: t.download_rate || 0,
+      speed_up: t.upload_rate || 0,
+      eta: t.eta > 0 ? t.eta : 0,
+      additional: { time_added: t.time_added || 0 }
+    }));
+  }
+
+  _displayStatus(rawState) {
+    // Map Deluge states to UI-compatible strings
+    const stateMap = {
+      "Downloading": "downloading",
+      "Seeding": "seeding",
+      "Paused": "paused",
+      "Queued": "stalled",          // Queued = waiting
+      "Checking": "checking",        // Unmapped state
+      "Allocating": "allocating",    // Unmapped state
+      "Error": "error"
+    };
+    return stateMap[rawState] || rawState;
+  }
+
+  async addDownload(uri, destination) {
+    const isMagnet = uri.startsWith("magnet:");
+    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+
+    if (!isMagnet && !isTorrentUrl) {
+      throw new Error("Invalid URI: must be a magnet link or .torrent URL");
+    }
+
+    let filedata = null;
+    if (isTorrentUrl) {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      filedata = Buffer.from(torrentBuffer).toString("base64");
+    }
+
+    const options = {};
+    if (destination) options.download_location = destination;
+
+    const resp = await this._rpc("core.add_torrent_magnet", [uri, options]);
+    if (resp.error) throw new Error(`Deluge add failed: ${resp.error.message}`);
+  }
+
+  async taskAction(action, ids) {
+    if (action === "pause") {
+      const resp = await this._rpc("core.pause_torrent", [ids]);
+      if (resp.error) throw new Error(`Deluge pause failed: ${resp.error.message}`);
+    } else if (action === "resume") {
+      const resp = await this._rpc("core.resume_torrent", [ids]);
+      if (resp.error) throw new Error(`Deluge resume failed: ${resp.error.message}`);
+    } else if (action === "delete") {
+      const resp = await this._rpc("core.remove_torrent", [ids, true]);
+      if (resp.error) throw new Error(`Deluge delete failed: ${resp.error.message}`);
+    }
+  }
+
+  async _rpc(method, params = []) {
+    const payload = { method, params, id: 1 };
+    const url = `${this._baseUrl()}/json`;
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return resp.json();
+  }
+}
+
 function getAdapter(nasId, config) {
   const type = config.type || "synology";
   switch (type) {
@@ -416,6 +524,8 @@ function getAdapter(nasId, config) {
       return new QBittorrentAdapter(nasId, config);
     case "transmission":
       return new TransmissionAdapter(nasId, config);
+    case "deluge":
+      return new DelugeAdapter(nasId, config);
     default:
       throw new Error(`Unknown NAS type: ${type}`);
   }
