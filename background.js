@@ -1501,14 +1501,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === "TEST_CONNECTION") {
       (async () => {
         try {
+          logInfo(`TEST_CONNECTION received for nasId=${msg.nasId}, type=${msg.settings?.type}`);
           // If settings provided, use them; otherwise look up by nasId
           const settings = msg.settings || await getNasById(msg.nasId);
-          if (!settings) return sendResponse({ ok: false, error: "Device not found" });
+          if (!settings) {
+            logInfo(`TEST_CONNECTION: Device not found for nasId=${msg.nasId}`);
+            return sendResponse({ ok: false, error: "Device not found" });
+          }
 
+          logInfo(`TEST_CONNECTION: Creating adapter for type=${settings.type}`);
           const adapter = getAdapter(msg.nasId, settings);
+          logInfo(`TEST_CONNECTION: Calling testConnection`);
           const result = await adapter.testConnection();
+          logInfo(`TEST_CONNECTION: Success`);
           sendResponse({ ok: result.ok, version: result.version });
         } catch (e) {
+          logInfo(`TEST_CONNECTION: Error - ${e.message}`);
           sendResponse({ ok: false, error: e.message });
         }
       })();
