@@ -16,6 +16,10 @@ if (!fs.existsSync(outputDir)) {
 // Copy manifest
 let manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf-8'));
 
+// Use version from package.json
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+manifest.version = packageJson.version;
+
 // Browser-specific adjustments
 if (target === 'firefox') {
   // Firefox 151 doesn't have MV3 service_worker enabled, use MV2 scripts
