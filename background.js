@@ -236,21 +236,29 @@ class QBittorrentAdapter extends NasAdapter {
       return;
     }
 
-    const url = `${this._baseUrl()}/api/v2/auth/login`;
+    const scheme = this.config.https ? "https" : "http";
+    const url = `${scheme}://${this.config.host}:${this.config.port}/api/v2/auth/login`;
     const body = new URLSearchParams();
     body.append('username', this.config.username);
     body.append('password', this.config.password);
 
-    const resp = await fetch(url, {
-      method: "POST",
-      body,
-      credentials: "include",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" }
-    });
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        body: body,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        }
+      });
 
-    if (resp.status !== 204 && resp.status !== 200) {
-      const text = await resp.text();
-      throw new Error(`qBit auth failed: HTTP ${resp.status}: ${text}`);
+      if (resp.status === 204 || resp.status === 200) {
+        return true;
+      }
+      const respText = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${respText.slice(0, 100)}`);
+    } catch (err) {
+      throw new Error(`qBit auth failed: ${err.message}`);
     }
   }
 
