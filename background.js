@@ -32,19 +32,19 @@ class SynologyAdapter extends NasAdapter {
   }
 
   _displayStatus(rawStatus) {
-    // Map Synology Download Station status to UI-compatible strings
+    // Map Synology Download Station status to unified format (P0-4)
     const statusMap = {
-      "downloading": "downloading",    // DL tab
-      "completed": "finished",         // Done tab
-      "finished": "finished",          // Done tab
-      "active": "seeding",             // Seed tab (actively seeding)
-      "uploading": "seeding",          // Seed tab
-      "seeding": "seeding",            // Seed tab
-      "stopped": "paused",             // Paused tab (user stopped)
-      "paused": "paused",              // Paused tab
-      "inactive": "paused",            // Paused tab (inactive = paused by user)
-      "waiting": "paused",             // Paused tab (waiting = paused, waiting for resources)
-      "error": "error"                 // Error tab
+      "downloading": "downloading",
+      "completed": "finished",
+      "finished": "finished",
+      "active": "seeding",
+      "uploading": "seeding",
+      "seeding": "seeding",
+      "stopped": "paused",
+      "paused": "paused",
+      "inactive": "paused",
+      "waiting": "stalled",            // P0-4: Waiting = stalled (not user-paused)
+      "error": "error"
     };
     return statusMap[rawStatus] || rawStatus;
   }
@@ -120,13 +120,31 @@ class QBittorrentAdapter extends NasAdapter {
   }
 
   _displayStatus(rawState) {
-    // Map qBittorrent states to UI-friendly display statuses
-    if (rawState === "stalledDL" || rawState === "stalledUP") return "stalled";
-    if (rawState === "stoppedDL" || rawState === "stoppedUP") return "paused";
-    if (rawState === "error" || rawState === "missingFiles") return "error";
-    // Checking states (queuedForChecking, checkingDL, checkingUP, etc.) pass through as-is
-    // All other states pass through as-is (downloading, seeding, etc.)
-    return rawState;
+    // Map qBittorrent states to unified format (P0-4)
+    const stateMap = {
+      // Active states
+      "downloading": "downloading",
+      "forcedDL": "downloading",
+      "metaDL": "downloading",
+      "uploading": "seeding",
+      "forcedUP": "seeding",
+      // Paused states
+      "stoppedDL": "paused",
+      "stoppedUP": "paused",
+      // Stalled/waiting states
+      "stalledDL": "stalled",
+      "stalledUP": "stalled",
+      "queuedForChecking": "checking",
+      // Checking states
+      "checkingUP": "checking",
+      "checkingDL": "checking",
+      // Allocating
+      "allocating": "allocating",
+      // Error states
+      "error": "error",
+      "missingFiles": "error"
+    };
+    return stateMap[rawState] || rawState;
   }
 
   async addDownload(uri, destination) {
@@ -372,14 +390,14 @@ class TransmissionAdapter extends NasAdapter {
   }
 
   _statusString(numericStatus) {
-    // Map Transmission numeric status to UI-compatible string
+    // Map Transmission numeric status to unified format (P0-4)
     const stateMap = {
       0: "paused",       // Stopped
       1: "checking",     // Check pending
       2: "checking",     // Checking
-      3: "downloading",  // Download pending (treated as downloading for UI)
+      3: "stalled",      // Download pending (P0-4: not active, so stalled)
       4: "downloading",  // Downloading
-      5: "seeding",      // Seed pending (treated as seeding for UI)
+      5: "stalled",      // Seed pending (P0-4: not active, so stalled)
       6: "seeding"       // Seeding
     };
     return stateMap[numericStatus] || "paused";
