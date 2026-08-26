@@ -1500,13 +1500,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     if (msg.type === "TEST_CONNECTION") {
       (async () => {
-        console.log("[TEST_CONNECTION] Handler starting, nasId=" + msg.nasId);
         try {
-          console.log("[TEST_CONNECTION] Getting settings, has msg.settings=" + !!msg.settings);
-          dbg("INFO", "TEST_CONNECTION received", `nasId=${msg.nasId}, type=${msg.settings?.type}`);
+          dbg("INFO", "TEST_CONNECTION", `Starting handler, nasId=${msg.nasId}, has settings=${!!msg.settings}`);
           // If settings provided, use them; otherwise look up by nasId
           const settings = msg.settings || await getNasById(msg.nasId);
-          console.log("[TEST_CONNECTION] Got settings, type=" + settings?.type);
+          dbg("INFO", "TEST_CONNECTION", `Got settings, type=${settings?.type}`);
           if (!settings) {
             dbg("ERROR", "TEST_CONNECTION", `Device not found for nasId=${msg.nasId}`);
             return sendResponse({ ok: false, error: "Device not found" });
@@ -1514,15 +1512,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
           dbg("INFO", "TEST_CONNECTION", `Creating adapter for type=${settings.type}`);
           const adapter = getAdapter(msg.nasId, settings);
-          console.log("[TEST_CONNECTION] Created adapter, type=" + settings.type);
-          dbg("INFO", "TEST_CONNECTION", `Calling testConnection`);
+          dbg("INFO", "TEST_CONNECTION", `Created adapter, calling testConnection`);
           const result = await adapter.testConnection();
-          console.log("[TEST_CONNECTION] testConnection returned");
-          dbg("INFO", "TEST_CONNECTION", `Success`);
+          dbg("INFO", "TEST_CONNECTION", `testConnection returned success`);
           sendResponse({ ok: result.ok, version: result.version });
         } catch (e) {
-          console.log("[TEST_CONNECTION] Caught error: " + e.message);
-          dbg("ERROR", "TEST_CONNECTION", `Error - ${e.message}`);
+          dbg("ERROR", "TEST_CONNECTION", `Exception: ${e.message}`);
           sendResponse({ ok: false, error: e.message });
         }
       })();
