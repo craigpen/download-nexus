@@ -88,6 +88,7 @@ class QBittorrentAdapter extends NasAdapter {
   }
 
   async testConnection() {
+    console.log("[QBittorrent] testConnection called");
     if (!this.config?.host || !this.config?.port) {
       throw new Error("Settings incomplete: missing host or port");
     }
@@ -98,15 +99,20 @@ class QBittorrentAdapter extends NasAdapter {
     }
 
     try {
+      console.log("[QBittorrent] Attempting auth, isTokenAuth=" + this._isTokenAuth);
       if (this._isTokenAuth) {
         // For token auth, make a simple API call to verify the token works
+        console.log("[QBittorrent] Using token auth");
         await this._fetch("/app/webapiVersion");
       } else {
         // For password auth, just verify login succeeds
+        console.log("[QBittorrent] Using password auth");
         await this._login();
       }
+      console.log("[QBittorrent] testConnection success");
       return { ok: true, version: "qBittorrent", type: "qBittorrent" };
     } catch (err) {
+      console.log("[QBittorrent] testConnection error: " + err.message);
       if (err.message.includes("auth")) {
         throw new Error("qBittorrent auth failed: invalid credentials or API token");
       }
