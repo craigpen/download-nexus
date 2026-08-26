@@ -266,7 +266,13 @@ class QBittorrentAdapter extends NasAdapter {
       headers["X-API-Token"] = this.config.apiToken;
     }
 
-    const resp = await fetch(url, { ...options, headers });
+    // Include credentials for password auth (to send session cookies)
+    const fetchOpts = { ...options, headers };
+    if (!this._isTokenAuth) {
+      fetchOpts.credentials = "include";
+    }
+
+    const resp = await fetch(url, fetchOpts);
     if (resp.status === 403) throw new Error("qBit auth failed");
     if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
     return resp;
