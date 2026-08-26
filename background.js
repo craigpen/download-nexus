@@ -1506,10 +1506,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             return sendResponse({ ok: false, error: "Device not found" });
           }
 
-          dbg("INFO", "TEST_CONNECTION", `Creating adapter for type=${settings.type}`);
-          const adapter = getAdapter(msg.nasId, settings);
-          dbg("INFO", "TEST_CONNECTION", `Created adapter, calling testConnection`);
-          const result = await adapter.testConnection();
+          dbg("INFO", "TEST_CONNECTION", `Calling testConnection for type=${settings.type}`);
+          const result = await testConnection(msg.nasId, settings);
           dbg("INFO", "TEST_CONNECTION", `testConnection returned success`);
           sendResponse({ ok: result.ok, version: result.version });
         } catch (e) {
