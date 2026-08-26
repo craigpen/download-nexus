@@ -48,12 +48,10 @@ if (target === 'firefox') {
       strict_min_version: "109.0",
       data_collection_permissions: {
         required: ["none"]
-      }
+      },
+      license: "https://github.com/craigpen/download-nexus/raw/main/LICENSE"
     }
   };
-
-  // Add license info for Firefox (required for listed versions)
-  manifest.license = "https://github.com/craigpen/download-nexus/raw/main/LICENSE";
 } else if (target === 'chrome') {
   // Chrome MV3 requires service_worker
   manifest.background = {
