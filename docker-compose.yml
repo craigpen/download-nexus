@@ -29,9 +29,9 @@ services:
       - /tmp/transmission/downloads:/downloads
     restart: unless-stopped
 
-  deluge:
+  deluge-linuxserver:
     image: linuxserver/deluge:latest
-    container_name: deluge-test
+    container_name: deluge-linuxserver-test
     ports:
       - "8112:8112"
       - "6881:6881"
@@ -42,6 +42,21 @@ services:
       - TZ=UTC
       - DELUGE_LOGLEVEL=info
     volumes:
-      - /tmp/deluge:/config
-      - /tmp/deluge/downloads:/downloads
+      - /tmp/deluge-linuxserver:/config
+      - /tmp/deluge-linuxserver/downloads:/downloads
+    restart: unless-stopped
+
+  deluge-official:
+    image: deluge/deluge:latest
+    container_name: deluge-official-test
+    ports:
+      - "8113:8112"
+      - "6882:6881"
+      - "6882:6881/udp"
+    environment:
+      - TZ=UTC
+      - DELUGE_LOGLEVEL=info
+    volumes:
+      - /tmp/deluge-official:/config
+      - /tmp/deluge-official/downloads:/downloads
     restart: unless-stopped
