@@ -1,6 +1,6 @@
 {
   "name": "download-nexus",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "A browser extension that intercepts magnet links and torrent files on web pages and routes them to your download services (Synology, qBittorrent, Transmission, Deluge).",
   "main": "background.js",
   "scripts": {
