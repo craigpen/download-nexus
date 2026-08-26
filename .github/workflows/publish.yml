@@ -1,6 +1,7 @@
 name: Publish to App Stores
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*.*.*"  # Triggers on version tags: v1.0.0, v1.1.0, etc.
