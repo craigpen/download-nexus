@@ -1,0 +1,20 @@
+name: Publish to App Stores
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # Triggers on version tags: v1.0.0, v1.1.0, etc.
+
+jobs:
+  publish:
+    uses: craigpen/extension-workflows/.github/workflows/publish.yml@main
+    with:
+      extension_name: "Download Nexus"
+      build_command: "build"
+      chrome_zip_path: "dist/chrome-mv3"
+      firefox_zip_path: "dist/chrome-mv3"
+      edge_zip_path: "dist/chrome-mv3"
+      publish_chrome: true
+      publish_firefox: true
+      publish_edge: false
+    secrets: inherit
