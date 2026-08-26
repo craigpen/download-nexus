@@ -238,26 +238,33 @@ class QBittorrentAdapter extends NasAdapter {
 
     const scheme = this.config.https ? "https" : "http";
     const url = `${scheme}://${this.config.host}:${this.config.port}/api/v2/auth/login`;
+    const baseUrl = `${scheme}://${this.config.host}:${this.config.port}`;
     const body = new URLSearchParams();
     body.append('username', this.config.username);
     body.append('password', this.config.password);
 
+    console.log("[qbLogin] Attempting login to", url);
     try {
       const resp = await fetch(url, {
         method: "POST",
         body: body,
         credentials: "include",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Referer": baseUrl
         }
       });
+      console.log("[qbLogin] Response:", resp.status, resp.statusText);
+      const respText = await resp.text();
+      console.log("[qbLogin] Body:", respText.slice(0, 50));
 
       if (resp.status === 204 || resp.status === 200) {
+        console.log("[qbLogin] SUCCESS");
         return true;
       }
-      const respText = await resp.text();
       throw new Error(`HTTP ${resp.status}: ${respText.slice(0, 100)}`);
     } catch (err) {
+      console.error("[qbLogin] FAILED:", err.message);
       throw new Error(`qBit auth failed: ${err.message}`);
     }
   }
@@ -1011,6 +1018,7 @@ async function nasCall(nasId, s, apiFn) {
 async function qbLogin(s) {
   const scheme = s.https ? "https" : "http";
   const url = `${scheme}://${s.host}:${s.port}/api/v2/auth/login`;
+  const baseUrl = `${scheme}://${s.host}:${s.port}`;
   const body = new URLSearchParams();
   body.append('username', s.username);
   body.append('password', s.password);
@@ -1022,7 +1030,8 @@ async function qbLogin(s) {
       body: body,
       credentials: "include",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": baseUrl
       }
     });
     console.log("[qbLogin] Response:", resp.status, resp.statusText);
