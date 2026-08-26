@@ -88,4 +88,13 @@ fs.readdirSync(srcIconsDir).forEach(file => {
 });
 console.log(`  ✓ icons/`);
 
+// Copy LICENSE for Firefox
+if (target === 'firefox') {
+  const licenseSrc = path.join(__dirname, '..', 'LICENSE');
+  if (fs.existsSync(licenseSrc)) {
+    fs.copyFileSync(licenseSrc, path.join(outputDir, 'LICENSE'));
+    console.log(`  ✓ LICENSE`);
+  }
+}
+
 console.log(`\n✅ Build complete: ${outputDir}\n`);

@@ -8,11 +8,8 @@ const os = require('os');
 const target = process.argv[2] || 'chrome';
 const buildDir = path.join(__dirname, '..', 'dist', target === 'chrome' ? 'chrome-mv3' : 'firefox-mv3');
 
-// Read version from package.json
-const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
-const version = packageJson.version;
-
-const outputZip = path.join(__dirname, '..', 'dist', `download-nexus-${target}-${version}.zip`);
+// Output zip with simple naming (no version, so paths are predictable)
+const outputZip = path.join(__dirname, '..', 'dist', `download-nexus-${target}.zip`);
 
 // Create temp Python script file to avoid escaping issues
 const tempScript = path.join(os.tmpdir(), `zip-${Date.now()}.py`);
