@@ -47,6 +47,9 @@ if (target === 'firefox') {
       }
     }
   };
+
+  // Add license field for Firefox
+  manifest.license = "ISC";
 } else if (target === 'chrome') {
   // Chrome MV3 requires service_worker
   manifest.background = {
