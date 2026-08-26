@@ -243,7 +243,6 @@ class QBittorrentAdapter extends NasAdapter {
     body.append('username', this.config.username);
     body.append('password', this.config.password);
 
-    console.log("[qbLogin] Attempting login to", url);
     try {
       const resp = await fetch(url, {
         method: "POST",
@@ -251,20 +250,21 @@ class QBittorrentAdapter extends NasAdapter {
         credentials: "include",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Referer": baseUrl
+          "Referer": baseUrl,
+          "Origin": baseUrl,
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Accept-Encoding": "gzip, deflate",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
       });
-      console.log("[qbLogin] Response:", resp.status, resp.statusText);
-      const respText = await resp.text();
-      console.log("[qbLogin] Body:", respText.slice(0, 50));
 
       if (resp.status === 204 || resp.status === 200) {
-        console.log("[qbLogin] SUCCESS");
         return true;
       }
+      const respText = await resp.text();
       throw new Error(`HTTP ${resp.status}: ${respText.slice(0, 100)}`);
     } catch (err) {
-      console.error("[qbLogin] FAILED:", err.message);
       throw new Error(`qBit auth failed: ${err.message}`);
     }
   }
@@ -1023,7 +1023,6 @@ async function qbLogin(s) {
   body.append('username', s.username);
   body.append('password', s.password);
 
-  console.log("[qbLogin] Attempting login to", url);
   try {
     const resp = await fetch(url, {
       method: "POST",
@@ -1031,20 +1030,21 @@ async function qbLogin(s) {
       credentials: "include",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Referer": baseUrl
+        "Referer": baseUrl,
+        "Origin": baseUrl,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
       }
     });
-    console.log("[qbLogin] Response:", resp.status, resp.statusText);
-    const respText = await resp.text();
-    console.log("[qbLogin] Body:", respText.slice(0, 50));
 
     if (resp.status === 204 || resp.status === 200) {
-      console.log("[qbLogin] SUCCESS");
       return true;
     }
+    const respText = await resp.text();
     throw new Error(`HTTP ${resp.status}: ${respText.slice(0, 100)}`);
   } catch (err) {
-    console.error("[qbLogin] FAILED:", err.message);
     throw new Error(`qBit auth failed: ${err.message}`);
   }
 }
