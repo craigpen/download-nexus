@@ -424,19 +424,25 @@ class DelugeAdapter extends NasAdapter {
 
   async _ensureAuthenticated() {
     if (this._isAuthenticated) return;
-    // Deluge web UI may not require explicit login if accessed via web interface
-    // Try calling a simple method to test connectivity instead of authenticating
-    dbg("INFO", "DelugeAdapter._ensureAuthenticated testing connectivity");
-    try {
-      const resp = await this._rpcRaw("core.get_torrents_status", [{}, []]);
-      dbg("INFO", "DelugeAdapter connectivity check passed");
+
+    if (!this.config?.password) {
+      throw new Error("Deluge password not configured");
+    }
+
+    dbg("INFO", "DelugeAdapter._ensureAuthenticated calling auth.login");
+    const resp = await this._rpcRaw("auth.login", [this.config.password]);
+
+    if (resp.error) {
+      dbg("ERROR", "DelugeAdapter auth.login failed", resp.error.message);
+      throw new Error(`Deluge authentication failed: ${resp.error.message}`);
+    }
+
+    if (resp.result === true) {
+      dbg("INFO", "DelugeAdapter authenticated successfully");
       this._isAuthenticated = true;
-    } catch (err) {
-      // If get_torrents_status fails, we're not authenticated
-      // But since we don't have a real auth method, just mark as authenticated anyway
-      // and let the actual method calls fail with proper errors
-      dbg("WARN", "DelugeAdapter connectivity test failed", err.message);
-      this._isAuthenticated = true;
+    } else {
+      dbg("ERROR", "DelugeAdapter authentication rejected", `result=${resp.result}`);
+      throw new Error("Deluge authentication failed: invalid password or daemon rejected login");
     }
   }
 
@@ -507,17 +513,18 @@ class DelugeAdapter extends NasAdapter {
       throw new Error("Invalid URI: must be a magnet link or .torrent URL");
     }
 
-    let filedata = null;
-    if (isTorrentUrl) {
-      const torrentBuffer = await downloadTorrentFile(uri);
-      filedata = arrayBufferToBase64(torrentBuffer);
-    }
-
     const options = {};
     if (destination) options.download_location = destination;
 
-    const resp = await this._rpc("core.add_torrent_magnet", [uri, options]);
-    if (resp.error) throw new Error(`Deluge add failed: ${resp.error.message}`);
+    if (isMagnet) {
+      const resp = await this._rpc("core.add_torrent_magnet", [uri, options]);
+      if (resp.error) throw new Error(`Deluge add failed: ${resp.error.message}`);
+    } else {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      const filedata = arrayBufferToBase64(torrentBuffer);
+      const resp = await this._rpc("core.add_torrent_file", ["", filedata, options]);
+      if (resp.error) throw new Error(`Deluge add torrent failed: ${resp.error.message}`);
+    }
   }
 
   async taskAction(action, ids) {
