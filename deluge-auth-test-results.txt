@@ -1,0 +1,161 @@
+
+🔐 Deluge RPC Auth.login() Signature Research
+Started: 2026-08-26T13:20:34.711Z
+
+
+============================================================
+Testing: linuxserver.io
+URL: http://localhost:8114/json
+============================================================
+
+1️⃣  Testing auth.login() with various signatures:
+
+  Testing: auth.login(["admin","deluge"])
+    ✗ Error: TypeError: Auth.login() takes 2 positional arguments but 3 were given
+
+  Testing: auth.login([{"username":"admin","password":"deluge"}])
+    ✗ Error: AttributeError: 'dict' object has no attribute 'encode'
+
+  Testing: auth.login(["deluge"])
+    ✓ Success: true
+
+  Testing: auth.login([""])
+    ✓ Success: false
+
+  Testing: auth.login(["admin"])
+    ✓ Success: false
+
+2️⃣  Testing other auth methods:
+
+  Testing: auth.check_password(["deluge"])
+    ✗ Error: Unknown method
+
+  Testing: auth.check_password(["admin","deluge"])
+    ✗ Error: Unknown method
+
+  Testing: auth.set_password(["newpass"])
+    ✗ Error: Unknown method
+
+  Testing: auth.set_password(["admin","deluge"])
+    ✗ Error: Unknown method
+
+  Testing: auth.get_auth_levels([])
+    ✗ Error: Unknown method
+
+  Testing: auth.check_session([])
+    ✓ Success: false
+
+3️⃣  After failed auth, testing if we need session first:
+
+  Trying to call core.get_config without auth:
+    Result: Error - Unknown method
+    (Indicates auth IS required)
+
+4️⃣  Testing web UI credentials (admin/deluge default):
+
+  Trying user="admin", pass="deluge"
+
+  Testing: auth.login(["admin","deluge"])
+    ✗ Error: TypeError: Auth.login() takes 2 positional arguments but 3 were given
+
+  Trying user="admin", pass=""
+
+  Testing: auth.login(["admin",""])
+    ✗ Error: TypeError: Auth.login() takes 2 positional arguments but 3 were given
+
+  Trying user="", pass=""
+
+  Testing: auth.login(["",""])
+    ✗ Error: TypeError: Auth.login() takes 2 positional arguments but 3 were given
+
+  Trying user="deluge", pass="deluge"
+
+  Testing: auth.login(["deluge","deluge"])
+    ✗ Error: TypeError: Auth.login() takes 2 positional arguments but 3 were given
+
+============================================================
+Testing: spritsail/deluge
+URL: http://localhost:8113/json
+============================================================
+
+1️⃣  Testing auth.login() with various signatures:
+
+  Testing: auth.login(["admin","deluge"])
+    ✗ Error: TypeError: login() takes 2 positional arguments but 3 were given
+
+  Testing: auth.login([{"username":"admin","password":"deluge"}])
+    ✗ Error: AttributeError: 'dict' object has no attribute 'encode'
+
+  Testing: auth.login(["deluge"])
+    ✓ Success: true
+
+  Testing: auth.login([""])
+    ✓ Success: false
+
+  Testing: auth.login(["admin"])
+    ✓ Success: false
+
+2️⃣  Testing other auth methods:
+
+  Testing: auth.check_password(["deluge"])
+    ✗ Error: Unknown method
+
+  Testing: auth.check_password(["admin","deluge"])
+    ✗ Error: Unknown method
+
+  Testing: auth.set_password(["newpass"])
+    ✗ Error: Unknown method
+
+  Testing: auth.set_password(["admin","deluge"])
+    ✗ Error: Unknown method
+
+  Testing: auth.get_auth_levels([])
+    ✗ Error: Unknown method
+
+  Testing: auth.check_session([])
+    ✓ Success: false
+
+3️⃣  After failed auth, testing if we need session first:
+
+  Trying to call core.get_config without auth:
+    Result: Error - Unknown method
+    (Indicates auth IS required)
+
+4️⃣  Testing web UI credentials (admin/deluge default):
+
+  Trying user="admin", pass="deluge"
+
+  Testing: auth.login(["admin","deluge"])
+    ✗ Error: TypeError: login() takes 2 positional arguments but 3 were given
+
+  Trying user="admin", pass=""
+
+  Testing: auth.login(["admin",""])
+    ✗ Error: TypeError: login() takes 2 positional arguments but 3 were given
+
+  Trying user="", pass=""
+
+  Testing: auth.login(["",""])
+    ✗ Error: TypeError: login() takes 2 positional arguments but 3 were given
+
+  Trying user="deluge", pass="deluge"
+
+  Testing: auth.login(["deluge","deluge"])
+    ✗ Error: TypeError: login() takes 2 positional arguments but 3 were given
+
+
+============================================================
+📝 ANALYSIS
+============================================================
+
+Based on the tests above, determine:
+1. Which auth method signature works?
+2. What credentials are needed?
+3. Is auth mandatory or optional?
+4. How are sessions managed?
+
+Look for:
+- ✓ Success responses (result is true or non-null)
+- ? Null results (might mean success with no data)
+- ✗ Errors with different messages (some might be auth errors, others might be method not found)
+  
