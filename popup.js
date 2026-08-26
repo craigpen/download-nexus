@@ -1013,18 +1013,26 @@ document.getElementById("nasType").addEventListener("change", () => {
 
 function updateTestButtonState() {
   const type = document.getElementById("nasType").value;
+  const host = document.getElementById("nasHost").value.trim();
   const password = document.getElementById("nasPassword").value.trim();
   const apiToken = document.getElementById("nasApiToken").value.trim();
   const testBtn = document.getElementById("testNasBtn");
 
-  // For qBittorrent, either password OR apiToken is sufficient
-  const hasAuth = type === "qbittorrent"
-    ? (password.length > 0 || apiToken.length > 0)
-    : password.length > 0;
+  // Host is always required
+  let isReady = host.length > 0;
 
-  testBtn.disabled = !hasAuth;
-  const authType = type === "qbittorrent" && apiToken.length > 0 ? "API token" : "password";
-  testBtn.title = hasAuth ? "Test connection to this NAS" : `Enter a ${authType} to test connection`;
+  // Check auth based on adapter type
+  if (type === "qbittorrent") {
+    // qBittorrent: either password OR apiToken sufficient
+    isReady = isReady && (password.length > 0 || apiToken.length > 0);
+  } else if (type === "synology") {
+    // Synology: requires username and password (username checked in form required attr)
+    isReady = isReady && password.length > 0;
+  }
+  // Transmission and Deluge don't require auth, just host
+
+  testBtn.disabled = !isReady;
+  testBtn.title = isReady ? "Test connection to this NAS" : "Enter host to test connection";
 }
 
 document.getElementById("nasPassword").addEventListener("input", updateTestButtonState);
