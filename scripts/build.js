@@ -42,9 +42,6 @@ if (target === 'firefox') {
     delete manifest.host_permissions;
   }
 
-  // Add license at root level for Firefox
-  manifest.license = "ISC";
-
   manifest.browser_specific_settings = {
     gecko: {
       id: "download-nexus@craigpen",
