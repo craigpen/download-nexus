@@ -42,14 +42,16 @@ if (target === 'firefox') {
     delete manifest.host_permissions;
   }
 
+  // Add license at root level for Firefox
+  manifest.license = "ISC";
+
   manifest.browser_specific_settings = {
     gecko: {
       id: "download-nexus@craigpen",
       strict_min_version: "109.0",
       data_collection_permissions: {
         required: ["none"]
-      },
-      license: "https://github.com/craigpen/download-nexus/raw/main/LICENSE"
+      }
     }
   };
 } else if (target === 'chrome') {
