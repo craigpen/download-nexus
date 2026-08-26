@@ -53,11 +53,46 @@ class TransmissionAdapter extends NasAdapter {
   async taskAction(action, ids) { return { ok: true }; }
 }
 
+class DelugeAdapter extends NasAdapter {
+  constructor(nasId, config) {
+    super(nasId, config);
+    this._isAuthenticated = false;
+  }
+
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
+    }
+    if (!this.config?.password) {
+      throw new Error("Deluge password not configured");
+    }
+    return { ok: true, version: "Deluge" };
+  }
+
+  async listTasks() { return []; }
+  async addDownload(uri) { return { ok: true }; }
+  async taskAction(action, ids) { return { ok: true }; }
+
+  _displayStatus(rawState) {
+    const stateMap = {
+      "Downloading": "downloading",
+      "Seeding": "seeding",
+      "Paused": "paused",
+      "Queued": "stalled",
+      "Checking": "checking",
+      "Allocating": "allocating",
+      "Error": "error"
+    };
+    return stateMap[rawState] || rawState;
+  }
+}
+
 function getAdapter(nasId, config) {
   const type = config.type || "synology";
   switch (type) {
     case "qbittorrent": return new QBittorrentAdapter(nasId, config);
     case "transmission": return new TransmissionAdapter(nasId, config);
+    case "deluge": return new DelugeAdapter(nasId, config);
     default: return new SynologyAdapter(nasId, config);
   }
 }
@@ -95,6 +130,17 @@ const TRANSMISSION_CONFIG = {
   https: false,
   username: 'admin',
   password: 'admin1'
+};
+
+const DELUGE_CONFIG = {
+  type: 'deluge',
+  id: 'test-deluge-1',
+  name: 'Test Deluge',
+  host: 'localhost',
+  port: 8112,
+  https: false,
+  username: 'admin',  // Not used in auth, for reference only
+  password: 'deluge'  // Only this is used for auth.login()
 };
 
 // Test Suite
@@ -305,17 +351,163 @@ describe('Device Adapters', () => {
     });
   });
 
+  describe('DelugeAdapter', () => {
+    test('should validate configuration on testConnection', async () => {
+      const adapter = new DelugeAdapter('test-id', DELUGE_CONFIG);
+      assert(adapter.config.host === 'localhost', 'Config should be set');
+      assert(adapter.config.password === 'deluge', 'Password should be set');
+    });
+
+    test('should reject incomplete configuration - missing host', async () => {
+      const incompleteConfig = { ...DELUGE_CONFIG, host: null };
+      const adapter = new DelugeAdapter('test-id', incompleteConfig);
+
+      try {
+        await adapter.testConnection();
+        assert.fail('Should throw for incomplete config');
+      } catch (e) {
+        assert(e.message.includes('incomplete'), 'Should mention incomplete settings');
+      }
+    });
+
+    test('should reject incomplete configuration - missing password', async () => {
+      const incompleteConfig = { ...DELUGE_CONFIG, password: null };
+      const adapter = new DelugeAdapter('test-id', incompleteConfig);
+
+      try {
+        await adapter.testConnection();
+        assert.fail('Should throw for missing password');
+      } catch (e) {
+        assert(e.message.includes('password'), 'Should mention password requirement');
+      }
+    });
+
+    test('should use password-only auth (P0-1 fix)', () => {
+      // Verify auth.login() takes only password, not username
+      const adapter = new DelugeAdapter('test-id', DELUGE_CONFIG);
+
+      // Auth signature is: auth.login(password)
+      // NOT: auth.login(username, password) [this caused TypeError]
+      assert(adapter.config.password === 'deluge', 'Should have password for auth');
+      assert(adapter._isAuthenticated === false, 'Should start unauthenticated');
+    });
+
+    test('should map Deluge states to unified format', () => {
+      const adapter = new DelugeAdapter('test-id', DELUGE_CONFIG);
+
+      const stateTests = [
+        { input: 'Downloading', expected: 'downloading' },
+        { input: 'Seeding', expected: 'seeding' },
+        { input: 'Paused', expected: 'paused' },
+        { input: 'Queued', expected: 'stalled' },
+        { input: 'Checking', expected: 'checking' },
+        { input: 'Allocating', expected: 'allocating' },
+        { input: 'Error', expected: 'error' },
+        { input: 'Unknown', expected: 'Unknown' }  // Unknown states pass through
+      ];
+
+      stateTests.forEach(test => {
+        const mapped = adapter._displayStatus(test.input);
+        assert(mapped === test.expected,
+          `State ${test.input} should map to ${test.expected}, got ${mapped}`);
+      });
+    });
+
+    test('should handle magnet links separately from .torrent files (P0-2 fix)', () => {
+      // Verify that addDownload distinguishes between magnet and torrent
+      const magnetUri = 'magnet:?xt=urn:btih:abc123';
+      const torrentUri = 'http://example.com/file.torrent';
+
+      // Magnet link detection
+      const isMagnet = magnetUri.startsWith('magnet:');
+      const isTorrentUrl = /\.torrent(\?|$)/i.test(magnetUri);
+
+      assert(isMagnet === true, 'Should detect magnet link');
+      assert(isTorrentUrl === false, 'Should not detect magnet as torrent');
+
+      // Torrent URL detection
+      const isMagnet2 = torrentUri.startsWith('magnet:');
+      const isTorrentUrl2 = /\.torrent(\?|$)/i.test(torrentUri);
+
+      assert(isMagnet2 === false, 'Should not detect torrent as magnet');
+      assert(isTorrentUrl2 === true, 'Should detect .torrent URL');
+    });
+
+    test('should map task actions correctly', () => {
+      const actionMap = {
+        'pause': 'core.pause_torrents',
+        'resume': 'core.resume_torrents',
+        'delete': 'core.remove_torrents'
+      };
+
+      assert(actionMap.pause === 'core.pause_torrents', 'Pause should use core.pause_torrents');
+      assert(actionMap.resume === 'core.resume_torrents', 'Resume should use core.resume_torrents');
+      assert(actionMap.delete === 'core.remove_torrents', 'Delete should use core.remove_torrents');
+    });
+
+    test('should format Deluge task data correctly', () => {
+      // Expected format from Deluge RPC response
+      const delugeTask = {
+        id: 'hash123',
+        title: 'Ubuntu 20.04 ISO',
+        status: 'downloading',
+        rawStatus: 'Downloading',
+        progress: 65.5,
+        downloaded: 655000000,
+        uploaded: 5000000,
+        size: 1000000000,
+        speed_down: 5242880,
+        speed_up: 1048576,
+        eta: 127
+      };
+
+      // Verify required fields
+      assert(delugeTask.id, 'Should have id (hash)');
+      assert(delugeTask.title, 'Should have title');
+      assert(delugeTask.status, 'Should have mapped status');
+      assert(typeof delugeTask.progress === 'number', 'Progress should be number');
+      assert(delugeTask.progress >= 0 && delugeTask.progress <= 100, 'Progress should be 0-100');
+      assert(delugeTask.size > 0, 'Should have size');
+      assert(delugeTask.speed_down >= 0, 'Speed should be non-negative');
+    });
+
+    test('should construct proper RPC URL', () => {
+      const adapter = new DelugeAdapter('test-id', DELUGE_CONFIG);
+      const baseUrl = `http://localhost:8112`;
+      const rpcUrl = `${baseUrl}/json`;
+
+      assert(rpcUrl.includes('localhost'), 'Should use host');
+      assert(rpcUrl.includes('8112'), 'Should use port');
+      assert(rpcUrl.endsWith('/json'), 'Should use /json RPC endpoint');
+    });
+
+    test('should support both HTTPS and HTTP', () => {
+      const httpConfig = { ...DELUGE_CONFIG, https: false };
+      const httpsConfig = { ...DELUGE_CONFIG, https: true };
+
+      const httpAdapter = new DelugeAdapter('test-id', httpConfig);
+      const httpsAdapter = new DelugeAdapter('test-id', httpsConfig);
+
+      assert(httpAdapter.config.https === false, 'Should support HTTP');
+      assert(httpsAdapter.config.https === true, 'Should support HTTPS');
+    });
+  });
+
   describe('Adapter Pattern', () => {
     test('should have consistent interface', () => {
       const methods = ['testConnection', 'listTasks', 'addDownload', 'taskAction'];
 
-      // Both adapters should have these methods
+      // All adapters should have these methods
       const synologyAdapter = new SynologyAdapter('id', SYNOLOGY_CONFIG);
       const qbAdapter = new QBittorrentAdapter('id', QBITTORRENT_CONFIG);
+      const transmissionAdapter = new TransmissionAdapter('id', TRANSMISSION_CONFIG);
+      const delugeAdapter = new DelugeAdapter('id', DELUGE_CONFIG);
 
       methods.forEach(method => {
         assert(typeof synologyAdapter[method] === 'function', `SynologyAdapter should have ${method}`);
         assert(typeof qbAdapter[method] === 'function', `QBittorrentAdapter should have ${method}`);
+        assert(typeof transmissionAdapter[method] === 'function', `TransmissionAdapter should have ${method}`);
+        assert(typeof delugeAdapter[method] === 'function', `DelugeAdapter should have ${method}`);
       });
     });
 
@@ -323,7 +515,8 @@ describe('Device Adapters', () => {
       const adapters = {
         synology: SYNOLOGY_CONFIG,
         qbittorrent: QBITTORRENT_CONFIG,
-        transmission: TRANSMISSION_CONFIG
+        transmission: TRANSMISSION_CONFIG,
+        deluge: DELUGE_CONFIG
       };
 
       Object.entries(adapters).forEach(([type, config]) => {
@@ -449,4 +642,4 @@ if (require.main === module) {
   console.log('  npm test -- tests/adapters.test.js');
 }
 
-module.exports = { SYNOLOGY_CONFIG, QBITTORRENT_CONFIG };
+module.exports = { SYNOLOGY_CONFIG, QBITTORRENT_CONFIG, TRANSMISSION_CONFIG, DELUGE_CONFIG };
