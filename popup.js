@@ -691,7 +691,7 @@ function renderSettingsNasList() {
   const container = document.getElementById("settingsNasList");
   if (!container) return;
   if (nasList.length === 0) {
-    container.innerHTML = '<div class="settings-empty">No download clients configured yet.</div>';
+    container.innerHTML = '<div class="settings-empty">No download services configured yet.</div>';
     return;
   }
   container.innerHTML = nasList.map(nas => `
@@ -856,7 +856,7 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
 
 document.getElementById("deleteNasBtn").addEventListener("click", e => {
   e.preventDefault();
-  if (confirm("Are you sure you want to delete this download client?")) deleteNasDevice(editingNasId);
+  if (confirm("Are you sure you want to delete this download service?")) deleteNasDevice(editingNasId);
 });
 
 document.getElementById("nasType").addEventListener("change", () => {
@@ -1025,7 +1025,7 @@ async function exportConfig() {
     const a = document.createElement("a");
     a.href = url;
     const suffix = shouldEncrypt ? "-encrypted" : "";
-    a.download = `nas-download-helper-config-${new Date().toISOString().split("T")[0]}${suffix}.json`;
+    a.download = `download-nexus-config-${new Date().toISOString().split("T")[0]}${suffix}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

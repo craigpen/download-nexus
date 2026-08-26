@@ -12,7 +12,7 @@ const buildDir = path.join(__dirname, '..', 'dist', target === 'chrome' ? 'chrom
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
 const version = packageJson.version;
 
-const outputZip = path.join(__dirname, '..', 'dist', `nas-download-helper-${target}-${version}.zip`);
+const outputZip = path.join(__dirname, '..', 'dist', `download-nexus-${target}-${version}.zip`);
 
 // Create temp Python script file to avoid escaping issues
 const tempScript = path.join(os.tmpdir(), `zip-${Date.now()}.py`);
@@ -30,7 +30,7 @@ with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zf:
             zf.write(file_path, arcname)
 
 size = os.path.getsize(output)
-print(f'Created nas-download-helper-${target}.zip ({size} bytes)')
+print(f'Created download-nexus-${target}.zip ({size} bytes)')
 `;
 
 try {

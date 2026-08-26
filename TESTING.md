@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document describes the testing infrastructure for NAS Download Helper.
+This document describes the testing infrastructure for Download Nexus.
 
 ## Adapter Tests
 

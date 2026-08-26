@@ -1,4 +1,4 @@
-// content.js — NAS Download helper + Torrent Handler
+// content.js — Download Nexus content script for magnet/torrent link handling
 
 (function () {
   "use strict";
