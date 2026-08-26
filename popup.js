@@ -674,7 +674,7 @@ function showSettings() {
 async function showMainView() {
   document.getElementById("settingsView").classList.remove("show");
   document.getElementById("mainView").classList.add("show");
-  document.getElementById("headerTitle").textContent = "NAS Download Helper";
+  document.getElementById("headerTitle").textContent = "Download Nexus";
   document.getElementById("mainHeaderControls").style.display = "flex";
   document.getElementById("gearIcon").style.display = "block";
   document.getElementById("backIcon").style.display = "none";
@@ -691,7 +691,7 @@ function renderSettingsNasList() {
   const container = document.getElementById("settingsNasList");
   if (!container) return;
   if (nasList.length === 0) {
-    container.innerHTML = '<div class="settings-empty">No NAS devices configured yet.</div>';
+    container.innerHTML = '<div class="settings-empty">No download clients configured yet.</div>';
     return;
   }
   container.innerHTML = nasList.map(nas => `
@@ -799,7 +799,7 @@ function editNas(nasId) {
 
 function addNewNas() {
   editingNasId = null;
-  document.getElementById("formTitle").textContent = "Add NAS Device";
+  document.getElementById("formTitle").textContent = "Add Download Service";
   document.getElementById("deleteNasBtn").style.display = "none";
   document.getElementById("nasName").value = "";
   document.getElementById("nasType").value = "synology";
@@ -856,7 +856,7 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
 
 document.getElementById("deleteNasBtn").addEventListener("click", e => {
   e.preventDefault();
-  if (confirm("Are you sure you want to delete this NAS device?")) deleteNasDevice(editingNasId);
+  if (confirm("Are you sure you want to delete this download client?")) deleteNasDevice(editingNasId);
 });
 
 document.getElementById("nasType").addEventListener("change", () => {
