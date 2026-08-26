@@ -30,9 +30,18 @@ class SynologyAdapter extends NasAdapter {
 }
 
 class QBittorrentAdapter extends NasAdapter {
+  constructor(nasId, config) {
+    super(nasId, config);
+    this._isTokenAuth = !!config?.apiToken && config.apiToken.trim().length > 0;
+  }
+
   async testConnection() {
-    if (!this.config?.host || !this.config?.port || !this.config?.username) {
-      throw new Error("Settings incomplete: missing host, port, or username");
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
+    }
+    // Token auth: don't require username
+    if (!this._isTokenAuth && !this.config?.username) {
+      throw new Error("Settings incomplete: missing username (or provide API token)");
     }
     return { ok: true, version: "qBittorrent" };
   }
@@ -211,6 +220,28 @@ describe('Device Adapters', () => {
       } catch (e) {
         assert(e.message.includes('incomplete'), 'Should mention incomplete settings');
       }
+    });
+
+    test('should support API token authentication (P1-2)', () => {
+      // Token-only config (no username/password)
+      const tokenConfig = {
+        host: 'localhost',
+        port: 8080,
+        apiToken: 'mytoken123'
+      };
+      const adapter = new QBittorrentAdapter('test-id', tokenConfig);
+
+      // Verify token is detected
+      assert(adapter._isTokenAuth === true, 'Should detect token auth');
+      assert(adapter.config.apiToken === 'mytoken123', 'Token should be stored');
+      assert(!adapter.config.username, 'Username should not be required');
+    });
+
+    test('should not use token auth if token is empty or missing', () => {
+      const noTokenConfig = { ...QBITTORRENT_CONFIG };
+      const adapter = new QBittorrentAdapter('test-id', noTokenConfig);
+
+      assert(adapter._isTokenAuth === false, 'Should not use token auth without token');
     });
 
     test('should map qBittorrent torrents to standard format', () => {

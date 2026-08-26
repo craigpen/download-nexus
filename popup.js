@@ -789,6 +789,12 @@ function updateFormFieldsForType() {
     helpEl.style.fontStyle = "italic";
   }
 
+  // Show/hide API Token field for qBittorrent (P1-2)
+  const apiTokenField = document.getElementById("apiTokenField");
+  if (apiTokenField) {
+    apiTokenField.style.display = type === "qbittorrent" ? "" : "none";
+  }
+
   const usernameField = document.getElementById("usernameField");
   const passwordField = document.getElementById("passwordField");
   const usernameInput = document.getElementById("nasUsername");
@@ -842,6 +848,7 @@ function editNas(nasId) {
   document.getElementById("nasUsername").value = nas.username;
   document.getElementById("nasPassword").value = nas.password;
   document.getElementById("nasDestination").value = nas.destination || "";
+  document.getElementById("nasApiToken").value = nas.apiToken || "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
@@ -861,6 +868,7 @@ function addNewNas() {
   document.getElementById("nasUsername").value = "";
   document.getElementById("nasPassword").value = "";
   document.getElementById("nasDestination").value = "";
+  document.getElementById("nasApiToken").value = "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
@@ -884,8 +892,9 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
   // Form validation is now handled by HTML required attributes per adapter type
   // (Synology/qBittorrent require username/password, Transmission doesn't show them)
 
+  const type = document.getElementById("nasType").value;
   const nasConfig = {
-    type: document.getElementById("nasType").value,
+    type,
     name: document.getElementById("nasName").value.trim(),
     host: document.getElementById("nasHost").value.trim(),
     port: document.getElementById("nasPort").value.trim(),
@@ -894,6 +903,14 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
     password: document.getElementById("nasPassword").value,
     destination: document.getElementById("nasDestination").value.trim()
   };
+
+  // Add apiToken for qBittorrent if provided (P1-2)
+  if (type === "qbittorrent") {
+    const apiToken = document.getElementById("nasApiToken").value.trim();
+    if (apiToken) {
+      nasConfig.apiToken = apiToken;
+    }
+  }
 
   if (editingNasId) {
     await send({ type: "UPDATE_NAS", nasId: editingNasId, updates: nasConfig });
@@ -919,14 +936,23 @@ document.getElementById("nasType").addEventListener("change", () => {
 });
 
 function updateTestButtonState() {
+  const type = document.getElementById("nasType").value;
   const password = document.getElementById("nasPassword").value.trim();
+  const apiToken = document.getElementById("nasApiToken").value.trim();
   const testBtn = document.getElementById("testNasBtn");
-  const hasPassword = password.length > 0;
-  testBtn.disabled = !hasPassword;
-  testBtn.title = hasPassword ? "Test connection to this NAS" : "Enter a password to test connection";
+
+  // For qBittorrent, either password OR apiToken is sufficient
+  const hasAuth = type === "qbittorrent"
+    ? (password.length > 0 || apiToken.length > 0)
+    : password.length > 0;
+
+  testBtn.disabled = !hasAuth;
+  const authType = type === "qbittorrent" && apiToken.length > 0 ? "API token" : "password";
+  testBtn.title = hasAuth ? "Test connection to this NAS" : `Enter a ${authType} to test connection`;
 }
 
 document.getElementById("nasPassword").addEventListener("input", updateTestButtonState);
+document.getElementById("nasApiToken").addEventListener("input", updateTestButtonState);
 
 document.getElementById("testNasBtn").addEventListener("click", async () => {
   const el = document.getElementById("testNasStatus");
@@ -934,6 +960,7 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
   el.className = "settings-status";
 
   const nasId = editingNasId || `test-${Date.now()}`;
+  const type = document.getElementById("nasType").value;
   const settings = {
     name: document.getElementById("nasName").value.trim() || "Test NAS",
     host: document.getElementById("nasHost").value.trim(),
@@ -942,8 +969,16 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
     username: document.getElementById("nasUsername").value.trim(),
     password: document.getElementById("nasPassword").value,
     destination: document.getElementById("nasDestination").value.trim(),
-    type: document.getElementById("nasType").value
+    type
   };
+
+  // Add apiToken for qBittorrent if provided (P1-2)
+  if (type === "qbittorrent") {
+    const apiToken = document.getElementById("nasApiToken").value.trim();
+    if (apiToken) {
+      settings.apiToken = apiToken;
+    }
+  }
 
   try {
     const resp = await send({ type: "TEST_CONNECTION", nasId, settings });
@@ -1008,6 +1043,105 @@ document.getElementById("whitelistTextarea").addEventListener("blur", async e =>
 });
 
 // ── settings: backup / restore ──────────────────────────────────────────────
+
+// Schema validation for config import (P1-5)
+const VALID_ADAPTER_TYPES = new Set(['synology', 'qbittorrent', 'transmission', 'deluge']);
+
+function validateNasConfig(nas, index) {
+  const errors = [];
+
+  // Check required fields
+  if (!nas.id || typeof nas.id !== 'string') {
+    errors.push(`Device ${index}: missing or invalid id`);
+  }
+  if (!nas.name || typeof nas.name !== 'string') {
+    errors.push(`Device ${index}: missing or invalid name`);
+  }
+  if (!nas.type || !VALID_ADAPTER_TYPES.has(nas.type)) {
+    errors.push(`Device ${index}: invalid type "${nas.type}" (must be synology, qbittorrent, transmission, or deluge)`);
+  }
+  if (!nas.host || typeof nas.host !== 'string') {
+    errors.push(`Device ${index}: missing or invalid host`);
+  }
+  if (!nas.port || (typeof nas.port !== 'number' && typeof nas.port !== 'string')) {
+    errors.push(`Device ${index}: missing or invalid port`);
+  }
+
+  // Validate port is in valid range
+  const port = typeof nas.port === 'string' ? parseInt(nas.port) : nas.port;
+  if (isNaN(port) || port < 1 || port > 65535) {
+    errors.push(`Device ${index}: port must be between 1 and 65535`);
+  }
+
+  // Check optional but important fields
+  if (nas.password !== undefined && typeof nas.password !== 'string') {
+    errors.push(`Device ${index}: password must be a string`);
+  }
+  if (nas.username !== undefined && typeof nas.username !== 'string') {
+    errors.push(`Device ${index}: username must be a string`);
+  }
+  if (nas.destination !== undefined && typeof nas.destination !== 'string') {
+    errors.push(`Device ${index}: destination must be a string`);
+  }
+  if (nas.https !== undefined && typeof nas.https !== 'boolean') {
+    errors.push(`Device ${index}: https must be a boolean`);
+  }
+  if (nas.apiToken !== undefined && typeof nas.apiToken !== 'string') {
+    errors.push(`Device ${index}: apiToken must be a string`);
+  }
+
+  return errors;
+}
+
+function validateConfigSchema(config) {
+  const errors = [];
+
+  // Check required top-level fields
+  if (config.version === undefined) {
+    errors.push("Missing version field");
+  } else if (config.version !== 1) {
+    errors.push(`Unsupported config version: ${config.version} (expected 1)`);
+  }
+
+  // Validate nasList if present
+  if (config.nasList !== undefined) {
+    if (!Array.isArray(config.nasList)) {
+      errors.push("nasList must be an array");
+    } else if (config.nasList.length > 0) {
+      config.nasList.forEach((nas, i) => {
+        if (typeof nas !== 'object' || nas === null) {
+          errors.push(`nasList[${i}]: must be an object`);
+        } else {
+          errors.push(...validateNasConfig(nas, i));
+        }
+      });
+    }
+  }
+
+  // Validate whitelist if present
+  if (config.whitelist !== undefined) {
+    if (!Array.isArray(config.whitelist)) {
+      errors.push("whitelist must be an array");
+    } else {
+      config.whitelist.forEach((domain, i) => {
+        if (typeof domain !== 'string') {
+          errors.push(`whitelist[${i}]: must be a string`);
+        } else if (!isValidDomainPattern(domain)) {
+          errors.push(`whitelist[${i}]: invalid domain pattern "${domain}"`);
+        }
+      });
+    }
+  }
+
+  // Validate whitelistMode if present
+  if (config.whitelistMode !== undefined) {
+    if (!['all', 'restricted'].includes(config.whitelistMode)) {
+      errors.push(`whitelistMode must be "all" or "restricted", got "${config.whitelistMode}"`);
+    }
+  }
+
+  return errors;
+}
 
 async function deriveKey(password, salt) {
   const enc = new TextEncoder();
@@ -1115,7 +1249,12 @@ document.getElementById("importFile").addEventListener("change", async e => {
       throw new Error("Invalid backup file format");
     }
 
-    if (config.version !== 1) throw new Error("Unsupported config version");
+    // Validate config schema before importing (P1-5)
+    const validationErrors = validateConfigSchema(config);
+    if (validationErrors.length > 0) {
+      const errorMsg = validationErrors.join("\n");
+      throw new Error(`Config validation failed:\n${errorMsg}`);
+    }
 
     if (config.nasList && Array.isArray(config.nasList)) {
       for (const importedNas of config.nasList) {
@@ -1138,7 +1277,7 @@ document.getElementById("importFile").addEventListener("change", async e => {
       await send({ type: "SET_WHITELIST_MODE", mode: config.whitelistMode });
     }
 
-    el.textContent = "Config imported successfully!";
+    el.textContent = `Config imported successfully! (${config.nasList?.length || 0} devices, ${config.whitelist?.length || 0} whitelist entries)`;
     el.className = "settings-status ok";
     await loadNasList();
     await loadWhitelist();

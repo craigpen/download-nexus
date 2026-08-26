@@ -82,12 +82,31 @@ class SynologyAdapter extends NasAdapter {
 }
 
 class QBittorrentAdapter extends NasAdapter {
+  constructor(nasId, config) {
+    super(nasId, config);
+    this._isTokenAuth = !!config?.apiToken && config.apiToken.trim().length > 0;
+  }
+
   async testConnection() {
-    if (!this.config?.host || !this.config?.port || !this.config?.username) {
-      throw new Error("Settings incomplete: missing host, port, or username");
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
     }
-    await this._login();
-    return { ok: true, version: "qBittorrent", type: "qBittorrent" };
+
+    // Token auth doesn't require username, but username/password auth does
+    if (!this._isTokenAuth && !this.config?.username) {
+      throw new Error("Settings incomplete: missing username (or provide API token)");
+    }
+
+    // Test by making a simple API call
+    try {
+      await this._fetch("/app/webapiVersion");
+      return { ok: true, version: "qBittorrent", type: "qBittorrent" };
+    } catch (err) {
+      if (err.message.includes("auth")) {
+        throw new Error("qBittorrent auth failed: invalid credentials or API token");
+      }
+      throw err;
+    }
   }
 
   async listTasks() {
@@ -201,6 +220,11 @@ class QBittorrentAdapter extends NasAdapter {
 
   // Private methods
   async _login() {
+    // Token auth doesn't require login (P1-2)
+    if (this._isTokenAuth) {
+      return;
+    }
+
     const url = `${this._baseUrl()}/api/v2/auth/login`;
     const body = new URLSearchParams();
     body.append('username', this.config.username);
@@ -221,7 +245,14 @@ class QBittorrentAdapter extends NasAdapter {
 
   async _fetch(path, options = {}) {
     const url = `${this._baseUrl()}/api/v2${path}`;
-    const resp = await fetch(url, { ...options });
+
+    // Add API token header if token auth is enabled (P1-2)
+    const headers = options.headers || {};
+    if (this._isTokenAuth) {
+      headers["X-API-Token"] = this.config.apiToken;
+    }
+
+    const resp = await fetch(url, { ...options, headers });
     if (resp.status === 403) throw new Error("qBit auth failed");
     if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
     return resp;
@@ -231,7 +262,8 @@ class QBittorrentAdapter extends NasAdapter {
     try {
       return await apiFn();
     } catch (err) {
-      if (err.message.includes("auth failed")) {
+      // Don't retry login for token auth (P1-2)
+      if (err.message.includes("auth failed") && !this._isTokenAuth) {
         await this._login();
         return await apiFn();
       }
