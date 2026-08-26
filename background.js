@@ -1,4 +1,4 @@
-// background.js — NAS Download helper
+// background.js — Download Nexus service worker
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
 // ── NAS Adapter Abstraction Layer ──────────────────────────────────────────

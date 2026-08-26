@@ -44,5 +44,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload ${{ github.event.release.tag_name }} \
-            dist/nas-download-helper-chrome-${{ steps.version.outputs.VERSION }}.zip \
-            dist/nas-download-helper-firefox-${{ steps.version.outputs.VERSION }}.zip
+            dist/download-nexus-chrome-${{ steps.version.outputs.VERSION }}.zip \
+            dist/download-nexus-firefox-${{ steps.version.outputs.VERSION }}.zip

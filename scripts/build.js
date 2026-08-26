@@ -40,7 +40,7 @@ if (target === 'firefox') {
 
   manifest.browser_specific_settings = {
     gecko: {
-      id: "nas-download-helper@craigpen",
+      id: "download-nexus@craigpen",
       strict_min_version: "109.0",
       data_collection_permissions: {
         required: ["none"]
