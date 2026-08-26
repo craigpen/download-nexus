@@ -235,6 +235,7 @@ class QBittorrentAdapter extends NasAdapter {
     body.append('username', this.config.username);
     body.append('password', this.config.password);
 
+    console.log(`[qBit] POST to ${url}`);
     const resp = await fetch(url, {
       method: "POST",
       body,
@@ -242,10 +243,13 @@ class QBittorrentAdapter extends NasAdapter {
       headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
 
+    console.log(`[qBit] Login response status: ${resp.status}`);
     if (resp.status !== 204 && resp.status !== 200) {
       const text = await resp.text();
+      console.log(`[qBit] Login error response: ${text}`);
       throw new Error(`qBit auth failed: HTTP ${resp.status}: ${text}`);
     }
+    console.log(`[qBit] Login successful`);
   }
 
   async _fetch(path, options = {}) {
