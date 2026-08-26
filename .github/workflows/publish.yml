@@ -16,7 +16,7 @@ jobs:
       extension_name: "Download Nexus"
       build_command: "package"
       chrome_zip_path: "dist/download-nexus-chrome.zip"
-      firefox_zip_path: "dist/download-nexus-firefox.zip"
+      firefox_zip_path: "dist/firefox-mv3"
       edge_zip_path: "dist/download-nexus-chrome.zip"
       publish_chrome: true
       publish_firefox: true
