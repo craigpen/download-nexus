@@ -2,9 +2,17 @@ name: Publish to App Stores
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*.*.*"  # Triggers on version tags: v1.0.0, v1.1.0, etc.
+    inputs:
+      publish_chrome:
+        description: "Publish to Chrome Web Store"
+        required: true
+        default: true
+        type: boolean
+      publish_firefox:
+        description: "Publish to Firefox Add-ons"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -18,7 +26,7 @@ jobs:
       chrome_zip_path: "dist/download-nexus-chrome.zip"
       firefox_zip_path: "dist/firefox-mv3"
       edge_zip_path: "dist/download-nexus-chrome.zip"
-      publish_chrome: true
-      publish_firefox: true
+      publish_chrome: ${{ inputs.publish_chrome }}
+      publish_firefox: ${{ inputs.publish_firefox }}
       publish_edge: false
     secrets: inherit
