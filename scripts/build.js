@@ -48,8 +48,8 @@ if (target === 'firefox') {
     }
   };
 
-  // Add license for Firefox (required for listed versions)
-  manifest.license = "https://github.com/craigpen/download-nexus/blob/main/LICENSE";
+  // Add custom_license for Firefox (required for listed versions)
+  manifest.custom_license = "This project is licensed under the ISC License. See LICENSE file for details.";
 } else if (target === 'chrome') {
   // Chrome MV3 requires service_worker
   manifest.background = {
