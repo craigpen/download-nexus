@@ -88,7 +88,7 @@ class QBittorrentAdapter extends NasAdapter {
   }
 
   async testConnection() {
-    logInfo(`QBittorrentAdapter.testConnection starting ${this.config?.host}:${this.config?.port}`);
+    dbg("INFO", "QBittorrentAdapter.testConnection starting", `${this.config?.host}:${this.config?.port}`);
 
     if (!this.config?.host || !this.config?.port) {
       throw new Error("Settings incomplete: missing host or port");
@@ -101,11 +101,11 @@ class QBittorrentAdapter extends NasAdapter {
 
     // Test by making a simple API call
     try {
-      logInfo(`QBittorrent calling _fetch("/app/webapiVersion")`);
+      dbg("INFO", "QBittorrent", `calling _fetch("/app/webapiVersion")`);
       await this._fetch("/app/webapiVersion");
       return { ok: true, version: "qBittorrent", type: "qBittorrent" };
     } catch (err) {
-      logInfo(`QBittorrent _fetch error: ${err.message}`);
+      dbg("ERROR", "QBittorrent", `_fetch error: ${err.message}`);
       if (err.message.includes("auth")) {
         throw new Error("qBittorrent auth failed: invalid credentials or API token");
       }
@@ -1501,22 +1501,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === "TEST_CONNECTION") {
       (async () => {
         try {
-          logInfo(`TEST_CONNECTION received for nasId=${msg.nasId}, type=${msg.settings?.type}`);
+          dbg("INFO", "TEST_CONNECTION received", `nasId=${msg.nasId}, type=${msg.settings?.type}`);
           // If settings provided, use them; otherwise look up by nasId
           const settings = msg.settings || await getNasById(msg.nasId);
           if (!settings) {
-            logInfo(`TEST_CONNECTION: Device not found for nasId=${msg.nasId}`);
+            dbg("ERROR", "TEST_CONNECTION", `Device not found for nasId=${msg.nasId}`);
             return sendResponse({ ok: false, error: "Device not found" });
           }
 
-          logInfo(`TEST_CONNECTION: Creating adapter for type=${settings.type}`);
+          dbg("INFO", "TEST_CONNECTION", `Creating adapter for type=${settings.type}`);
           const adapter = getAdapter(msg.nasId, settings);
-          logInfo(`TEST_CONNECTION: Calling testConnection`);
+          dbg("INFO", "TEST_CONNECTION", `Calling testConnection`);
           const result = await adapter.testConnection();
-          logInfo(`TEST_CONNECTION: Success`);
+          dbg("INFO", "TEST_CONNECTION", `Success`);
           sendResponse({ ok: result.ok, version: result.version });
         } catch (e) {
-          logInfo(`TEST_CONNECTION: Error - ${e.message}`);
+          dbg("ERROR", "TEST_CONNECTION", `Error - ${e.message}`);
           sendResponse({ ok: false, error: e.message });
         }
       })();
