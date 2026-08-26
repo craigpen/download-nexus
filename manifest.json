@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "NAS Download helper",
+  "name": "Download Nexus",
   "version": "1.1.0",
-  "description": "Manage downloads on multiple NAS devices directly from your browser.",
+  "description": "Manage downloads across multiple services (Synology, qBittorrent, Transmission, Deluge) directly from your browser.",
 
   "permissions": [
     "storage",
@@ -27,7 +27,7 @@
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "NAS Download helper",
+    "default_title": "Download Nexus",
     "default_icon": {
       "16":  "icons/icon16.png",
       "48":  "icons/icon48.png",

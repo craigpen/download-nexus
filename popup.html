@@ -700,7 +700,7 @@
   <div class="header">
     <div class="header-left">
       <img src="icons/icon48.png" width="16" height="16" style="border-radius: 3px;" />
-      <span id="headerTitle">NAS Download Helper</span>
+      <span id="headerTitle">Download Nexus</span>
     </div>
     <div class="header-right">
       <div id="mainHeaderControls" style="display:flex;align-items:center;gap:6px">
@@ -773,7 +773,7 @@
 
     <div class="error-container" id="noNasContainer" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
       <div class="error-text" style="color: #1a6fb5;">⚙️ No NAS Configured</div>
-      <div class="error-detail">Go to settings and add a NAS device to get started.</div>
+      <div class="error-detail">Go to settings and add a download client to get started.</div>
       <button class="retry-btn" id="configureBtn" style="background: #1a6fb5;">⚙️ Open Settings</button>
     </div>
 
@@ -794,10 +794,10 @@
 
   <div id="settingsView">
     <div class="settings-section">
-      <div class="settings-label">NAS Devices</div>
+      <div class="settings-label">Download Services</div>
       <div id="settingsNasListWrap">
         <div class="nas-list" id="settingsNasList"></div>
-        <button type="button" class="footer-btn primary" id="addNasBtn" style="width:100%;padding:7px">+ Add NAS Device</button>
+        <button type="button" class="footer-btn primary" id="addNasBtn" style="width:100%;padding:7px">+ Add Download Service</button>
       </div>
 
       <form id="nasForm">
@@ -837,7 +837,7 @@
 
         <label class="settings-toggle-row">
           <span class="switch"><input type="checkbox" id="nasHttps" /><span class="slider"></span></span>
-          <span>Use HTTPS <span class="hint">(port 5001 by default)</span></span>
+          <span>Use HTTPS</span>
         </label>
 
         <label class="settings-field" id="usernameField">
@@ -860,7 +860,7 @@
         </div>
         <div id="testNasStatus" class="settings-status"></div>
 
-        <button type="submit" class="footer-btn primary" style="width:100%;margin-top:8px;padding:8px;font-size:12px">Save NAS Device</button>
+        <button type="submit" class="footer-btn primary" style="width:100%;margin-top:8px;padding:8px;font-size:12px">Save Download Service</button>
         <div id="nasFormStatus" class="settings-status"></div>
       </form>
     </div>
@@ -879,7 +879,7 @@
 
     <div class="settings-section">
       <div class="settings-label">Backup &amp; Restore</div>
-      <p class="settings-hint">Export your NAS devices and whitelist to a file. Useful before reinstalling the extension.</p>
+      <p class="settings-hint">Export your download clients and whitelist to a file. Useful before reinstalling the extension.</p>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="encryptExport" /><span class="slider"></span></span>
         <span>Encrypt export <span class="hint">(password-protected backup file)</span></span>

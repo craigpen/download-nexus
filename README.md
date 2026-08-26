@@ -1,6 +1,6 @@
-# NAS Download Helper
+# Download Nexus
 
-A browser extension for Edge/Chrome that intercepts magnet links and torrent files on web pages and sends them to your torrent client or NAS device(s).
+A browser extension that intercepts magnet links and torrent files on web pages and routes them to your download services (Synology, qBittorrent, Transmission, Deluge).
 
 ## Features
 
