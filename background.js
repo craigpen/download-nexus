@@ -242,6 +242,10 @@ class QBittorrentAdapter extends NasAdapter {
     body.append('password', this.config.password);
 
     console.log(`[qBit] POST to ${url}`);
+    console.log(`[qBit] Username: ${this.config.username}`);
+    console.log(`[qBit] Password length: ${this.config.password?.length || 0}`);
+    console.log(`[qBit] Body string: ${body.toString()}`);
+
     const resp = await fetch(url, {
       method: "POST",
       body,
