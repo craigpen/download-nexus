@@ -244,8 +244,7 @@ class QBittorrentAdapter extends NasAdapter {
     const resp = await fetch(url, {
       method: "POST",
       body,
-      credentials: "include",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      credentials: "include"
     });
 
     if (resp.status !== 204 && resp.status !== 200) {
