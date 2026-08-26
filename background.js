@@ -252,6 +252,7 @@ class QBittorrentAdapter extends NasAdapter {
     });
 
     console.log(`[qBit] Login response status: ${resp.status}`);
+    console.log(`[qBit] Response headers:`, Array.from(resp.headers.entries()));
     if (resp.status !== 204 && resp.status !== 200) {
       const text = await resp.text();
       console.log(`[qBit] Login error response: ${text}`);
