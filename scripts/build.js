@@ -48,8 +48,8 @@ if (target === 'firefox') {
     }
   };
 
-  // Add license field for Firefox
-  manifest.license = "ISC";
+  // Add license for Firefox (required for listed versions)
+  manifest.license = "https://github.com/craigpen/download-nexus/blob/main/LICENSE";
 } else if (target === 'chrome') {
   // Chrome MV3 requires service_worker
   manifest.background = {
