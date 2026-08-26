@@ -14,7 +14,8 @@
   ],
 
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
 
   "content_scripts": [
@@ -43,7 +44,8 @@
 
   "browser_specific_settings": {
     "gecko": {
-      "id": "nas-download-helper@craigpen"
+      "id": "nas-download-helper@craigpen",
+      "data_collection_permissions": ["website_storage"]
     }
   }
 }

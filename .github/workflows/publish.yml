@@ -14,9 +14,9 @@ jobs:
     uses: craigpen/extension-workflows/.github/workflows/publish.yml@main
     with:
       extension_name: "Download Nexus"
-      build_command: "build"
+      build_command: "build:all"
       chrome_zip_path: "dist/chrome-mv3"
-      firefox_zip_path: "dist/chrome-mv3"
+      firefox_zip_path: "dist/firefox"
       edge_zip_path: "dist/chrome-mv3"
       publish_chrome: true
       publish_firefox: true

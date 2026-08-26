@@ -334,34 +334,81 @@ function renderTasks() {
     } else {
       // Create new row
       const row = document.createElement("div");
-      row.className   = "task";
-      row.dataset.id  = task.id;
-      row.innerHTML   = `
-        <div class="task-top">
-          <span class="status-dot ${statusClass(task.status)}"></span>
-          <span class="task-name" title="${escHtml(task.title)}">${escHtml(task.title)}</span>
-          <div class="task-actions">
-            <button class="task-btn pause-btn"  title="${getAdapterPauseText(currentNasId)}"  style="${canPause ? "" : "display:none"}">⏸</button>
-            <button class="task-btn resume-btn" title="Resume" style="${canResume ? "" : "display:none"}">▶</button>
-            <button class="task-btn danger delete-btn" title="Remove task">✕</button>
-          </div>
-        </div>
-        <div class="task-mid">
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${pct}%;background:${color}"></div>
-          </div>
-          <span class="progress-pct">${pct}%</span>
-        </div>
-        <div class="task-bot">
-          <span class="task-size">${fmt(dlSize)} / ${fmt(size)}</span>
-          <span class="task-dn">↓ ${fmtSpeed(spDn)}</span>
-          <span class="task-up">↑ ${fmtSpeed(spUp)}</span>
-          <span class="task-eta">${fmtEta(eta)}</span>
-        </div>`;
+      row.className = "task";
+      row.dataset.id = task.id;
 
-      row.querySelector(".pause-btn").addEventListener("click", () => taskAction("pause",  [task.id]));
-      row.querySelector(".resume-btn").addEventListener("click", () => taskAction("resume", [task.id]));
-      row.querySelector(".delete-btn").addEventListener("click", () => {
+      const top = document.createElement("div");
+      top.className = "task-top";
+      const dot = document.createElement("span");
+      dot.className = `status-dot ${statusClass(task.status)}`;
+      const name = document.createElement("span");
+      name.className = "task-name";
+      name.title = task.title;
+      name.textContent = task.title;
+      const actions = document.createElement("div");
+      actions.className = "task-actions";
+      const pauseBtn = document.createElement("button");
+      pauseBtn.className = "task-btn pause-btn";
+      pauseBtn.title = getAdapterPauseText(currentNasId);
+      pauseBtn.style.display = canPause ? "" : "none";
+      pauseBtn.textContent = "⏸";
+      const resumeBtn = document.createElement("button");
+      resumeBtn.className = "task-btn resume-btn";
+      resumeBtn.title = "Resume";
+      resumeBtn.style.display = canResume ? "" : "none";
+      resumeBtn.textContent = "▶";
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "task-btn danger delete-btn";
+      deleteBtn.title = "Remove task";
+      deleteBtn.textContent = "✕";
+      actions.appendChild(pauseBtn);
+      actions.appendChild(resumeBtn);
+      actions.appendChild(deleteBtn);
+      top.appendChild(dot);
+      top.appendChild(name);
+      top.appendChild(actions);
+
+      const mid = document.createElement("div");
+      mid.className = "task-mid";
+      const track = document.createElement("div");
+      track.className = "progress-track";
+      const fill = document.createElement("div");
+      fill.className = "progress-fill";
+      fill.style.width = `${pct}%`;
+      fill.style.background = color;
+      track.appendChild(fill);
+      const pctSpan = document.createElement("span");
+      pctSpan.className = "progress-pct";
+      pctSpan.textContent = `${pct}%`;
+      mid.appendChild(track);
+      mid.appendChild(pctSpan);
+
+      const bot = document.createElement("div");
+      bot.className = "task-bot";
+      const sizeSpan = document.createElement("span");
+      sizeSpan.className = "task-size";
+      sizeSpan.textContent = `${fmt(dlSize)} / ${fmt(size)}`;
+      const dnSpan = document.createElement("span");
+      dnSpan.className = "task-dn";
+      dnSpan.textContent = `↓ ${fmtSpeed(spDn)}`;
+      const upSpan = document.createElement("span");
+      upSpan.className = "task-up";
+      upSpan.textContent = `↑ ${fmtSpeed(spUp)}`;
+      const etaSpan = document.createElement("span");
+      etaSpan.className = "task-eta";
+      etaSpan.textContent = fmtEta(eta);
+      bot.appendChild(sizeSpan);
+      bot.appendChild(dnSpan);
+      bot.appendChild(upSpan);
+      bot.appendChild(etaSpan);
+
+      row.appendChild(top);
+      row.appendChild(mid);
+      row.appendChild(bot);
+
+      pauseBtn.addEventListener("click", () => taskAction("pause", [task.id]));
+      resumeBtn.addEventListener("click", () => taskAction("resume", [task.id]));
+      deleteBtn.addEventListener("click", () => {
         if (confirm(`Remove task "${task.title}"? (files will be preserved)`)) taskAction("delete", [task.id]);
       });
       fragment.appendChild(row);
@@ -514,20 +561,28 @@ function renderNasTabs() {
   // Multiple NAS: hide header status, show in tabs instead
   document.getElementById("connStatus").style.display = "none";
   const tabBar = document.getElementById("nasTabBar");
-  tabBar.innerHTML = nasList.map(nas => {
+  tabBar.innerHTML = '';
+  nasList.forEach(nas => {
     const isActive = nas.id === currentNasId;
     const connStatus = nasConnStatus[nas.id] || "unknown";
     const connIndicator = connStatus === "ok" ? "Connected" : connStatus === "error" ? "Offline" : "…";
     const connColor = connStatus === "ok" ? "#4caf7d" : connStatus === "error" ? "#ff7b72" : "#8898b8";
-    const nasName = escHtml(nas.name);
-    const nasId = escHtml(nas.id);
-    return `
-      <button class="tab ${isActive ? "active" : ""}" data-nas-id="${nasId}" style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;">
-        <div>${nasName}</div>
-        <div style="font-size: 9px; color: ${connColor}; opacity: 0.8;">${connIndicator}</div>
-      </button>
-    `;
-  }).join("");
+
+    const btn = document.createElement("button");
+    btn.className = `tab${isActive ? " active" : ""}`;
+    btn.dataset.nasId = nas.id;
+    btn.style.cssText = "flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;";
+
+    const nameDiv = document.createElement("div");
+    nameDiv.textContent = nas.name;
+    const connDiv = document.createElement("div");
+    connDiv.style.cssText = `font-size: 9px; color: ${connColor}; opacity: 0.8;`;
+    connDiv.textContent = connIndicator;
+
+    btn.appendChild(nameDiv);
+    btn.appendChild(connDiv);
+    tabBar.appendChild(btn);
+  });
   tabBar.style.display = "flex";
 
   tabBar.querySelectorAll(".tab").forEach(tab => {
@@ -726,19 +781,40 @@ async function showMainView() {
 function renderSettingsNasList() {
   const container = document.getElementById("settingsNasList");
   if (!container) return;
+  container.innerHTML = '';
   if (nasList.length === 0) {
-    container.innerHTML = '<div class="settings-empty">No download services configured yet.</div>';
+    const empty = document.createElement("div");
+    empty.className = "settings-empty";
+    empty.textContent = "No download services configured yet.";
+    container.appendChild(empty);
     return;
   }
-  container.innerHTML = nasList.map(nas => `
-    <div class="nas-item" data-nas-id="${escHtml(nas.id)}">
-      <div class="nas-item-info">
-        <div class="nas-item-name">${escHtml(nas.name)}</div>
-        <div class="nas-item-host">${escHtml(nas.host)}:${escHtml(String(nas.port))}</div>
-      </div>
-      <button type="button" class="mini-delete-btn" data-nas-id="${escHtml(nas.id)}">✕</button>
-    </div>
-  `).join("");
+  nasList.forEach(nas => {
+    const item = document.createElement("div");
+    item.className = "nas-item";
+    item.dataset.nasId = nas.id;
+
+    const info = document.createElement("div");
+    info.className = "nas-item-info";
+    const name = document.createElement("div");
+    name.className = "nas-item-name";
+    name.textContent = nas.name;
+    const host = document.createElement("div");
+    host.className = "nas-item-host";
+    host.textContent = `${nas.host}:${nas.port}`;
+    info.appendChild(name);
+    info.appendChild(host);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mini-delete-btn";
+    btn.dataset.nasId = nas.id;
+    btn.textContent = "✕";
+
+    item.appendChild(info);
+    item.appendChild(btn);
+    container.appendChild(item);
+  });
 
   container.querySelectorAll(".nas-item").forEach(item => {
     item.addEventListener("click", e => {
