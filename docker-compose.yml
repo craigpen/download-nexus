@@ -33,9 +33,7 @@ services:
     image: linuxserver/deluge:latest
     container_name: deluge-linuxserver-test
     ports:
-      - "8112:8112"
-      - "6881:6881"
-      - "6881:6881/udp"
+      - "8114:8112"
     environment:
       - PUID=1000
       - PGID=1000
@@ -46,17 +44,14 @@ services:
       - /tmp/deluge-linuxserver/downloads:/downloads
     restart: unless-stopped
 
-  deluge-official:
-    image: deluge/deluge:latest
-    container_name: deluge-official-test
+  deluge-alternative:
+    image: spritsail/deluge:latest
+    container_name: deluge-alternative-test
     ports:
       - "8113:8112"
-      - "6882:6881"
-      - "6882:6881/udp"
     environment:
       - TZ=UTC
-      - DELUGE_LOGLEVEL=info
     volumes:
-      - /tmp/deluge-official:/config
-      - /tmp/deluge-official/downloads:/downloads
+      - /tmp/deluge-alternative:/config
+      - /tmp/deluge-alternative/downloads:/downloads
     restart: unless-stopped
