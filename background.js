@@ -241,9 +241,8 @@ class QBittorrentAdapter extends NasAdapter {
       headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
 
-    const text = await resp.text();
     if (resp.status !== 204 && resp.status !== 200) {
-      console.error(`qBit login failed - Status: ${resp.status}, Response: ${text}`);
+      const text = await resp.text();
       throw new Error(`qBit auth failed: HTTP ${resp.status}: ${text}`);
     }
   }
@@ -267,7 +266,7 @@ class QBittorrentAdapter extends NasAdapter {
       headers["X-API-Token"] = this.config.apiToken;
     }
 
-    const resp = await fetch(url, { ...options, headers, credentials: "include" });
+    const resp = await fetch(url, { ...options, headers });
     if (resp.status === 403) throw new Error("qBit auth failed");
     if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
     return resp;
