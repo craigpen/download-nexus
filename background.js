@@ -237,8 +237,9 @@ class QBittorrentAdapter extends NasAdapter {
       headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
 
+    const text = await resp.text();
     if (resp.status !== 204 && resp.status !== 200) {
-      const text = await resp.text();
+      console.error(`qBit login failed - Status: ${resp.status}, Response: ${text}`);
       throw new Error(`qBit auth failed: HTTP ${resp.status}: ${text}`);
     }
   }
