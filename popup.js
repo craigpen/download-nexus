@@ -1,5 +1,41 @@
 // popup.js — Task manager + device settings
 
+// Service-specific configuration: defaults and help text (P1-3)
+const SERVICE_DEFAULTS = {
+  synology: {
+    defaultHost: "192.168.1.100",
+    defaultPort: 5000,
+    defaultUsername: "admin",
+    portHint: "5000 (HTTP) or 5001 (HTTPS)",
+    usernameHint: "DSM admin username",
+    helpText: "Enter your Synology NAS IP/hostname and DSM credentials. Default port is 5000 for HTTP, 5001 for HTTPS."
+  },
+  qbittorrent: {
+    defaultHost: "192.168.1.100",
+    defaultPort: 8080,
+    defaultUsername: "admin",
+    portHint: "8080 (default)",
+    usernameHint: "qBittorrent Web UI username",
+    helpText: "Enter your qBittorrent Web UI hostname and credentials. Default port is 8080. Username is typically 'admin'."
+  },
+  transmission: {
+    defaultHost: "192.168.1.100",
+    defaultPort: 9091,
+    defaultUsername: "",
+    portHint: "9091 (default)",
+    usernameHint: "Optional if auth is enabled",
+    helpText: "Enter your Transmission daemon hostname. Default port is 9091. Username/password optional if auth is disabled."
+  },
+  deluge: {
+    defaultHost: "192.168.1.100",
+    defaultPort: 8112,
+    defaultUsername: "admin",
+    portHint: "8112 (default)",
+    usernameHint: "Not used (password only)",
+    helpText: "Enter your Deluge hostname and password. Deluge uses password-only authentication. Default port is 8112."
+  }
+};
+
 // Adapter feature configuration - defines tabs, labels, and action capabilities for each adapter
 // Actions: pause (stop active transfer), resume (start/retry paused/stalled task), delete (remove task, preserves files)
 const ADAPTER_FEATURES = {
@@ -738,6 +774,21 @@ function updateDestinationFieldVisibility() {
 
 function updateFormFieldsForType() {
   const type = document.getElementById("nasType").value;
+  const defaults = SERVICE_DEFAULTS[type] || SERVICE_DEFAULTS.synology;
+
+  // Update all field placeholders with service-specific defaults (P1-3)
+  document.getElementById("nasHost").placeholder = defaults.defaultHost;
+  document.getElementById("nasPort").placeholder = defaults.defaultPort.toString();
+  document.getElementById("nasUsername").placeholder = defaults.defaultUsername || "Not required";
+
+  // Update help text (P1-3)
+  const helpEl = document.getElementById("serviceHelpText");
+  if (helpEl) {
+    helpEl.textContent = defaults.helpText;
+    helpEl.style.color = "#888";
+    helpEl.style.fontStyle = "italic";
+  }
+
   const usernameField = document.getElementById("usernameField");
   const passwordField = document.getElementById("passwordField");
   const usernameInput = document.getElementById("nasUsername");
@@ -750,24 +801,27 @@ function updateFormFieldsForType() {
   usernameField.style.display = needsAuth ? "" : "none";
   passwordField.style.display = needsAuth ? "" : "none";
 
-  // Update required attribute and placeholders based on adapter type
+  // Update required attribute and set default port based on adapter type (P1-3)
   if (type === "synology") {
     document.getElementById("nasPort").value = "5000";
-    usernameInput.placeholder = "admin";
+    usernameInput.placeholder = defaults.defaultUsername;
     usernameInput.required = true;
     passwordInput.required = true;
   } else if (type === "qbittorrent") {
     document.getElementById("nasPort").value = "8080";
-    usernameInput.placeholder = "admin";
+    usernameInput.placeholder = defaults.defaultUsername;
     usernameInput.required = true;
     passwordInput.required = true;
   } else if (type === "deluge") {
     document.getElementById("nasPort").value = "8112";
-    usernameInput.placeholder = "Not used for JSON RPC";
+    usernameInput.placeholder = "Not required (password only)";
     usernameInput.required = false;
     passwordInput.required = true;  // Deluge RPC only needs password
   } else if (type === "transmission") {
     document.getElementById("nasPort").value = "9091";
+    usernameInput.placeholder = defaults.defaultUsername || "Optional";
+    usernameInput.required = false;
+    passwordInput.required = false;
   }
 
   document.getElementById("nasHttps").checked = false;
