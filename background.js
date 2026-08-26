@@ -1492,10 +1492,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     dbg("INFO", "Message received", msg.type);
 
-    if (msg.type === "TEST_CONNECTION") {
-      dbg("INFO", "TEST_CONNECTION msg details", `nasId=${msg.nasId}, settings.type=${msg.settings?.type}`);
-    }
-
     if (msg.type === "SEND_MAGNET") {
       sendMagnet(msg.url, msg.nasId)
         .then(() => sendResponse({ ok: true, log: [...debugLog] }))
