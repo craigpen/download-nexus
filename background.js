@@ -237,33 +237,21 @@ class QBittorrentAdapter extends NasAdapter {
     }
 
     const url = `${this._baseUrl()}/api/v2/auth/login`;
-    const bodyString = `username=${encodeURIComponent(this.config.username)}&password=${encodeURIComponent(this.config.password)}`;
-
-    console.log(`[qBit] POST to ${url}`);
-    console.log(`[qBit] Username: ${this.config.username}`);
-    console.log(`[qBit] Password length: ${this.config.password?.length || 0}`);
-    console.log(`[qBit] Body string: ${bodyString}`);
+    const body = new URLSearchParams();
+    body.append('username', this.config.username);
+    body.append('password', this.config.password);
 
     const resp = await fetch(url, {
       method: "POST",
-      body: bodyString,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      }
+      body,
+      credentials: "include",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
 
-    console.log(`[qBit] Login response status: ${resp.status}`);
-    const headersObj = {};
-    resp.headers.forEach((value, key) => {
-      headersObj[key] = value;
-    });
-    console.log(`[qBit] Response headers:`, JSON.stringify(headersObj, null, 2));
     if (resp.status !== 204 && resp.status !== 200) {
       const text = await resp.text();
-      console.log(`[qBit] Login error response: ${text}`);
       throw new Error(`qBit auth failed: HTTP ${resp.status}: ${text}`);
     }
-    console.log(`[qBit] Login successful`);
   }
 
   async _fetch(path, options = {}) {
