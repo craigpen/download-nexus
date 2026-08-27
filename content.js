@@ -191,7 +191,8 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
         transition:  "background 0.15s",
         borderBottom: idx < nasDevices.length - 1 ? "1px solid rgba(255,255,255,0.2)" : "none",
         lineHeight:  "1.4",
-        pointerEvents: "auto"
+        pointerEvents: "auto",
+        textAlign:   "left"
       });
       option.addEventListener("mouseenter", () => {
         option.style.background = bgColor === "#1a7a4a" ? "#2a9a5a" : "#2a7fc5";
