@@ -511,19 +511,33 @@ class DelugeAdapter extends NasAdapter {
 
   async _ensureAuthenticated() {
     if (this._isAuthenticated) return;
-    // Deluge web UI may not require explicit login if accessed via web interface
-    // Try calling a simple method to test connectivity instead of authenticating
-    dbg("INFO", "DelugeAdapter._ensureAuthenticated testing connectivity");
-    try {
-      const resp = await this._rpcRaw("core.get_torrents_status", [{}, []]);
-      dbg("INFO", "DelugeAdapter connectivity check passed");
-      this._isAuthenticated = true;
-    } catch (err) {
-      // If get_torrents_status fails, we're not authenticated
-      // But since we don't have a real auth method, just mark as authenticated anyway
-      // and let the actual method calls fail with proper errors
-      dbg("WARN", "DelugeAdapter connectivity test failed", err.message);
-      this._isAuthenticated = true;
+
+    if (!this.config?.password) {
+      throw new Error("Deluge password not configured");
+    }
+
+    dbg("INFO", "DelugeAdapter._ensureAuthenticated calling auth.login");
+    const resp = await this._rpcRaw("auth.login", [this.config.password]);
+
+    if (resp.error) {
+      dbg("ERROR", "DelugeAdapter auth.login failed", resp.error.message);
+      throw new Error(`Deluge authentication failed: ${resp.error.message}`);
+    }
+
+    if (resp.result === true) {
+      dbg("INFO", "DelugeAdapter authenticated successfully");
+      // Verify we can actually make API calls - if login succeeds but API calls fail,
+      // it means the password change prompt is active
+      try {
+        await this._rpcRaw("core.get_torrents_status", [{}, []]);
+        this._isAuthenticated = true;
+      } catch (err) {
+        dbg("ERROR", "DelugeAdapter password change prompt detected", err.message);
+        throw new Error("Deluge password change required: Access the Deluge web UI and complete the password change prompt before using the extension");
+      }
+    } else {
+      dbg("ERROR", "DelugeAdapter authentication rejected", `result=${resp.result}`);
+      throw new Error("Deluge authentication failed: invalid password or daemon rejected login");
     }
   }
 
@@ -1441,10 +1455,6 @@ async function sendDownload(uri, nasId = null) {
     notify("⚠️ NAS not found", "Configure a NAS device in extension options.");
     return;
   }
-  if (!s.password) {
-    notify("⚠️ Not configured", "Open the extension options and enter your NAS credentials.");
-    return;
-  }
 
   const isMagnet = uri.startsWith("magnet:");
   dbg("INFO", isMagnet ? "SEND_MAGNET" : "SEND_TORRENT", uri.slice(0, 80));
@@ -1515,11 +1525,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
 
     dbg("INFO", "Message received", msg.type);
+    dbg("INFO", "msg.type value", `type="${msg.type}" typeof=${typeof msg.type} length=${msg.type?.length ?? "null"}`);
 
     if (msg.type === "SEND_MAGNET") {
-      sendDownload(msg.url, msg.nasId)
-        .then(() => sendResponse({ ok: true, log: [...debugLog] }))
-        .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
+      dbg("INFO", "SEND_MAGNET handler START");
+      sendDownload(msg.url, msg.nasId).then(() => {
+        dbg("INFO", "SEND_MAGNET", "Success");
+        sendResponse({ ok: true, log: [...debugLog] });
+      }).catch(e => {
+        dbg("ERROR", "SEND_MAGNET", e.message);
+        sendResponse({ ok: false, error: e.message, log: [...debugLog] });
+      });
       return true;
     }
     if (msg.type === "TEST_CONNECTION") {

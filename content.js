@@ -145,7 +145,10 @@
     popup.setAttribute("data-syno-popup", "1");
     const bgColor = "#1a6fb5";
     popup.setAttribute("style", [
-      "position: fixed !important",
+      "position: absolute !important",
+      "top: 100% !important",
+      "left: 0 !important",
+      "margin-top: 6px !important",
       "z-index: 999999999 !important",
       `background: ${bgColor} !important`,
       "border: none !important",
@@ -172,7 +175,8 @@
         color:       "#fff",
         transition:  "background 0.15s",
         borderBottom: idx < nasDevices.length - 1 ? "1px solid rgba(255,255,255,0.2)" : "none",
-        lineHeight:  "1.4"
+        lineHeight:  "1.4",
+        pointerEvents: "auto"
       });
       option.addEventListener("mouseenter", () => {
         option.style.background = bgColor === "#1a7a4a" ? "#2a9a5a" : "#2a7fc5";
@@ -182,58 +186,54 @@
       });
       option.addEventListener("click", (e) => {
         e.stopPropagation();
-        document.body.removeChild(popup);
+        btn.removeChild(popup);
         sendUrl(btn, url, nas.id);
       });
       popup.appendChild(option);
     });
 
-    // Position popup near the button (fixed positioning, so no scroll offsets needed)
-    const rect = btn.getBoundingClientRect();
-    popup.style.left = rect.left + "px";
-    popup.style.top = (rect.bottom + 6) + "px";
-
-
-    document.body.appendChild(popup);
-
+    // Attach popup to button (absolute positioning)
+    btn.appendChild(popup);
 
     // Close popup when clicking outside
     const closePopup = (e) => {
       if (!popup.contains(e.target) && e.target !== btn) {
-        if (document.body.contains(popup)) {
-          document.body.removeChild(popup);
+        if (btn.contains(popup)) {
+          btn.removeChild(popup);
         }
         document.removeEventListener("click", closePopup);
       }
     };
+
+    popup.style.pointerEvents = "auto";
     setTimeout(() => document.addEventListener("click", closePopup), 0);
   }
 
   function makeInlineButton(url, type, anchorEl) {
     const btn = document.createElement("button");
-    btn.textContent = "⬇ NAS";
     btn.title = nasTooltip;
     btn.setAttribute(ATTR, "btn");
     btn.setAttribute("data-url", url);
     btn.setAttribute("data-type", type);
+    const iconDataUri = "data:image/png;base64,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";
     btn.setAttribute("style", [
+      "position: relative !important",
       "display: inline-block !important",
+      "overflow: visible !important",
       "margin-left: 4px !important",
-      "padding: 2px 6px !important",
-      "font-size: 11px !important",
-      "font-family: sans-serif !important",
-      "font-weight: 600 !important",
-      "color: #fff !important",
-      "background: #1a6fb5 !important",
+      "width: 20px !important",
+      "height: 20px !important",
+      "padding: 0 !important",
+      "background-image: url('" + iconDataUri + "') !important",
+      "background-size: contain !important",
+      "background-repeat: no-repeat !important",
+      "background-position: center !important",
+      "background-color: transparent !important",
       "border: none !important",
-      "border-radius: 3px !important",
       "cursor: pointer !important",
-      "line-height: 1.4 !important",
-      "white-space: nowrap !important",
       "vertical-align: middle !important",
       "user-select: none !important",
-      "pointer-events: auto !important",
-      "box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important"
+      "pointer-events: auto !important"
     ].join("; "));
 
     btn.addEventListener("click", e => {

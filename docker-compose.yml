@@ -3,7 +3,7 @@ version: '3.8'
 services:
   qbittorrent:
     image: linuxserver/qbittorrent:latest
-    container_name: qbittorrent-test
+    container_name: qbittorrent
     ports:
       - "8080:8080"
     environment:
@@ -17,7 +17,7 @@ services:
 
   transmission:
     image: linuxserver/transmission:latest
-    container_name: transmission-test
+    container_name: transmission
     ports:
       - "9091:9091"
     environment:
@@ -29,11 +29,11 @@ services:
       - /tmp/transmission/downloads:/downloads
     restart: unless-stopped
 
-  deluge-linuxserver:
+  deluge:
     image: linuxserver/deluge:latest
-    container_name: deluge-linuxserver-test
+    container_name: deluge
     ports:
-      - "8114:8112"
+      - "8112:8112"
     environment:
       - PUID=1000
       - PGID=1000
@@ -44,14 +44,3 @@ services:
       - /tmp/deluge-linuxserver/downloads:/downloads
     restart: unless-stopped
 
-  deluge-alternative:
-    image: spritsail/deluge:latest
-    container_name: deluge-alternative-test
-    ports:
-      - "8113:8112"
-    environment:
-      - TZ=UTC
-    volumes:
-      - /tmp/deluge-alternative:/config
-      - /tmp/deluge-alternative/downloads:/downloads
-    restart: unless-stopped

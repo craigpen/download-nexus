@@ -4,11 +4,11 @@ A browser extension that intercepts magnet links and torrent files on web pages 
 
 ## Features
 
-- **Multi-client support**: Configure and manage Synology NAS or qBittorrent clients
+- **Multi-service support**: Configure and manage multiple download services
+  - **Supported services**: Synology NAS, qBittorrent, Transmission, and Deluge
   - Add/edit/delete devices from the settings view in the popup (gear icon)
   - Each device has independent session and settings
   - Export/import config with option to exclude plaintext passwords
-  - Extensible architecture for adding more clients (Transmission, Deluge, etc.)
 - **Magnet link & torrent support**: Detects and handles both magnet links and `.torrent` files
   - Inline buttons next to links (no floating/overlapping)
   - NAS selector popup when multiple devices configured
@@ -38,18 +38,22 @@ This extension stores NAS device credentials (hostname, port, username, password
 
 ## Configuration
 
-### Adding NAS Devices
+### Adding Download Services
 
 1. Open the extension popup and click the gear icon to switch to Settings
-2. Click **"+ Add NAS Device"**
-3. Select device type (currently **Synology** available)
+2. Click **"+ Add Device"**
+3. Select device type from the dropdown:
+   - **Synology**: Synology NAS DownloadStation
+   - **qBittorrent**: qBittorrent Web UI
+   - **Transmission**: Transmission daemon
+   - **Deluge**: Deluge Web UI
 4. Enter device details:
-   - **Device Name**: e.g., "Home NAS", "Backup NAS" (displayed in popup tabs)
-   - **Host/IP**: Your NAS IP or hostname
-   - **Port**: Default 5000 (or 5001 for HTTPS)
-   - **HTTPS**: Toggle if your NAS uses HTTPS
-   - **Username & Password**: DSM credentials
-   - **Download Destination**: Optional path (e.g., `/volume1/downloads`)
+   - **Device Name**: e.g., "Home NAS", "My qBit" (displayed in popup tabs)
+   - **Host/IP**: Your service IP or hostname
+   - **Port**: Service-specific default (Synology: 5000, qBittorrent: 8080, Transmission: 9091, Deluge: 8112)
+   - **HTTPS**: Toggle if your service uses HTTPS
+   - **Username & Password**: Service credentials
+   - **Download Destination**: Optional path (service-specific format)
 5. Click **"Test Connection"** to verify settings
 6. Save the device
 7. **Add more devices** by repeating the above (tabs will appear in popup)
@@ -89,38 +93,38 @@ The content script can be optimized by whitelisting specific domains where you f
 
 Each build is ready to submit to the respective app store.
 
-### Testing with qBittorrent
+### Testing with Download Clients
 
-The extension now supports qBittorrent as an alternative to Synology NAS. To test with qBittorrent:
+The extension supports multiple download services. Quick setup for each:
 
-**Option 1: Docker (Recommended)**
-```bash
-docker run -d \
-  --name qbittorrent \
-  -p 8080:8080 \
-  -e WEBUI_PORT=8080 \
-  qbittorrent/qbittorrent:latest
-```
-Then access `http://localhost:8080` (default: admin/adminadmin)
+**qBittorrent**
+- Docker: `docker run -d -p 8080:8080 qbittorrent/qbittorrent:latest`
+- Default credentials: admin/adminadmin
+- Web UI port: 8080
 
-**Option 2: Local Installation**
-- Download from https://www.qbittorrent.org/download
-- Run qBittorrent locally
-- Access Web UI at `http://localhost:8080` or configured port
+**Transmission**
+- Docker: `docker run -d -p 9091:9091 transmissionbt/transmission:latest`
+- Default credentials: transmission/transmission
+- Web UI port: 9091
+
+**Deluge**
+- Docker: `docker run -d -p 8112:8112 deluge/deluge:latest`
+- Default credentials: (typically no auth required initially)
+- Web UI port: 8112
 
 **Testing Steps:**
 1. Load the extension in developer mode (see Development section above)
 2. Click gear icon → "+ Add Device"
-3. Select "qBittorrent" from the Device Type dropdown
+3. Select the service type you want to test
 4. Enter connection details:
-   - Device Name: e.g., "My qBit"
-   - Host: `localhost` (or your qBit server IP)
-   - Port: `8080` (or your configured port)
-   - Username/Password: qBit Web UI credentials
+   - Device Name: e.g., "My qBit", "Transmission Server"
+   - Host: `localhost` (or your service server IP)
+   - Port: Service default (qBittorrent: 8080, Transmission: 9091, Deluge: 8112)
+   - Username/Password: Service credentials
 5. Click "Test Connection" to verify
 6. Go back to main view
 7. Visit a torrent site and click a magnet link
-8. Confirm the torrent appears in qBittorrent Web UI
+8. Confirm the download appears in your configured service
 
 ## Support Development
 
