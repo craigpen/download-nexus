@@ -499,8 +499,8 @@ class DelugeAdapter extends NasAdapter {
       throw new Error("Deluge password not configured");
     }
 
-    dbg("INFO", "DelugeAdapter._ensureAuthenticated calling auth.login");
-    const resp = await this._rpcRaw("auth.login", [this.config.password]);
+    dbg("INFO", "DelugeAdapter._ensureAuthenticated calling daemon.login");
+    const resp = await this._rpcRaw("daemon.login", [this.config.username || "", this.config.password || "", 2]);
 
     if (resp.error) {
       dbg("ERROR", "DelugeAdapter auth.login failed", resp.error.message);
@@ -622,10 +622,6 @@ class DelugeAdapter extends NasAdapter {
     const url = `${this._baseUrl()}/json`;
 
     dbg("INFO", `Deluge RPC call: ${method}`, `params=${JSON.stringify(params).slice(0, 100)}`);
-    console.log("[DelugeAdapter._rpcRaw] Calling method:", method, "with params:", params);
-    console.log("[DelugeAdapter._rpcRaw] Payload:", JSON.stringify(payload));
-    console.log("[DelugeAdapter._rpcRaw] URL:", url);
-    console.log("[DelugeAdapter._rpcRaw] Session cookie:", this._sessionCookie);
 
     try {
       const headers = {
@@ -645,18 +641,15 @@ class DelugeAdapter extends NasAdapter {
         credentials: "include"
       });
 
-      console.log("[DelugeAdapter._rpcRaw] Response status:", resp.status);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       // Extract and store session cookie from response
       const setCookie = resp.headers.get("set-cookie");
       if (setCookie) {
         this._sessionCookie = setCookie.split(";")[0];
-        console.log("[DelugeAdapter._rpcRaw] Updated session cookie:", this._sessionCookie);
       }
 
       const data = await resp.json();
-      console.log("[DelugeAdapter._rpcRaw] Response data:", JSON.stringify(data).slice(0, 200));
       dbg("INFO", `Deluge RPC response: ${method}`, `result=${!!data.result}, error=${data.error?.message || 'none'}`);
 
       // Deluge returns { result: ... } or { error: ... }
