@@ -421,7 +421,7 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
     try {
       // Disconnect the observer
-      observer?.disconnect?.();
+      window.downloadNexusObserver?.disconnect?.();
       console.log('[ContentScript] ✅ Cleanup complete');
     } catch (err) {
       console.error('[ContentScript] Cleanup error:', err);

@@ -1035,6 +1035,7 @@ function updateTestButtonState() {
   testBtn.title = isReady ? "Test connection to this NAS" : "Enter host to test connection";
 }
 
+document.getElementById("nasHost").addEventListener("input", updateTestButtonState);
 document.getElementById("nasPassword").addEventListener("input", updateTestButtonState);
 document.getElementById("nasApiToken").addEventListener("input", updateTestButtonState);
 
