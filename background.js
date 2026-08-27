@@ -187,7 +187,8 @@ class QBittorrentAdapter extends NasAdapter {
         body: formData
       });
       const text = await resp.text();
-      if (!text.toLowerCase().match(/^ok\.?$/)) {
+      // qBittorrent returns either "Ok" or a JSON with torrent info
+      if (text.toLowerCase() !== "ok" && !text.startsWith("{")) {
         throw new Error(`qBit add torrent failed: ${text}`);
       }
     });
