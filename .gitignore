@@ -29,3 +29,7 @@ build/
 
 # Local development notes
 MEMORY.md
+
+# Social media/promotional drafts (local only)
+docs/reddit-post-*.md
+docs/*-post.md
