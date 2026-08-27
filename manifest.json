@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Download Nexus",
-  "version": "1.1.0",
+  "version": "1.1.9",
   "description": "Manage downloads across multiple services (Synology, qBittorrent, Transmission, Deluge) directly from your browser.",
 
   "permissions": [
