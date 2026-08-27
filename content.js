@@ -388,7 +388,8 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
   // ── MutationObserver — anchor tags only ───────────────────────────────────
 
-  const observer = new MutationObserver(mutations => {
+  window.downloadNexusObserver = null; // Expose for cleanup
+  window.downloadNexusObserver = new MutationObserver(mutations => {
     for (const mut of mutations) {
       for (const node of mut.addedNodes) {
         if (node.nodeType !== Node.ELEMENT_NODE) continue;
@@ -398,7 +399,7 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
     }
   });
 
-  observer.observe(document.body || document.documentElement, {
+  window.downloadNexusObserver.observe(document.body || document.documentElement, {
     childList: true,
     subtree:   true
   });
