@@ -1,6 +1,6 @@
 # Download Nexus
 
-A browser extension that intercepts magnet links and torrent files on web pages and routes them to your download services (Synology, qBittorrent, Transmission, Deluge).
+A browser extension that intercepts magnet links and torrent files on web pages and routes them to your download services
 
 ## Features
 
