@@ -4,7 +4,7 @@ This document describes the testing infrastructure for Download Nexus.
 
 ## Adapter Tests
 
-The adapter test suite verifies that all device adapters (Synology, qBittorrent, etc.) implement the correct interface and handle data consistently.
+The adapter test suite verifies that all download service adapters (Synology, qBittorrent, Transmission, Deluge) implement the correct interface and handle data consistently.
 
 ### Running Tests
 
@@ -58,7 +58,7 @@ npm run test:watch
 
 ### Quick Test Checklist
 
-#### Synology NAS
+#### Synology
 - [ ] Connection test succeeds with valid credentials
 - [ ] Task list loads and displays correctly
 - [ ] Torrent names display in task list
@@ -82,11 +82,11 @@ npm run test:watch
 - [ ] Start button starts task
 - [ ] Delete button removes task
 
-#### Multi-Device
-- [ ] Can add both Synology and qBittorrent devices
-- [ ] Tabs show both devices
+#### Multiple Services
+- [ ] Can add both Synology and qBittorrent services
+- [ ] Tabs show both services
 - [ ] Switching tabs shows correct task lists
-- [ ] Each device operates independently
+- [ ] Each service operates independently
 
 ### Integration Testing
 
@@ -97,10 +97,10 @@ Integration tests verify actual API calls against real device instances.
 Start a qBittorrent Docker container:
 
 ```bash
-docker run -d -p 8080:8080 \
-  -e WEBUI_PORT=8080 \
-  linuxserver/qbittorrent:latest
+docker run -d -p 8080:8080 qbittorrent/qbittorrent:latest
 ```
+
+Check container logs for the default credentials.
 
 Run tests:
 
@@ -120,9 +120,7 @@ This verifies:
 Start a Transmission Docker container:
 
 ```bash
-docker run -d -p 9091:9091 \
-  -e TZ=UTC \
-  linuxserver/transmission:latest
+docker run -d -p 9091:9091 transmissionbt/transmission:latest
 ```
 
 Run tests:
@@ -188,9 +186,9 @@ jobs:
       - run: npm test
 ```
 
-## Adding New Device Types
+## Adding New Service Types
 
-When adding a new device adapter (e.g., Transmission, Deluge):
+When adding a new download service adapter (e.g., Transmission, Deluge):
 
 ### 1. Create Adapter Class
 
@@ -255,7 +253,7 @@ case "transmission":
 
 ### 5. Add UI Support
 
-Update `popup.html` device type selector:
+Update `popup.html` service type selector:
 
 ```html
 <option value="transmission">Transmission</option>
