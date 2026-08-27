@@ -493,27 +493,24 @@ class DelugeAdapter extends NasAdapter {
   }
 
   async _ensureAuthenticated() {
-    if (this._isAuthenticated) return;
-
     if (!this.config?.password) {
       throw new Error("Deluge password not configured");
     }
 
-    dbg("INFO", "DelugeAdapter._ensureAuthenticated calling daemon.login");
-    const resp = await this._rpcRaw("daemon.login", [this.config.username || "", this.config.password || "", 2]);
+    dbg("INFO", "DelugeAdapter._ensureAuthenticated calling auth.login");
+    const resp = await this._rpcRaw("auth.login", [this.config.password]);
 
     if (resp.error) {
       dbg("ERROR", "DelugeAdapter auth.login failed", resp.error.message);
       throw new Error(`Deluge authentication failed: ${resp.error.message}`);
     }
 
-    if (resp.result === true) {
-      dbg("INFO", "DelugeAdapter authenticated successfully");
-      this._isAuthenticated = true;
-    } else {
+    if (resp.result !== true) {
       dbg("ERROR", "DelugeAdapter authentication rejected", `result=${resp.result}`);
       throw new Error("Deluge authentication failed: invalid password or daemon rejected login");
     }
+
+    dbg("INFO", "DelugeAdapter authenticated successfully");
   }
 
   async testConnection() {
@@ -534,9 +531,8 @@ class DelugeAdapter extends NasAdapter {
   async listTasks() {
     dbg("INFO", "DelugeAdapter.listTasks starting");
     await this._ensureAuthenticated();
-    dbg("INFO", "DelugeAdapter authenticated, calling core.get_torrents_status");
-    const resp = await this._rpc("core.get_torrents_status", [
-      {},
+    dbg("INFO", "DelugeAdapter authenticated, calling core.get_torrents");
+    const resp = await this._rpc("core.get_torrents", [
       ["name", "state", "progress", "total_done", "total_uploaded", "total_size", "download_payload_rate", "upload_payload_rate", "eta", "time_added"]
     ]);
     dbg("INFO", "DelugeAdapter got response", resp.error ? `error: ${resp.error.message}` : "success");
