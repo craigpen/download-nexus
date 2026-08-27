@@ -179,19 +179,22 @@ class QBittorrentAdapter extends NasAdapter {
       finalUri = await torrentToMagnet(torrentBuffer);
     }
 
-    await this._call(async () => {
-      const formData = new FormData();
-      formData.append("urls", finalUri);
-      const resp = await this._fetch("/torrents/add", {
-        method: "POST",
-        body: formData
-      });
-      const text = await resp.text();
-      // qBittorrent returns either "Ok" or a JSON with torrent info
-      if (text.toLowerCase() !== "ok" && !text.startsWith("{")) {
-        throw new Error(`qBit add torrent failed: ${text}`);
-      }
+    // For password auth, ensure we're logged in first
+    if (!this._isTokenAuth) {
+      await this._login();
+    }
+
+    const formData = new FormData();
+    formData.append("urls", finalUri);
+    const resp = await this._fetch("/torrents/add", {
+      method: "POST",
+      body: formData
     });
+    const text = await resp.text();
+    // qBittorrent returns either "Ok" or a JSON with torrent info
+    if (text.toLowerCase() !== "ok" && !text.startsWith("{")) {
+      throw new Error(`qBit add torrent failed: ${text}`);
+    }
   }
 
   async taskAction(action, ids) {
