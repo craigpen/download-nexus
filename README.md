@@ -1,47 +1,50 @@
 # Download Nexus
 
-A browser extension that intercepts magnet links and torrent files on web pages and routes them to your download services
+If you have qBittorrent, Transmission, Deluge, or a Synology NAS running, you can send magnet links and torrent files to them directly from your browser. Click a link, select which service if you have multiple configured, and it's sent to that service. Manage downloads from the extension popup — view status, pause, resume, or delete.
 
-## Features
+**Desktop browsers only** (Chrome, Firefox, Edge).
 
-- **Multi-service support**: Configure and manage multiple download services
-  - **Supported services**: Synology NAS, qBittorrent, Transmission, and Deluge
-  - Add/edit/delete devices from the settings view in the popup (gear icon)
-  - Each device has independent session and settings
-  - Export/import config with option to exclude plaintext passwords
-- **Magnet link & torrent support**: Detects and handles both magnet links and `.torrent` files
-  - Inline buttons next to links (no floating/overlapping)
-  - NAS selector popup when multiple devices configured
-- **Task management popup**: View, pause, resume, and delete tasks
-  - **NAS tabs**: Switch between devices (shown when 2+ configured)
-  - **Smart sorting**: DL tab by % complete, others by date added (newest first)
-  - **Per-NAS connection status**: Shows which NAS is connected in tabs/header
-  - **Open Web**: Quick link to current NAS web interface
-- **Persistent per-NAS sessions**: Maintains independent login sessions for each device
-- **Global content script whitelist**: Filter which domains show buttons (applies to all NAS)
-  - Quick add/remove from popup header
-  - Only scans whitelisted domains for performance
-- **Light/Dark theme**: Auto-detects browser/OS preference
-- **Error handling**: Graceful error messages with retry functionality
-- **Instant popup load**: Last known task list is cached and painted immediately on open, then refreshed live
+It's open source, stores everything locally (nothing leaves your browser), and supports Chrome, Firefox, Edge desktop browsers.
 
-## Security
+## Install
 
-- **CSRF Protection**: Validates magnet URI format and torrent URLs before sending
-- **Credentials Validation**: Warns if password is empty; Test Connection button disabled without password
-- **URL Validation**: Defense-in-depth with validation in both content script and background service worker
-- **Secure Session Management**: Reuses authentication session to avoid repeated credential exposure
+- [Chrome Web Store](https://chromewebstore.google.com/detail/download-nexus/flhoeeffbkghmdagepajoojinjddnnjl)
+- [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/download-nexus/)
 
-## Privacy Policy
+## What It Does
 
-This extension stores NAS device credentials (hostname, port, username, password) locally in your browser's encrypted storage and does not collect, track, or transmit any personal data. All communication is directly between your browser and your NAS device only. The extension is open-source and does not use analytics, telemetry, export user data, or integrate with third-party services.
+- **Detects magnet links and torrent files** — finds them on any page and adds buttons next to them. You keep your existing magnet handler; this just gives you an alternative.
+- **Supports multiple download services** — Synology NAS, qBittorrent, Transmission, Deluge.
+- **Task manager in the popup** — see what's downloading, pause/resume/delete from the browser. Quick access without leaving the page.
+- **Per-service sessions** — each of your download services stays logged in independently
+- **Whitelist domains (optional)** — by default, buttons appear on all sites. Whitelist mode restricts them to specific domains you choose (reduces memory overhead if you want it).
+- **Light/dark theme** — auto-matches your browser/OS preference
+- **Export/import config** — backup and restore your settings. Optionally encrypt the backup with a password.
+
+## Support This Project
+
+This is a donation-funded open source project. If it saves you time, consider supporting its development:
+
+- **[Ko-fi](https://ko-fi.com/craigpen)** — one-time or recurring
+- **[Buy Me a Coffee](https://www.buymeacoffee.com/craigpen)** — quick support
+
+Your contribution helps keep this maintained and supported.
+
+## Security & Privacy
+
+**Privacy**: All your credentials and data stay on your computer. The extension doesn't send anything anywhere — all communication goes directly between your browser and your download service. No tracking, no analytics, no third-party services. Cookies may be stored and used to maintain sessions with your download services (Deluge, etc.), not for tracking. Use HTTPS when possible to secure communication with your download services.
+
+**Security**: 
+- Credentials are stored locally in your browser's storage
+- Sessions are reused to avoid repeated credential exposure
+- You can optionally encrypt backups with a password if you want to move config between machines
 
 ## Configuration
 
 ### Adding Download Services
 
 1. Open the extension popup and click the gear icon to switch to Settings
-2. Click **"+ Add Device"**
+2. Click **"+ Add Service"**
 3. Select device type from the dropdown:
    - **Synology**: Synology NAS DownloadStation
    - **qBittorrent**: qBittorrent Web UI
@@ -50,7 +53,7 @@ This extension stores NAS device credentials (hostname, port, username, password
 4. Enter device details:
    - **Device Name**: e.g., "Home NAS", "My qBit" (displayed in popup tabs)
    - **Host/IP**: Your service IP or hostname
-   - **Port**: Service-specific default (Synology: 5000, qBittorrent: 8080, Transmission: 9091, Deluge: 8112)
+   - **Port**: Your service's web UI port
    - **HTTPS**: Toggle if your service uses HTTPS
    - **Username & Password**: Service credentials
    - **Download Destination**: Optional path (service-specific format)
@@ -58,17 +61,15 @@ This extension stores NAS device credentials (hostname, port, username, password
 6. Save the device
 7. **Add more devices** by repeating the above (tabs will appear in popup)
 
-### Multiple NAS Devices
+### Multiple Download Services
 
-- When 2+ NAS devices are configured, tabs appear in the popup header
-- Click a tab to switch between devices and view their respective task queues
-- Each device maintains its own session and settings independently
+- When 2+ download services are configured, tabs appear in the popup header
+- Click a tab to switch between services and view their respective task queues
+- Each service maintains its own session and settings independently
 
 ### Whitelist Management
 
-The content script can be optimized by whitelisting specific domains where you frequently use magnet/torrent links. This reduces memory usage and improves browser performance while the extension still functions everywhere.
-
-**Whitelist is global** across all configured NAS devices.
+By default, the extension shows buttons on all sites. If you prefer, switch to **whitelist mode** to restrict buttons to specific domains. The whitelist is global across all your download services.
 
 ## Getting Started
 
@@ -76,14 +77,23 @@ The content script can be optimized by whitelisting specific domains where you f
 
 1. Clone the repository
 2. Install dependencies: `npm install`
-3. Build the extension: `npm run build` (creates `dist/chrome-mv3/`)
-4. Go to `edge://extensions` or `chrome://extensions`
-5. Enable Developer Mode
-6. Click "Load unpacked" and select `dist/chrome-mv3/`
-7. Click the extension icon, then the gear icon to open Settings
-8. Click **"+ Add NAS Device"** and configure your NAS
-9. Test the connection to verify settings
-10. Click back — your NAS task queue should load
+3. Build the extension: `npm run build:all` (creates `dist/chrome-mv3/` and `dist/firefox-mv3/`)
+
+**Chrome/Edge:**
+1. Go to `chrome://extensions` or `edge://extensions`
+2. Enable Developer Mode
+3. Click "Load unpacked" and select `dist/chrome-mv3/`
+
+**Firefox:**
+1. Go to `about:debugging#/runtime/this-firefox`
+2. Click "Load Temporary Add-on..."
+3. Select any file in `dist/firefox-mv3/`
+
+**Configure:**
+1. Click the extension icon, then the gear icon to open Settings
+2. Click **"+ Add Service"** and configure your download service
+3. Test the connection to verify settings
+4. Click back to view your task queue
 
 ### Building for Different Browsers
 
@@ -91,60 +101,26 @@ The content script can be optimized by whitelisting specific domains where you f
 - **Firefox**: `npm run build:firefox` → `dist/firefox-mv3/`
 - **All targets**: `npm run build:all`
 
-Each build is ready to submit to the respective app store.
-
 ### Testing with Download Clients
 
-The extension supports multiple download services. Quick setup for each:
+The extension works with qBittorrent, Transmission, Deluge, and Synology NAS. To test:
 
-**qBittorrent**
-- Docker: `docker run -d -p 8080:8080 qbittorrent/qbittorrent:latest`
-- Default credentials: admin/adminadmin
-- Web UI port: 8080
-
-**Transmission**
-- Docker: `docker run -d -p 9091:9091 transmissionbt/transmission:latest`
-- Default credentials: transmission/transmission
-- Web UI port: 9091
-
-**Deluge**
-- Docker: `docker run -d -p 8112:8112 deluge/deluge:latest`
-- Default credentials: (typically no auth required initially)
-- Web UI port: 8112
-
-**Testing Steps:**
 1. Load the extension in developer mode (see Development section above)
 2. Click gear icon → "+ Add Device"
-3. Select the service type you want to test
-4. Enter connection details:
-   - Device Name: e.g., "My qBit", "Transmission Server"
-   - Host: `localhost` (or your service server IP)
-   - Port: Service default (qBittorrent: 8080, Transmission: 9091, Deluge: 8112)
-   - Username/Password: Service credentials
-5. Click "Test Connection" to verify
-6. Go back to main view
-7. Visit a torrent site and click a magnet link
-8. Confirm the download appears in your configured service
-
-## Support Development
-
-If you find this extension helpful, consider supporting its ongoing development:
-
-- **☕ Ko-fi**: https://ko-fi.com/craigpen
-- **☕ Buy Me a Coffee**: https://www.buymeacoffee.com/craigpen
-
-Your support helps fund continued improvements and feature development.
+3. Select the service type and enter connection details
+4. Click "Test Connection" to verify the connection works
+5. Visit a torrent or magnet link and click the button to send it to your service
 
 ## Architecture
 
-### Multi-NAS Design
-- **nasList** (chrome.storage.sync): Array of NAS device configs, each with id, type, name, host, port, https, username, password, destination
-- **Per-NAS sessions** (chrome.storage.local): SID cached separately for each NAS device to maintain independent sessions
-- **Type extensibility**: Device type ("synology", "qbittorrent", etc.) allows adding new NAS types in the future
-- **Generic codebase**: Function names use "NAS" prefix (nasFetch, nasCall, nasLogin) to be agnostic of device type
+### Multi-Service Design
+- **Service list** (chrome.storage.sync): Array of service configs, each with id, type, name, host, port, https, username, password, destination
+- **Per-service sessions** (chrome.storage.local): Session tokens cached separately for each service to maintain independent sessions
+- **Type extensibility**: Service type ("synology", "qbittorrent", etc.) allows adding new services in the future
+- **Generic codebase**: Internal functions use service-agnostic naming to support multiple service types
 
 ### File Structure
-- **background.js**: Service worker handling API calls, session management, and NAS CRUD operations
-- **popup.html/popup.js**: Popup UI — task manager view plus an in-popup Settings view (gear icon) for adding/editing/deleting NAS devices, managing the whitelist, and backup/restore
+- **background.js**: Service worker handling API calls, session management, and service CRUD operations
+- **popup.html/popup.js**: Popup UI — task manager view plus an in-popup Settings view (gear icon) for adding/editing/deleting services, managing the whitelist, and backup/restore
 - **content.js**: Injects UI buttons next to magnet/torrent links on web pages
 - **manifest.json**: Extension configuration and permissions
