@@ -1,5 +1,20 @@
 // content.js — Download Nexus content script for magnet/torrent link handling
 
+// ── Instance Lifecycle Management ──────────────────────────────────────────
+// Track instance to prevent multiple content scripts from interfering
+
+const CLEANUP_EVENT = 'download-nexus-content-script-cleanup';
+const INSTANCE_ID = Math.random().toString(36).slice(2, 9);
+
+console.log(`[ContentScript] 🆕 New instance spawned: ${INSTANCE_ID}`);
+
+// Signal any existing older instance to destroy itself
+document.dispatchEvent(new CustomEvent(CLEANUP_EVENT));
+
+// Mark THIS instance as the active one
+(window).downloadNexusScriptActive = INSTANCE_ID;
+console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
+
 (function () {
   "use strict";
 
@@ -397,4 +412,26 @@
     injectButtons();
   }
 
+  // ── Cleanup Handler ───────────────────────────────────────────────────────
+  // When new script instance loads, old instance cleans up gracefully
+
+  window.downloadNexusPerformCleanup = function performCleanup() {
+    console.log(`[ContentScript] 🛑 Instance ${INSTANCE_ID} cleaning up...`);
+
+    try {
+      // Disconnect the observer
+      observer?.disconnect?.();
+      console.log('[ContentScript] ✅ Cleanup complete');
+    } catch (err) {
+      console.error('[ContentScript] Cleanup error:', err);
+    }
+  };
+
+  // Listen for cleanup signal from new instance
+  document.addEventListener(CLEANUP_EVENT, () => {
+    console.log(`[ContentScript] 🔔 Cleanup event received, terminating instance ${INSTANCE_ID}`);
+    window.downloadNexusPerformCleanup?.();
+  });
+
 })();
+

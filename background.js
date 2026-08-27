@@ -1,6 +1,8 @@
 // background.js — Download Nexus service worker
 // Uses a persistent session (sid) to avoid displacing DSM browser sessions.
 
+const { registerContentScripts, reinjectContentScripts } = require('./scripts/content-script-registry.js');
+
 // ── NAS Adapter Abstraction Layer ──────────────────────────────────────────
 // Allows support for multiple NAS types (Synology, QNAP, etc.)
 
@@ -1633,5 +1635,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   } catch (err) {
     dbg("ERROR", "Message listener error", err.message);
     sendResponse({ ok: false, error: err.message, log: [...debugLog] });
+  }
+});
+
+// ── Extension Lifecycle ────────────────────────────────────────────────────
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  console.log(`[Background] Extension ${details.reason}`);
+
+  try {
+    if (details.reason === 'install') {
+      await registerContentScripts();
+      await reinjectContentScripts();
+    } else if (details.reason === 'update') {
+      console.log('[Background] Extension updated, re-registering and re-injecting content scripts...');
+      await registerContentScripts();
+      await reinjectContentScripts();
+    }
+  } catch (err) {
+    console.error('[Background] Failed to handle extension installation/update:', err);
+  }
+});
+
+chrome.runtime.onStartup?.addListener(async () => {
+  console.log('[Background] Extension startup detected');
+  try {
+    await reinjectContentScripts();
+  } catch (err) {
+    console.error('[Background] Failed to re-inject content scripts on startup:', err);
   }
 });
