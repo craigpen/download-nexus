@@ -286,7 +286,7 @@ class QBittorrentAdapter extends NasAdapter {
     }
 
     const resp = await fetch(url, { ...options, headers });
-    if (resp.status === 403) throw new Error("qBit auth failed");
+    if (resp.status === 403 || resp.status === 401) throw new Error("qBit auth failed");
     if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
     return resp;
   }
