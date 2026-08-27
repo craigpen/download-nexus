@@ -190,6 +190,12 @@ class QBittorrentAdapter extends NasAdapter {
       method: "POST",
       body: formData
     });
+
+    // 409 means torrent already exists (already added), which is fine
+    if (resp.status === 409) {
+      return;
+    }
+
     const text = await resp.text();
     // qBittorrent returns either "Ok" or a JSON with torrent info
     if (text.toLowerCase() !== "ok" && !text.startsWith("{")) {
