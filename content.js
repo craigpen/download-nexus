@@ -1,19 +1,19 @@
-// content.js � Download Nexus content script for magnet/torrent link handling
+﻿// content.js — Download Nexus content script for magnet/torrent link handling
 
-// -- Instance Lifecycle Management ------------------------------------------
+// ── Instance Lifecycle Management ──────────────────────────────────────────
 // Track instance to prevent multiple content scripts from interfering
 
 const CLEANUP_EVENT = 'download-nexus-content-script-cleanup';
 const INSTANCE_ID = Math.random().toString(36).slice(2, 9);
 
-console.log(`[ContentScript] ?? New instance spawned: ${INSTANCE_ID}`);
+console.log(`[ContentScript] 🆕 New instance spawned: ${INSTANCE_ID}`);
 
 // Signal any existing older instance to destroy itself
 document.dispatchEvent(new CustomEvent(CLEANUP_EVENT));
 
 // Mark THIS instance as the active one
 (window).downloadNexusScriptActive = INSTANCE_ID;
-console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
+console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
 (function () {
   "use strict";
@@ -81,7 +81,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
   const MAGNET_RE  = /magnet:\?[^\s"'<>]+/g;
   const TORRENT_RE = /https?:\/\/[^\s"'<>]+\.torrent(?:\?[^\s"'<>]*)*/g;
 
-  // -- URL validation --------------------------------------------------------
+  // ── URL validation ────────────────────────────────────────────────────────
 
   function isValidMagnetURI(url) {
     // Must start with magnet:? and contain required parameters
@@ -99,7 +99,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     }
   }
 
-  // -- send helper -----------------------------------------------------------
+  // ── send helper ───────────────────────────────────────────────────────────
 
   function sendUrl(btn, url, nasId, type) {
     // Validate URL format before sending
@@ -107,7 +107,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     const isTorrent = /\.torrent(\?|$)/i.test(url);
 
     if (isMagnet && !isValidMagnetURI(url)) {
-      btn.textContent = "?";
+      btn.textContent = "❌";
       btn.disabled = false;
       btn.style.background = "#c0392b";
       btn.title = "Invalid magnet link";
@@ -116,7 +116,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     }
 
     if (isTorrent && !isValidTorrentURL(url)) {
-      btn.textContent = "?";
+      btn.textContent = "❌";
       btn.disabled = false;
       btn.style.background = "#c0392b";
       btn.title = "Invalid torrent URL";
@@ -124,22 +124,22 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
       return;
     }
 
-    btn.textContent = "?";
+    btn.textContent = "⏳";
     btn.disabled = true;
     chrome.runtime.sendMessage({ type: "SEND_MAGNET", url, nasId }, resp => {
       if (chrome.runtime.lastError || !resp?.ok) {
-        btn.textContent = "?";
+        btn.textContent = "❌";
         btn.disabled = false;
         btn.style.background = "#c0392b";
-        btn.title = resp?.error ?? "Error � check extension options";
+        btn.title = resp?.error ?? "Error — check extension options";
       } else {
-        btn.textContent = "?";
+        btn.textContent = "✅";
         btn.style.background = "#1d7c2d";
       }
     });
   }
 
-  // -- inline button ---------------------------------------------------------
+  // ── inline button ─────────────────────────────────────────────────────────
 
   function showNasSelector(btn, url, type) {
 
@@ -263,7 +263,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     return btn;
   }
 
-  // -- process anchor links --------------------------------------------------
+  // ── process anchor links ──────────────────────────────────────────────────
 
   function processLink(a) {
     // Skip if button already injected
@@ -282,7 +282,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     makeInlineButton(href, type, a);
   }
 
-  // -- pill helper -----------------------------------------------------------
+  // ── pill helper ───────────────────────────────────────────────────────────
 
   function makePill(url, type) {
     const pill = document.createElement("span");
@@ -299,11 +299,11 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
       "padding:0 2px",
       "display:inline"
     ].join(";");
-    pill.textContent = url.length > 60 ? url.slice(0, 60) + "�" : url;
+    pill.textContent = url.length > 60 ? url.slice(0, 60) + "…" : url;
     return pill;
   }
 
-  // -- one-time scan of text nodes -------------------------------------------
+  // ── one-time scan of text nodes ───────────────────────────────────────────
 
   const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "INPUT"]);
 
@@ -386,7 +386,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     });
   }
 
-  // -- MutationObserver � anchor tags only -----------------------------------
+  // ── MutationObserver — anchor tags only ───────────────────────────────────
 
   window.downloadNexusObserver = null; // Expose for cleanup
   window.downloadNexusObserver = new MutationObserver(mutations => {
@@ -404,7 +404,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     subtree:   true
   });
 
-  // -- run -------------------------------------------------------------------
+  // ── run ───────────────────────────────────────────────────────────────────
 
   // Defer initial scan until both NAS list and whitelist load (via injectButtons)
   if (document.readyState === "loading") {
@@ -413,16 +413,16 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
     injectButtons();
   }
 
-  // -- Cleanup Handler -------------------------------------------------------
+  // ── Cleanup Handler ───────────────────────────────────────────────────────
   // When new script instance loads, old instance cleans up gracefully
 
   window.downloadNexusPerformCleanup = function performCleanup() {
-    console.log(`[ContentScript] ?? Instance ${INSTANCE_ID} cleaning up...`);
+    console.log(`[ContentScript] 🛑 Instance ${INSTANCE_ID} cleaning up...`);
 
     try {
       // Disconnect the observer
       observer?.disconnect?.();
-      console.log('[ContentScript] ? Cleanup complete');
+      console.log('[ContentScript] ✅ Cleanup complete');
     } catch (err) {
       console.error('[ContentScript] Cleanup error:', err);
     }
@@ -430,7 +430,7 @@ console.log(`[ContentScript] ? Instance ${INSTANCE_ID} is now active`);
 
   // Listen for cleanup signal from new instance
   document.addEventListener(CLEANUP_EVENT, () => {
-    console.log(`[ContentScript] ?? Cleanup event received, terminating instance ${INSTANCE_ID}`);
+    console.log(`[ContentScript] 🔔 Cleanup event received, terminating instance ${INSTANCE_ID}`);
     window.downloadNexusPerformCleanup?.();
   });
 
