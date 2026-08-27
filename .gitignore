@@ -27,9 +27,5 @@ build/
 *.tmp
 *.temp
 
-# Store submissions & documentation (keep locally, don't commit)
-store-descriptions.md
-synology_api.pdf
-
 # Local development notes
 MEMORY.md
