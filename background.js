@@ -277,11 +277,12 @@ class QBittorrentAdapter extends NasAdapter {
       headers["X-API-Token"] = this.config.apiToken;
     }
 
-    // Add browser headers for CSRF protection (same as login)
-    // Skip these for FormData requests since they set their own Content-Type
+    // Add browser headers for CSRF protection (required by qBittorrent)
+    headers["Referer"] = baseUrl;
+    headers["Origin"] = baseUrl;
+    // Only set Content-Type for non-FormData requests (FormData sets its own)
     if (!(options.body instanceof FormData)) {
-      headers["Referer"] = baseUrl;
-      headers["Origin"] = baseUrl;
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
       headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
       headers["Accept-Language"] = "en-US,en;q=0.5";
       headers["Accept-Encoding"] = "gzip, deflate";
