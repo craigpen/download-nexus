@@ -1503,7 +1503,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     dbg("INFO", "Message received", msg.type);
 
     if (msg.type === "SEND_MAGNET") {
-      sendMagnet(msg.url, msg.nasId)
+      sendDownload(msg.url, msg.nasId)
         .then(() => sendResponse({ ok: true, log: [...debugLog] }))
         .catch(e => sendResponse({ ok: false, error: e.message, log: [...debugLog] }));
       return true;
