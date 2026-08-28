@@ -282,11 +282,7 @@ function renderTasks() {
 
   if (visible.length === 0) {
     empty.style.display = "flex";
-    const labels = { all: "active", downloading: "downloading", seeding: "seeding", paused: "paused", finished: "done", error: "error" };
-    const statusLabel = labels[filter] || filter;
-    empty.textContent = allTasks.length === 0
-      ? "No active downloads"
-      : `No ${statusLabel} tasks`;
+    empty.textContent = "No tasks";
     // Remove old task rows
     list.querySelectorAll(".task").forEach(el => el.remove());
     updateFooterButtons();
