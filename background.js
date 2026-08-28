@@ -880,7 +880,17 @@ class Aria2Adapter extends NasAdapter {
       }
     } else if (action === "delete") {
       for (const gid of ids) {
-        await this._rpc("aria2.remove", [gid]);
+        try {
+          // Try to remove active download first
+          await this._rpc("aria2.remove", [gid]);
+        } catch (err) {
+          // If not active, try to remove from stopped/result list
+          if (err.message.includes("not found") || err.message.includes("Active Download")) {
+            await this._rpc("aria2.removeDownloadResult", [gid]);
+          } else {
+            throw err;
+          }
+        }
       }
     }
   }
