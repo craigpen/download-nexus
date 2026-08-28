@@ -614,6 +614,10 @@ function renderNasTabs() {
   nasTabBar.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
+      // Clear all state for the new service
+      allTasks = [];
+      filter = "downloading";
+
       // Clear task rows to avoid showing ghost data from previous service
       const taskList = document.getElementById("taskList");
       if (taskList) {
@@ -624,9 +628,12 @@ function renderNasTabs() {
           emptyMsg.innerHTML = '<span class="spinner"></span>';
         }
       }
+
+      // Update UI for new service
       renderNasTabs();
       renderFilterTabs(); // Render filter tabs based on new adapter
-      filter = "downloading";
+      updateCounts(); // Clear counts immediately
+
       await paintCachedTasks();
       refresh();
     });
