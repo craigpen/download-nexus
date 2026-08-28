@@ -57,7 +57,8 @@ services:
       - TZ=Etc/UTC
     volumes:
       - aria2-config:/config
-      - aria2-downloads:/downloads
+    tmpfs:
+      - /downloads
     restart: unless-stopped
 
 volumes:
