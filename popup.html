@@ -874,6 +874,31 @@
     </div>
 
     <div class="settings-section">
+      <div class="settings-label">Link Types to Show Buttons For</div>
+      <p class="settings-hint">Choose which link types should display download buttons on web pages.</p>
+      <label class="settings-toggle-row">
+        <span class="switch"><input type="checkbox" id="enableMagnet" checked /><span class="slider"></span></span>
+        <span>Magnet links</span>
+      </label>
+      <label class="settings-toggle-row">
+        <span class="switch"><input type="checkbox" id="enableTorrent" checked /><span class="slider"></span></span>
+        <span>Torrent files (.torrent)</span>
+      </label>
+      <label class="settings-toggle-row">
+        <span class="switch"><input type="checkbox" id="enableHttp" /><span class="slider"></span></span>
+        <span>HTTP downloads <span class="hint">(requires Synology or Aria2)</span></span>
+      </label>
+      <label class="settings-toggle-row">
+        <span class="switch"><input type="checkbox" id="enableHttps" /><span class="slider"></span></span>
+        <span>HTTPS downloads <span class="hint">(requires Synology or Aria2)</span></span>
+      </label>
+      <label class="settings-toggle-row">
+        <span class="switch"><input type="checkbox" id="enableFtp" /><span class="slider"></span></span>
+        <span>FTP downloads <span class="hint">(requires Synology or Aria2)</span></span>
+      </label>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-label">Content Script Whitelist</div>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="whitelistModeToggle" /><span class="slider"></span></span>

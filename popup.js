@@ -790,6 +790,7 @@ function showSettings() {
   showNasListView();
   renderSettingsNasList();
   renderWhitelistSettings();
+  loadProtocolSettings();
 }
 
 async function showMainView() {
@@ -991,6 +992,31 @@ async function deleteNasDevice(nasId) {
   showNasListView();
 }
 
+// ── Protocol Settings ──────────────────────────────────────────────────────
+
+function loadProtocolSettings() {
+  const defaults = window.DownloadNexus.ServiceFilter.getDefaultProtocolSettings();
+  chrome.storage.local.get({ enabledProtocols: defaults }, (result) => {
+    const settings = window.DownloadNexus.ServiceFilter.normalizeProtocolSettings(result.enabledProtocols);
+    document.getElementById("enableMagnet").checked = settings.magnet;
+    document.getElementById("enableTorrent").checked = settings.torrent;
+    document.getElementById("enableHttp").checked = settings.http;
+    document.getElementById("enableHttps").checked = settings.https;
+    document.getElementById("enableFtp").checked = settings.ftp;
+  });
+}
+
+function saveProtocolSettings() {
+  const settings = {
+    magnet: document.getElementById("enableMagnet").checked,
+    torrent: document.getElementById("enableTorrent").checked,
+    http: document.getElementById("enableHttp").checked,
+    https: document.getElementById("enableHttps").checked,
+    ftp: document.getElementById("enableFtp").checked
+  };
+  chrome.storage.local.set({ enabledProtocols: settings });
+}
+
 document.getElementById("nasForm").addEventListener("submit", async e => {
   e.preventDefault();
   const statusEl = document.getElementById("nasFormStatus");
@@ -1131,6 +1157,11 @@ document.getElementById("whitelistModeToggle").addEventListener("change", async 
   whitelistMode = e.target.checked ? "restricted" : "all";
   renderWhitelistSettings();
   await send({ type: "SET_WHITELIST_MODE", mode: whitelistMode });
+});
+
+// Protocol settings change handlers
+["enableMagnet", "enableTorrent", "enableHttp", "enableHttps", "enableFtp"].forEach(id => {
+  document.getElementById(id).addEventListener("change", saveProtocolSettings);
 });
 
 function isValidDomainPattern(pattern) {
