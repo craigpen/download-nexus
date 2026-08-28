@@ -276,6 +276,8 @@ function renderTasks() {
   const list = document.getElementById("taskList");
   const empty = document.getElementById("emptyMsg");
 
+  if (!list || !empty) return;
+
   const visible = getVisibleTasks();
 
   if (visible.length === 0) {
