@@ -838,7 +838,7 @@ class Aria2Adapter extends NasAdapter {
 
   async listTasks() {
     try {
-      const fields = ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta", "errorMessage"];
+      const fields = ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta", "errorMessage", "files"];
       const active = await this._rpc("aria2.tellActive", [fields]);
       const waiting = await this._rpc("aria2.tellWaiting", [0, 100, fields]);
       const stopped = await this._rpc("aria2.tellStopped", [0, 100, fields]);
@@ -851,9 +851,17 @@ class Aria2Adapter extends NasAdapter {
         const uploadSpeed = Number(t.uploadSpeed) || 0;
         const eta = Number(t.eta) || 0;
 
+        // Extract filename from files array if name is not provided
+        let title = t.name;
+        if (!title && t.files && t.files.length > 0) {
+          const filePath = t.files[0].path;
+          title = filePath ? filePath.split('/').pop() : "Unknown";
+        }
+        title = title || "Unknown";
+
         return {
           id: t.gid,
-          title: t.name || "Unknown",
+          title,
           status: this._statusString(t.status),
           progress: totalLength > 0 ? Math.round((completedLength / totalLength) * 100) : 0,
           downloaded: completedLength,
