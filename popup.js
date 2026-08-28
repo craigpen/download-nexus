@@ -444,8 +444,10 @@ async function paintCachedTasks() {
   if (!currentNasId) return;
   const cached = await loadCachedTasks(currentNasId);
   allTasks = cached?.tasks || [];
-  document.getElementById("speedBar").style.display = "";
-  document.getElementById("tabBar").style.display   = "";
+  const speedBar = document.getElementById("speedBar");
+  const tabBar = document.getElementById("tabBar");
+  if (speedBar) speedBar.style.display = "";
+  if (tabBar) tabBar.style.display   = "";
   updateCounts();
   renderTasks();
   setStatus(cached ? "Showing cached data…" : "");
@@ -463,17 +465,26 @@ function setConnStatus(nasId, ok) {
 }
 
 function showError(title, detail) {
-  document.getElementById("errorTitle").textContent = title;
-  document.getElementById("errorDetail").textContent = detail;
-  document.getElementById("errorContainer").classList.add("show");
-  document.getElementById("taskList").style.display = "none";
-  document.getElementById("speedBar").style.display = "none";
-  document.getElementById("tabBar").style.display = "none";
+  const errorTitle = document.getElementById("errorTitle");
+  const errorDetail = document.getElementById("errorDetail");
+  const errorContainer = document.getElementById("errorContainer");
+  const taskList = document.getElementById("taskList");
+  const speedBar = document.getElementById("speedBar");
+  const tabBar = document.getElementById("tabBar");
+
+  if (errorTitle) errorTitle.textContent = title;
+  if (errorDetail) errorDetail.textContent = detail;
+  if (errorContainer) errorContainer.classList.add("show");
+  if (taskList) taskList.style.display = "none";
+  if (speedBar) speedBar.style.display = "none";
+  if (tabBar) tabBar.style.display = "none";
 }
 
 function hideError() {
-  document.getElementById("errorContainer").classList.remove("show");
-  document.getElementById("taskList").style.display = "";
+  const errorContainer = document.getElementById("errorContainer");
+  const taskList = document.getElementById("taskList");
+  if (errorContainer) errorContainer.classList.remove("show");
+  if (taskList) taskList.style.display = "";
 }
 
 async function refresh() {
@@ -551,17 +562,20 @@ async function loadNasList() {
 }
 
 function renderNasTabs() {
+  const nasTabBar = document.getElementById("nasTabBar");
+  const connStatus = document.getElementById("connStatus");
+
   if (nasList.length <= 1) {
     // Hide tabs if only one or zero NAS, show header status instead
-    document.getElementById("nasTabBar").style.display = "none";
-    document.getElementById("connStatus").style.display = ""; // Show in header for single NAS
+    if (nasTabBar) nasTabBar.style.display = "none";
+    if (connStatus) connStatus.style.display = ""; // Show in header for single NAS
     return;
   }
 
   // Multiple NAS: hide header status, show in tabs instead
-  document.getElementById("connStatus").style.display = "none";
-  const tabBar = document.getElementById("nasTabBar");
-  tabBar.innerHTML = '';
+  if (connStatus) connStatus.style.display = "none";
+  if (!nasTabBar) return;
+  nasTabBar.innerHTML = '';
   nasList.forEach(nas => {
     const isActive = nas.id === currentNasId;
     const connStatus = nasConnStatus[nas.id] || "unknown";
@@ -581,11 +595,11 @@ function renderNasTabs() {
 
     btn.appendChild(nameDiv);
     btn.appendChild(connDiv);
-    tabBar.appendChild(btn);
+    nasTabBar.appendChild(btn);
   });
-  tabBar.style.display = "flex";
+  nasTabBar.style.display = "flex";
 
-  tabBar.querySelectorAll(".tab").forEach(tab => {
+  nasTabBar.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
       // Clear task list immediately to avoid showing ghost data from previous service
