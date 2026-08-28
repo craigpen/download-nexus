@@ -26,9 +26,10 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
   let nasTooltip = "Send to NAS";
   let whitelist = [];
   let currentDomain = window.location.hostname;
-  let whitelistEnabled = false; // True when restricted mode is on
+  let whitelistEnabled = false;
   let nasListLoaded = false;
   let whitelistLoaded = false;
+  let enabledProtocols = window.DownloadNexus.ServiceFilter.getDefaultProtocolSettings();
 
   function isDomainWhitelisted(domain, patterns) {
     // If no patterns, nothing is whitelisted
@@ -77,66 +78,42 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
     injectButtons();
   });
 
-  // Regex patterns
-  const MAGNET_RE  = /magnet:\?[^\s"'<>]+/g;
-  const TORRENT_RE = /https?:\/\/[^\s"'<>]+\.torrent(?:\?[^\s"'<>]*)*/g;
-
-  // ── URL validation ────────────────────────────────────────────────────────
-
-  function isValidMagnetURI(url) {
-    // Must start with magnet:? and contain required parameters
-    if (!url.startsWith("magnet:?")) return false;
-    // Must have at least one of: xt (exact topic), dn (display name), or tr (tracker)
-    return /[&?](xt|dn|tr)=/.test(url);
-  }
-
-  function isValidTorrentURL(url) {
-    try {
-      const u = new URL(url);
-      return /\.torrent(\?|$)/i.test(u.pathname);
-    } catch {
-      return false;
+  // Load protocol settings
+  chrome.storage.local.get("enabledProtocols", (result) => {
+    if (result.enabledProtocols) {
+      enabledProtocols = window.DownloadNexus.ServiceFilter.normalizeProtocolSettings(result.enabledProtocols);
     }
-  }
+  });
+
+  // URL detection and validation moved to LinkDetector utility
 
   // ── send helper ───────────────────────────────────────────────────────────
 
   function sendUrl(btn, url, nasId, type) {
-    // Validate URL format before sending
-    const isMagnet = url.startsWith("magnet:");
-    const isTorrent = /\.torrent(\?|$)/i.test(url);
-
-    if (isMagnet && !isValidMagnetURI(url)) {
+    // Validate URL using LinkDetector
+    const link = window.DownloadNexus.LinkDetector.detectLinkType(url);
+    if (!link) {
       btn.textContent = "❌";
       btn.disabled = false;
       btn.style.background = "#c0392b";
-      btn.title = "Invalid magnet link";
-      console.warn(`[NAS] Invalid magnet link attempted: ${url.slice(0, 80)}`);
-      return;
-    }
-
-    if (isTorrent && !isValidTorrentURL(url)) {
-      btn.textContent = "❌";
-      btn.disabled = false;
-      btn.style.background = "#c0392b";
-      btn.title = "Invalid torrent URL";
-      console.warn(`[NAS] Invalid torrent URL attempted: ${url.slice(0, 80)}`);
+      btn.title = "Invalid link format";
+      console.warn(`[NAS] Invalid link attempted: ${url.slice(0, 80)}`);
       return;
     }
 
     btn.textContent = "⏳";
     btn.disabled = true;
-    chrome.runtime.sendMessage({ type: "SEND_MAGNET", url, nasId }, resp => {
-      if (chrome.runtime.lastError || !resp?.ok) {
+    window.DownloadNexus.DownloadSender.sendDownloadToService(url, nasId)
+      .then(() => {
+        btn.textContent = "✅";
+        btn.style.background = "#1d7c2d";
+      })
+      .catch(err => {
         btn.textContent = "❌";
         btn.disabled = false;
         btn.style.background = "#c0392b";
-        btn.title = resp?.error ?? "Error — check extension options";
-      } else {
-        btn.textContent = "✅";
-        btn.style.background = "#1d7c2d";
-      }
-    });
+        btn.title = err.message || "Error — check extension options";
+      });
   }
 
   // ── inline button ─────────────────────────────────────────────────────────
@@ -269,18 +246,19 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
   function processLink(a) {
     // Skip if button already injected
     if (a.nextSibling && a.nextSibling.getAttribute && a.nextSibling.getAttribute(ATTR) === "btn") return;
-    if (nasDevices.length === 0) return; // Don't inject if no NAS configured
+    if (nasDevices.length === 0) return;
 
     // Check whitelist: if enabled, only inject on whitelisted domains
     if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
 
     const href = a.href || "";
-    let type = null;
-    if (href.startsWith("magnet:")) type = "magnet";
-    else if (/\.torrent(\?|$)/i.test(href)) type = "torrent";
-    if (!type) return;
+    const link = window.DownloadNexus.LinkDetector.detectLinkType(href);
+    if (!link) return;
 
-    makeInlineButton(href, type, a);
+    // Check if this protocol is enabled and has compatible services
+    if (!window.DownloadNexus.ServiceFilter.hasCompatibleService(link.type, nasDevices, enabledProtocols)) return;
+
+    makeInlineButton(href, link.type, a);
   }
 
   // ── pill helper ───────────────────────────────────────────────────────────
@@ -346,17 +324,30 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
       const text = node.nodeValue;
 
-      // Collect all magnet and torrent link matches, sorted by position
+      // Collect all link matches from text using LinkDetector
       const matches = [];
+
+      // Find magnet links
+      const magnetRe = /magnet:\?[^\s"'<>]+/g;
       let m;
-      MAGNET_RE.lastIndex = 0;
-      while ((m = MAGNET_RE.exec(text)) !== null) {
-        matches.push({ url: m[0], index: m.index, length: m[0].length, type: "magnet" });
+      magnetRe.lastIndex = 0;
+      while ((m = magnetRe.exec(text)) !== null) {
+        const link = window.DownloadNexus.LinkDetector.detectLinkType(m[0]);
+        if (link) {
+          matches.push({ url: m[0], index: m.index, length: m[0].length, type: link.type });
+        }
       }
-      TORRENT_RE.lastIndex = 0;
-      while ((m = TORRENT_RE.exec(text)) !== null) {
-        matches.push({ url: m[0], index: m.index, length: m[0].length, type: "torrent" });
+
+      // Find torrent links
+      const torrentRe = /https?:\/\/[^\s"'<>]+\.torrent(?:\?[^\s"'<>]*)*/g;
+      torrentRe.lastIndex = 0;
+      while ((m = torrentRe.exec(text)) !== null) {
+        const link = window.DownloadNexus.LinkDetector.detectLinkType(m[0]);
+        if (link && !matches.some(ma => ma.url === m[0])) { // avoid duplicates
+          matches.push({ url: m[0], index: m.index, length: m[0].length, type: link.type });
+        }
       }
+
       if (!matches.length) continue;
       matches.sort((a, b) => a.index - b.index);
 
