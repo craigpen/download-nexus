@@ -612,9 +612,16 @@ function renderNasTabs() {
   nasTabBar.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
-      // Clear task list immediately to avoid showing ghost data from previous service
+      // Clear task rows to avoid showing ghost data from previous service
       const taskList = document.getElementById("taskList");
-      if (taskList) taskList.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+      if (taskList) {
+        taskList.querySelectorAll(".task").forEach(el => el.remove());
+        const emptyMsg = document.getElementById("emptyMsg");
+        if (emptyMsg) {
+          emptyMsg.style.display = "flex";
+          emptyMsg.innerHTML = '<span class="spinner"></span>';
+        }
+      }
       renderNasTabs();
       renderFilterTabs(); // Render filter tabs based on new adapter
       filter = "downloading";
