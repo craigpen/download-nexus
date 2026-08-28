@@ -35,12 +35,14 @@ const SERVICE_DEFAULTS = {
     helpText: "Enter your Deluge hostname and password. Deluge uses password-only authentication. Default port is 8112."
   },
   aria2: {
-    defaultHost: "192.168.1.100",
+    defaultHost: "127.0.0.1",
     defaultPort: 6800,
     defaultUsername: "",
+    defaultRpcSecret: "P3TERX",
     portHint: "6800 (default)",
     usernameHint: "Not required",
-    helpText: "Enter your Aria2 hostname. Default port is 6800. Supports HTTP/HTTPS downloads, torrents, and magnet links. No authentication required by default."
+    rpcSecretHint: "RPC secret (default: P3TERX)",
+    helpText: "Enter your Aria2 hostname. Default port is 6800. Supports HTTP/HTTPS downloads, torrents, and magnet links."
   }
 };
 
@@ -905,6 +907,12 @@ function updateFormFieldsForType() {
   document.getElementById("nasPort").placeholder = defaults.defaultPort.toString();
   document.getElementById("nasUsername").placeholder = defaults.defaultUsername || "Not required";
 
+  // Update RPC secret placeholder for aria2
+  const rpcSecretInput = document.getElementById("nasRpcSecret");
+  if (rpcSecretInput && defaults.defaultRpcSecret) {
+    rpcSecretInput.placeholder = defaults.defaultRpcSecret;
+  }
+
   // Update help text (P1-3)
   const helpEl = document.getElementById("serviceHelpText");
   if (helpEl) {
@@ -917,6 +925,12 @@ function updateFormFieldsForType() {
   const apiTokenField = document.getElementById("apiTokenField");
   if (apiTokenField) {
     apiTokenField.style.display = type === "qbittorrent" ? "" : "none";
+  }
+
+  // Show/hide RPC Secret field for aria2
+  const rpcSecretField = document.getElementById("rpcSecretField");
+  if (rpcSecretField) {
+    rpcSecretField.style.display = type === "aria2" ? "" : "none";
   }
 
   const usernameField = document.getElementById("usernameField");
@@ -978,6 +992,7 @@ function editNas(nasId) {
   document.getElementById("nasPassword").value = nas.password;
   document.getElementById("nasDestination").value = nas.destination || "";
   document.getElementById("nasApiToken").value = nas.apiToken || "";
+  document.getElementById("nasRpcSecret").value = nas.rpcSecret || "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
@@ -998,6 +1013,7 @@ function addNewNas() {
   document.getElementById("nasPassword").value = "";
   document.getElementById("nasDestination").value = "";
   document.getElementById("nasApiToken").value = "";
+  document.getElementById("nasRpcSecret").value = "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
@@ -1064,6 +1080,12 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
     if (apiToken) {
       nasConfig.apiToken = apiToken;
     }
+  }
+
+  // Add rpcSecret for aria2
+  if (type === "aria2") {
+    const rpcSecret = document.getElementById("nasRpcSecret").value.trim();
+    nasConfig.rpcSecret = rpcSecret || "P3TERX";  // Default to P3TERX if empty
   }
 
   if (editingNasId) {
@@ -1141,6 +1163,12 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
     if (apiToken) {
       settings.apiToken = apiToken;
     }
+  }
+
+  // Add rpcSecret for aria2
+  if (type === "aria2") {
+    const rpcSecret = document.getElementById("nasRpcSecret").value.trim();
+    settings.rpcSecret = rpcSecret || "P3TERX";
   }
 
   try {
