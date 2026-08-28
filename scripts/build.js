@@ -14,7 +14,7 @@ if (!fs.existsSync(outputDir)) {
 }
 
 // Copy manifest
-let manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf-8'));
+let manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'manifest.json'), 'utf-8'));
 
 // Use version from package.json
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
@@ -62,9 +62,19 @@ fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest,
 console.log(`  ✓ manifest.json`);
 
 // Copy JavaScript files
-const jsFiles = ['protocols.js', 'linkDetector.js', 'serviceFilter.js', 'downloadSender.js', 'background.js', 'content.js', 'popup.js'];
+const jsFiles = ['background.js', 'content.js', 'popup.js'];
 jsFiles.forEach(file => {
-  const src = path.join(__dirname, '..', file);
+  const src = path.join(__dirname, '..', 'src', file);
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, path.join(outputDir, file));
+    console.log(`  ✓ ${file}`);
+  }
+});
+
+// Copy utility files from src/utils
+const utilFiles = ['protocols.js', 'linkDetector.js', 'serviceFilter.js', 'downloadSender.js'];
+utilFiles.forEach(file => {
+  const src = path.join(__dirname, '..', 'src', 'utils', file);
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, path.join(outputDir, file));
     console.log(`  ✓ ${file}`);
@@ -74,7 +84,7 @@ jsFiles.forEach(file => {
 // Copy HTML files
 const htmlFiles = ['popup.html'];
 htmlFiles.forEach(file => {
-  const src = path.join(__dirname, '..', file);
+  const src = path.join(__dirname, '..', 'src', file);
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, path.join(outputDir, file));
     console.log(`  ✓ ${file}`);
@@ -99,6 +109,12 @@ if (target === 'firefox') {
     fs.copyFileSync(licenseSrc, path.join(outputDir, 'LICENSE'));
     console.log(`  ✓ LICENSE`);
   }
+}
+
+// Copy src/utils to output for reference (optional)
+const srcUtilsDir = path.join(__dirname, '..', 'src', 'utils');
+if (fs.existsSync(srcUtilsDir)) {
+  // Utils are already copied individually above, no need to copy directory
 }
 
 console.log(`\n✅ Build complete: ${outputDir}\n`);
