@@ -495,7 +495,9 @@ async function refresh() {
   if (!currentNasId) return;
   try {
     const resp = await send({ type: "LIST_TASKS", nasId: currentNasId });
+    console.log(`refresh: got ${resp.tasks?.length || 0} tasks from ${currentNasId}`);
     if (!resp.ok) {
+      console.error(`refresh: LIST_TASKS failed:`, resp.error);
       setConnStatus(currentNasId, false);
       if (allTasks.length === 0) showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
       setStatus(resp.error, true);
@@ -504,6 +506,7 @@ async function refresh() {
     setConnStatus(currentNasId, true);
     hideError();
     allTasks = resp.tasks;
+    console.log("refresh: allTasks updated to", allTasks.length, "tasks");
     console.log("Popup received tasks:", resp.tasks.length, "tasks");
     if (resp.tasks.length > 0) {
       console.log("First task fields:", Object.keys(resp.tasks[0]));
@@ -518,6 +521,7 @@ async function refresh() {
     renderTasks();
     setStatus("");
   } catch (err) {
+    console.error(`refresh: exception:`, err);
     setConnStatus(currentNasId, false);
     if (allTasks.length === 0) showError("❌ Connection error", err.message);
     setStatus(err.message, true);
@@ -529,10 +533,15 @@ async function refresh() {
 async function taskAction(action, ids) {
   setStatus("…");
   try {
+    console.log(`taskAction: ${action} on ${ids.join(",")} for NAS ${currentNasId}`);
     const resp = await send({ type: "TASK_ACTION", nasId: currentNasId, action, ids });
+    console.log(`taskAction response:`, resp);
     if (!resp.ok) { setStatus(resp.error, true); return; }
+    console.log(`taskAction: calling refresh after ${action}`);
     await refresh();
+    console.log(`taskAction: refresh complete, allTasks now has ${allTasks.length} tasks`);
   } catch (err) {
+    console.error(`taskAction error:`, err);
     setStatus(err.message, true);
   }
 }
@@ -698,7 +707,7 @@ function renderFilterTabs() {
     countSpan.id = `cnt-${filterType}`;
     countSpan.textContent = "0";
 
-    button.textContent = tabLabels[filterType] + " ";
+    button.textContent = tabLabels[filterType];
     button.appendChild(countSpan);
 
     button.addEventListener("click", () => selectFilter(filterType));
@@ -716,7 +725,7 @@ function renderFilterTabs() {
     countSpan.id = "cnt-all";
     countSpan.textContent = "0";
 
-    allButton.textContent = "All ";
+    allButton.textContent = "All";
     allButton.appendChild(countSpan);
 
     allButton.addEventListener("click", () => selectFilter("all"));

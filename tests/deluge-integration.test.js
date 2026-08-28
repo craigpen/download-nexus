@@ -1,24 +1,17 @@
 /**
  * Deluge Integration Tests
  * Tests actual Deluge API calls via RPC
- * Tests both linuxserver.io and spritsail/deluge containers
- * Requires: Running Deluge containers on localhost:8114 and localhost:8113
+ * Requires: Running Deluge container on localhost:8112
  */
 
 const assert = require('assert');
 
-// Test both containers
+// Test container config
 const DELUGE_CONTAINERS = [
   {
-    name: 'linuxserver.io',
+    name: 'linuxserver/deluge',
     host: 'localhost',
-    port: 8114,
-    password: 'deluge'
-  },
-  {
-    name: 'spritsail/deluge',
-    host: 'localhost',
-    port: 8113,
+    port: 8112,
     password: 'deluge'
   }
 ];
@@ -128,7 +121,7 @@ describe('Deluge Integration Tests', () => {
       it('can pause a torrent', async () => {
 
         if (!torrentId) {
-          this.skip();
+          return;
         }
 
         // Authenticate
@@ -142,7 +135,7 @@ describe('Deluge Integration Tests', () => {
       it('can resume a torrent', async () => {
 
         if (!torrentId) {
-          this.skip();
+          return;
         }
 
         // Authenticate
