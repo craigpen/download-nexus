@@ -859,6 +859,12 @@
           <div style="font-size:11px;color:#888;margin-top:4px">Leave empty to use username/password auth. Generate in qBittorrent settings → WebUI → API token.</div>
         </label>
 
+        <label class="settings-field" id="rpcSecretField" style="display:none">
+          <span>RPC Secret <span class="hint">required for aria2</span></span>
+          <input type="password" id="nasRpcSecret" placeholder="P3TERX" />
+          <div style="font-size:11px;color:#888;margin-top:4px">Enter the RPC secret configured in aria2.conf (rpc-secret setting).</div>
+        </label>
+
         <label class="settings-field" id="destinationField">
           <span>Download Destination <span class="hint">optional</span></span>
           <input type="text" id="nasDestination" placeholder="/volume1/downloads" />

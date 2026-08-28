@@ -860,6 +860,22 @@ class Aria2Adapter extends NasAdapter {
     }
   }
 
+  async taskAction(action, ids) {
+    if (action === "pause") {
+      for (const gid of ids) {
+        await this._rpc("aria2.pause", [gid]);
+      }
+    } else if (action === "resume") {
+      for (const gid of ids) {
+        await this._rpc("aria2.unpause", [gid]);
+      }
+    } else if (action === "delete") {
+      for (const gid of ids) {
+        await this._rpc("aria2.remove", [gid]);
+      }
+    }
+  }
+
   _statusString(status) {
     const statusMap = {
       "active": "downloading",
@@ -873,20 +889,35 @@ class Aria2Adapter extends NasAdapter {
   }
 
   async _rpc(method, params = []) {
-    const payload = { jsonrpc: "2.0", id: Date.now().toString(), method, params };
+    const rpcSecret = this.config.rpcSecret || "P3TERX";
+    const paramsWithToken = [`token:${rpcSecret}`, ...params];
+    const payload = { jsonrpc: "2.0", id: Date.now().toString(), method, params: paramsWithToken };
     const url = `${this._baseUrl()}/jsonrpc`;
 
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    dbg("INFO", `aria2 RPC: ${method}`, `url=${url}, rpcSecret=${rpcSecret ? 'set' : 'empty'}, params=${JSON.stringify(paramsWithToken).slice(0, 100)}`);
 
-    if (!resp.ok) throw new Error(`aria2 RPC error: HTTP ${resp.status}`);
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
-    const data = await resp.json();
-    if (data.error) throw new Error(`aria2 RPC error: ${data.error.message}`);
-    return data.result;
+      dbg("INFO", `aria2 RPC response: ${method}`, `status=${resp.status}, ok=${resp.ok}`);
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        dbg("ERROR", `aria2 RPC: ${method}`, `HTTP ${resp.status}: ${text.slice(0, 200)}`);
+        throw new Error(`aria2 RPC error: HTTP ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      if (data.error) throw new Error(`aria2 RPC error: ${data.error.message}`);
+      return data.result;
+    } catch (err) {
+      dbg("ERROR", `aria2 RPC: ${method}`, `${err.message}`);
+      throw err;
+    }
   }
 
   _baseUrl() {

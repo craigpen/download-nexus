@@ -44,3 +44,19 @@ services:
       - /tmp/deluge-linuxserver/downloads:/downloads
     restart: unless-stopped
 
+  aria2:
+    image: p3terx/aria2-pro:latest
+    container_name: aria2
+    ports:
+      - "6800:6800"
+      - "6888:6888"
+      - "6888:6888/udp"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /tmp/aria2:/config
+      - /tmp/aria2/downloads:/downloads
+    restart: unless-stopped
+
