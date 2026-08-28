@@ -506,8 +506,10 @@ async function refresh() {
       console.log("First task data:", resp.tasks[0]);
     }
     saveCachedTasks(currentNasId, resp.tasks);
-    document.getElementById("speedBar").style.display = "";
-    document.getElementById("tabBar").style.display   = "";
+    const speedBar = document.getElementById("speedBar");
+    const tabBar = document.getElementById("tabBar");
+    if (speedBar) speedBar.style.display = "";
+    if (tabBar) tabBar.style.display   = "";
     updateCounts();
     renderTasks();
     setStatus("");
@@ -540,14 +542,20 @@ async function loadNasList() {
 
       if (nasList.length === 0) {
         // No NAS configured
-        document.getElementById("noNasContainer").classList.add("show");
-        document.getElementById("taskList").style.display = "none";
-        document.getElementById("speedBar").style.display = "none";
-        document.getElementById("tabBar").style.display = "none";
+        const noNasContainer = document.getElementById("noNasContainer");
+        const taskList = document.getElementById("taskList");
+        const speedBar = document.getElementById("speedBar");
+        const tabBar = document.getElementById("tabBar");
+        if (noNasContainer) noNasContainer.classList.add("show");
+        if (taskList) taskList.style.display = "none";
+        if (speedBar) speedBar.style.display = "none";
+        if (tabBar) tabBar.style.display = "none";
       } else {
         // NAS configured
-        document.getElementById("noNasContainer").classList.remove("show");
-        document.getElementById("taskList").style.display = "";
+        const noNasContainer = document.getElementById("noNasContainer");
+        const taskList = document.getElementById("taskList");
+        if (noNasContainer) noNasContainer.classList.remove("show");
+        if (taskList) taskList.style.display = "";
         // Set current NAS to first in list if not set
         if (!currentNasId || !nasList.some(n => n.id === currentNasId)) {
           currentNasId = nasList[0].id;
