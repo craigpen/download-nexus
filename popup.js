@@ -589,7 +589,8 @@ function renderNasTabs() {
     tab.addEventListener("click", async () => {
       currentNasId = tab.dataset.nasId;
       // Clear task list immediately to avoid showing ghost data from previous service
-      document.getElementById("taskList").innerHTML = '<div class="empty"><span class="spinner"></span></div>';
+      const taskList = document.getElementById("taskList");
+      if (taskList) taskList.innerHTML = '<div class="empty"><span class="spinner"></span></div>';
       renderNasTabs();
       renderFilterTabs(); // Render filter tabs based on new adapter
       filter = "downloading";
