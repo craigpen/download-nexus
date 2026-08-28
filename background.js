@@ -799,6 +799,102 @@ class DelugeAdapter extends NasAdapter {
   }
 }
 
+class Aria2Adapter extends NasAdapter {
+  async testConnection() {
+    if (!this.config?.host || !this.config?.port) {
+      throw new Error("Settings incomplete: missing host or port");
+    }
+    const result = await this._rpc("aria2.getVersion");
+    if (!result?.version) throw new Error("aria2 connection failed");
+    return { ok: true, version: result.version };
+  }
+
+  async addDownload(uri, destination) {
+    const isMagnet = uri.startsWith("magnet:");
+    const isTorrent = /\.torrent(\?|$)/i.test(uri);
+    const isHttp = uri.startsWith("http://") || uri.startsWith("https://");
+    const isFtp = uri.startsWith("ftp://");
+
+    if (!isMagnet && !isTorrent && !isHttp && !isFtp) {
+      throw new Error("Invalid URI: must be magnet, torrent, http, https, or ftp");
+    }
+
+    let uris = [uri];
+
+    // For .torrent URLs, download and convert to base64
+    if (isTorrent) {
+      const torrentBuffer = await downloadTorrentFile(uri);
+      const base64 = arrayBufferToBase64(torrentBuffer);
+      const result = await this._rpc("aria2.addTorrent", [base64, [], destination ? { dir: destination } : {}]);
+      if (!result) throw new Error("aria2 addTorrent failed");
+      return;
+    }
+
+    // For magnet links and HTTP/FTP URLs, use addUri
+    const options = destination ? { dir: destination } : {};
+    const result = await this._rpc("aria2.addUri", [uris, options]);
+    if (!result) throw new Error("aria2 addUri failed");
+  }
+
+  async listTasks() {
+    try {
+      const active = await this._rpc("aria2.tellActive", [["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta"]]);
+      const waiting = await this._rpc("aria2.tellWaiting", [0, 100, ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta"]]);
+      const stopped = await this._rpc("aria2.tellStopped", [0, 100, ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta"]]);
+
+      const tasks = [...(active || []), ...(waiting || []), ...(stopped || [])];
+      return tasks.map(t => ({
+        id: t.gid,
+        title: t.name || "Unknown",
+        status: this._statusString(t.status),
+        progress: t.totalLength > 0 ? Math.round((t.completedLength / t.totalLength) * 100) : 0,
+        downloaded: t.completedLength,
+        size: t.totalLength,
+        speed_down: t.downloadSpeed,
+        speed_up: t.uploadSpeed,
+        eta: t.eta > 0 ? t.eta : 0
+      }));
+    } catch (e) {
+      dbg("ERROR", "aria2 listTasks failed", e.message);
+      return [];
+    }
+  }
+
+  _statusString(status) {
+    const statusMap = {
+      "active": "downloading",
+      "waiting": "stalled",
+      "paused": "paused",
+      "error": "error",
+      "complete": "finished",
+      "removed": "finished"
+    };
+    return statusMap[status] || "stalled";
+  }
+
+  async _rpc(method, params = []) {
+    const payload = { jsonrpc: "2.0", id: Date.now().toString(), method, params };
+    const url = `${this._baseUrl()}/jsonrpc`;
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) throw new Error(`aria2 RPC error: HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (data.error) throw new Error(`aria2 RPC error: ${data.error.message}`);
+    return data.result;
+  }
+
+  _baseUrl() {
+    const protocol = this.config.https ? "https" : "http";
+    return `${protocol}://${this.config.host}:${this.config.port}`;
+  }
+}
+
 function getAdapter(nasId, config) {
   const type = config.type || "synology";
   switch (type) {
@@ -810,6 +906,8 @@ function getAdapter(nasId, config) {
       return new TransmissionAdapter(nasId, config);
     case "deluge":
       return new DelugeAdapter(nasId, config);
+    case "aria2":
+      return new Aria2Adapter(nasId, config);
     default:
       throw new Error(`Unknown NAS type: ${type}`);
   }
@@ -1625,6 +1723,83 @@ async function taskAction(s, sid, action, ids) {
   if (!data.success) throw new Error(`Task ${action} failed (DSM code ${data.error?.code ?? "?"})`);
 }
 
+// ── context menu ───────────────────────────────────────────────────────────
+
+function initContextMenu() {
+  // Create parent menu item
+  chrome.contextMenus.create({
+    id: "download-nexus-menu",
+    title: "Download to…",
+    contexts: ["link"]
+  });
+
+  // Create submenu items for each service
+  // Will be populated dynamically based on available services
+  updateContextMenu();
+}
+
+async function updateContextMenu() {
+  // Remove old submenu items
+  const items = await chrome.contextMenus.getAll();
+  for (const item of items) {
+    if (item.parentId === "download-nexus-menu") {
+      chrome.contextMenus.remove(item.id);
+    }
+  }
+
+  // Add current services as submenu items
+  const nasList = await loadNasList();
+  nasList.forEach((nas, idx) => {
+    const id = `download-nexus-service-${nas.id}`;
+    chrome.contextMenus.create({
+      id,
+      parentId: "download-nexus-menu",
+      title: `${idx + 1}. ${nas.name}`,
+      contexts: ["link"]
+    });
+  });
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (!info.menuItemId.startsWith("download-nexus-service-")) return;
+
+  const nasId = info.menuItemId.replace("download-nexus-service-", "");
+  const url = info.linkUrl;
+
+  if (!url) return;
+
+  try {
+    const resp = await chrome.runtime.sendMessage({
+      type: "SEND_MAGNET",
+      url,
+      nasId
+    });
+
+    if (resp?.ok) {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon128.png",
+        title: "Download Sent",
+        message: `URL sent to download service`
+      });
+    } else {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon128.png",
+        title: "Download Failed",
+        message: resp?.error || "Failed to send download"
+      });
+    }
+  } catch (e) {
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "icons/icon128.png",
+      title: "Download Error",
+      message: e.message
+    });
+  }
+});
+
 // ── message listener ───────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -1756,10 +1931,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === 'install') {
       await registerContentScripts();
       await reinjectContentScripts();
+      initContextMenu();
     } else if (details.reason === 'update') {
       console.log('[Background] Extension updated, re-registering and re-injecting content scripts...');
       await registerContentScripts();
       await reinjectContentScripts();
+      initContextMenu();
     }
   } catch (err) {
     console.error('[Background] Failed to handle extension installation/update:', err);
@@ -1770,6 +1947,7 @@ chrome.runtime.onStartup?.addListener(async () => {
   console.log('[Background] Extension startup detected');
   try {
     await reinjectContentScripts();
+    initContextMenu();
   } catch (err) {
     console.error('[Background] Failed to re-inject content scripts on startup:', err);
   }

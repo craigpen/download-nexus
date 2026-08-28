@@ -33,6 +33,14 @@ const SERVICE_DEFAULTS = {
     portHint: "8112 (default)",
     usernameHint: "Not used (password only)",
     helpText: "Enter your Deluge hostname and password. Deluge uses password-only authentication. Default port is 8112."
+  },
+  aria2: {
+    defaultHost: "192.168.1.100",
+    defaultPort: 6800,
+    defaultUsername: "",
+    portHint: "6800 (default)",
+    usernameHint: "Not required",
+    helpText: "Enter your Aria2 hostname. Default port is 6800. Supports HTTP/HTTPS downloads, torrents, and magnet links. No authentication required by default."
   }
 };
 
@@ -74,6 +82,15 @@ const ADAPTER_FEATURES = {
       pause: ["downloading", "seeding"],
       resume: ["paused", "stalled", "error"],
       delete: ["downloading", "seeding", "paused", "stalled", "finished", "error"]
+    }
+  },
+  aria2: {
+    tabs: ["downloading", "stalled", "finished", "error"],
+    pausedLabel: "Paused",
+    actions: {
+      pause: ["active"],
+      resume: ["waiting", "paused"],
+      delete: ["downloading", "waiting", "paused", "completed", "error", "removed"]
     }
   }
 };
@@ -933,6 +950,11 @@ function updateFormFieldsForType() {
   } else if (type === "transmission") {
     document.getElementById("nasPort").value = "9091";
     usernameInput.placeholder = defaults.defaultUsername || "Optional";
+    usernameInput.required = false;
+    passwordInput.required = false;
+  } else if (type === "aria2") {
+    document.getElementById("nasPort").value = "6800";
+    usernameInput.placeholder = "Not required";
     usernameInput.required = false;
     passwordInput.required = false;
   }
