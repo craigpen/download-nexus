@@ -107,6 +107,7 @@ let nasList       = [];
 let currentNasId  = null;
 let nasConnStatus = {}; // Track connection status per NAS
 let editingNasId  = null;
+let archivedAria2Gids = new Set(); // Track hidden Aria2 error tasks
 
 // ── utilities ─────────────────────────────────────────────────────────────
 
@@ -240,8 +241,39 @@ function canResumeTask(status) {
   return actions.resume?.includes(status) ?? false;
 }
 
+function shouldShowHideButton(nasId, status) {
+  const device = nasList.find(n => n.id === nasId);
+  return device?.type === "aria2" && status === "error";
+}
+
+async function loadArchivedAria2Gids() {
+  const data = await chrome.storage.local.get("archivedAria2Gids");
+  archivedAria2Gids = new Set(data.archivedAria2Gids || []);
+}
+
+async function saveArchivedAria2Gids() {
+  await chrome.storage.local.set({ archivedAria2Gids: Array.from(archivedAria2Gids) });
+}
+
+async function hideAria2Task(gid) {
+  archivedAria2Gids.add(gid);
+  await saveArchivedAria2Gids();
+  await refreshTasks();
+}
+
+async function clearArchivedAria2Tasks() {
+  if (confirm("Clear all archived Aria2 tasks? They will reappear if still in error state.")) {
+    archivedAria2Gids.clear();
+    await saveArchivedAria2Gids();
+    await refreshTasks();
+  }
+}
+
 function getVisibleTasks() {
-  const filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+  let filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+
+  // Filter out archived Aria2 tasks
+  filtered = filtered.filter(t => !archivedAria2Gids.has(t.id));
 
   // Sort based on filter
   if (filter === "downloading") {
@@ -361,10 +393,12 @@ function renderTasks() {
       resumeBtn.title = "Resume";
       resumeBtn.style.display = canResume ? "" : "none";
       resumeBtn.textContent = "▶";
+      const showHideBtn = shouldShowHideButton(currentNasId, task.status);
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "task-btn danger delete-btn";
-      deleteBtn.title = "Remove task";
-      deleteBtn.textContent = "✕";
+      deleteBtn.className = showHideBtn ? "task-btn hide-btn" : "task-btn danger delete-btn";
+      deleteBtn.title = showHideBtn ? "Hide from list (archived)" : "Remove task";
+      deleteBtn.textContent = showHideBtn ? "👁" : "✕";
+      deleteBtn.dataset.action = showHideBtn ? "hide" : "delete";
       actions.appendChild(pauseBtn);
       actions.appendChild(resumeBtn);
       actions.appendChild(deleteBtn);
@@ -413,7 +447,11 @@ function renderTasks() {
       pauseBtn.addEventListener("click", () => taskAction("pause", [task.id]));
       resumeBtn.addEventListener("click", () => taskAction("resume", [task.id]));
       deleteBtn.addEventListener("click", () => {
-        if (confirm(`Remove task "${task.title}"? (files will be preserved)`)) taskAction("delete", [task.id]);
+        if (deleteBtn.dataset.action === "hide") {
+          hideAria2Task(task.id);
+        } else {
+          if (confirm(`Remove task "${task.title}"? (files will be preserved)`)) taskAction("delete", [task.id]);
+        }
       });
       fragment.appendChild(row);
     }
@@ -1424,6 +1462,7 @@ async function exportConfig() {
 
 document.getElementById("exportBtn").addEventListener("click", exportConfig);
 document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+document.getElementById("clearArchivedBtn").addEventListener("click", clearArchivedAria2Tasks);
 
 document.getElementById("importFile").addEventListener("change", async e => {
   const file = e.target.files[0];
@@ -1580,6 +1619,7 @@ async function checkAllDeviceConnections() {
 // Initial load + 5s poll while popup is open
 (async () => {
   await loadNasList();
+  await loadArchivedAria2Gids();
   checkAllDeviceConnections(); // Check all device statuses on open
   getCurrentDomain();
   loadWhitelist();
