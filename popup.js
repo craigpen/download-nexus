@@ -229,29 +229,16 @@ function getAdapterActions() {
   return features?.actions || ADAPTER_FEATURES.synology.actions;
 }
 
-// Define valid actions for each task status
-// Uses generic rules that work across all adapters; can be overridden per-adapter if needed
+// Use adapter-specific action rules (different adapters have different capabilities)
 function canPauseTask(status) {
-  // Can pause if actively transferring
-  const activeStates = ["downloading", "seeding", "uploading", "allocating", "forcedDL", "forcedUP", "metaDL", "forcedMetaDL"];
-  return activeStates.includes(status);
+  const actions = getAdapterActions();
+  return actions.pause?.includes(status) ?? false;
 }
 
 function canResumeTask(status) {
-  // Can resume if paused or stalled
-  const resumableStates = ["paused", "stalled", "error"];
-  return resumableStates.includes(status);
+  const actions = getAdapterActions();
+  return actions.resume?.includes(status) ?? false;
 }
-
-// Alternative: use adapter-specific action rules (uncomment to switch)
-// function canPauseTask(status) {
-//   const actions = getAdapterActions();
-//   return actions.pause?.includes(status) ?? false;
-// }
-// function canResumeTask(status) {
-//   const actions = getAdapterActions();
-//   return actions.resume?.includes(status) ?? false;
-// }
 
 function getVisibleTasks() {
   const filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);

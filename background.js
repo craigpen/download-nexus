@@ -838,22 +838,31 @@ class Aria2Adapter extends NasAdapter {
 
   async listTasks() {
     try {
-      const active = await this._rpc("aria2.tellActive", [["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta"]]);
-      const waiting = await this._rpc("aria2.tellWaiting", [0, 100, ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta"]]);
-      const stopped = await this._rpc("aria2.tellStopped", [0, 100, ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta"]]);
+      const fields = ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta", "errorMessage"];
+      const active = await this._rpc("aria2.tellActive", [fields]);
+      const waiting = await this._rpc("aria2.tellWaiting", [0, 100, fields]);
+      const stopped = await this._rpc("aria2.tellStopped", [0, 100, fields]);
 
       const tasks = [...(active || []), ...(waiting || []), ...(stopped || [])];
-      return tasks.map(t => ({
-        id: t.gid,
-        title: t.name || "Unknown",
-        status: this._statusString(t.status),
-        progress: t.totalLength > 0 ? Math.round((t.completedLength / t.totalLength) * 100) : 0,
-        downloaded: t.completedLength,
-        size: t.totalLength,
-        speed_down: t.downloadSpeed,
-        speed_up: t.uploadSpeed,
-        eta: t.eta > 0 ? t.eta : 0
-      }));
+      return tasks.map(t => {
+        const totalLength = Number(t.totalLength) || 0;
+        const completedLength = Number(t.completedLength) || 0;
+        const downloadSpeed = Number(t.downloadSpeed) || 0;
+        const uploadSpeed = Number(t.uploadSpeed) || 0;
+        const eta = Number(t.eta) || 0;
+
+        return {
+          id: t.gid,
+          title: t.name || "Unknown",
+          status: this._statusString(t.status),
+          progress: totalLength > 0 ? Math.round((completedLength / totalLength) * 100) : 0,
+          downloaded: completedLength,
+          size: totalLength,
+          speed_down: downloadSpeed,
+          speed_up: uploadSpeed,
+          eta: eta > 0 ? eta : 0
+        };
+      });
     } catch (e) {
       dbg("ERROR", "aria2 listTasks failed", e.message);
       return [];
