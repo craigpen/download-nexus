@@ -438,8 +438,12 @@ class TransmissionAdapter extends NasAdapter {
     }
     const url = `${this._baseUrl()}/rpc`;
     const resp = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Transmission-Session-Id": "test-session"
+      },
+      body: JSON.stringify({ method: "session-get", arguments: {} })
     });
     if (!resp.ok) throw new Error(`Transmission connection failed: HTTP ${resp.status}`);
     return { ok: true, version: "Transmission", type: "Transmission" };
@@ -916,7 +920,10 @@ class Aria2Adapter extends NasAdapter {
   }
 
   async _rpc(method, params = []) {
-    const rpcSecret = this.config.rpcSecret || "P3TERX";
+    if (!this.config.rpcSecret) {
+      throw new Error("Aria2 RPC secret is required");
+    }
+    const rpcSecret = this.config.rpcSecret;
     const paramsWithToken = [`token:${rpcSecret}`, ...params];
     const payload = { jsonrpc: "2.0", id: Date.now().toString(), method, params: paramsWithToken };
     const url = `${this._baseUrl()}/jsonrpc`;
