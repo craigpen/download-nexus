@@ -1756,30 +1756,45 @@ async function taskAction(s, sid, action, ids) {
 
 // ── context menu ───────────────────────────────────────────────────────────
 
-function initContextMenu() {
-  // Create parent menu item
-  chrome.contextMenus.create({
-    id: "download-nexus-menu",
-    title: "Download to…",
-    contexts: ["link"]
-  });
+let contextMenuServiceIds = [];
 
-  // Create submenu items for each service
-  // Will be populated dynamically based on available services
-  updateContextMenu();
+async function initContextMenu() {
+  try {
+    // Create parent menu item
+    await new Promise((resolve, reject) => {
+      chrome.contextMenus.create({
+        id: "download-nexus-menu",
+        title: "Download to…",
+        contexts: ["link"]
+      }, () => {
+        if (chrome.runtime.lastError) {
+          dbg("ERROR", "initContextMenu", `Failed to create parent menu: ${chrome.runtime.lastError.message}`);
+          reject(chrome.runtime.lastError);
+        } else {
+          dbg("INFO", "initContextMenu", "Parent menu created");
+          resolve();
+        }
+      });
+    });
+
+    // Create submenu items for each service
+    await updateContextMenu();
+  } catch (err) {
+    dbg("ERROR", "initContextMenu", `${err.message}`);
+  }
 }
 
 async function updateContextMenu() {
-  // Remove old submenu items
-  const items = await chrome.contextMenus.getAll();
-  for (const item of items) {
-    if (item.parentId === "download-nexus-menu") {
-      chrome.contextMenus.remove(item.id);
-    }
+  // Remove old submenu items by ID (tracked locally)
+  for (const id of contextMenuServiceIds) {
+    chrome.contextMenus.remove(id).catch(() => {});
   }
+  contextMenuServiceIds = [];
 
   // Add current services as submenu items
-  const nasList = await loadNasList();
+  const nasList = await getNasList();
+  dbg("INFO", "updateContextMenu", `Found ${nasList.length} services`);
+
   nasList.forEach((nas, idx) => {
     const id = `download-nexus-service-${nas.id}`;
     chrome.contextMenus.create({
@@ -1787,7 +1802,14 @@ async function updateContextMenu() {
       parentId: "download-nexus-menu",
       title: `${idx + 1}. ${nas.name}`,
       contexts: ["link"]
+    }, () => {
+      if (chrome.runtime.lastError) {
+        dbg("ERROR", "createContextMenu", `Failed to create menu for ${nas.name}: ${chrome.runtime.lastError.message}`);
+      } else {
+        dbg("INFO", "createContextMenu", `Created menu item for ${nas.name}`);
+      }
     });
+    contextMenuServiceIds.push(id);
   });
 }
 
@@ -1800,34 +1822,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!url) return;
 
   try {
-    const resp = await chrome.runtime.sendMessage({
-      type: "SEND_MAGNET",
-      url,
-      nasId
-    });
-
-    if (resp?.ok) {
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: "icons/icon128.png",
-        title: "Download Sent",
-        message: `URL sent to download service`
-      });
-    } else {
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: "icons/icon128.png",
-        title: "Download Failed",
-        message: resp?.error || "Failed to send download"
-      });
-    }
+    await sendDownload(url, nasId);
   } catch (e) {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: "icons/icon128.png",
-      title: "Download Error",
-      message: e.message
-    });
+    dbg("ERROR", "contextMenus.onClicked", `${e.message}`);
   }
 });
 
@@ -1962,12 +1959,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === 'install') {
       await registerContentScripts();
       await reinjectContentScripts();
-      initContextMenu();
+      await initContextMenu();
     } else if (details.reason === 'update') {
       console.log('[Background] Extension updated, re-registering and re-injecting content scripts...');
       await registerContentScripts();
       await reinjectContentScripts();
-      initContextMenu();
+      await initContextMenu();
     }
   } catch (err) {
     console.error('[Background] Failed to handle extension installation/update:', err);
@@ -1978,7 +1975,7 @@ chrome.runtime.onStartup?.addListener(async () => {
   console.log('[Background] Extension startup detected');
   try {
     await reinjectContentScripts();
-    initContextMenu();
+    await initContextMenu();
   } catch (err) {
     console.error('[Background] Failed to re-inject content scripts on startup:', err);
   }
