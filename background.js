@@ -1705,12 +1705,7 @@ function extractFileName(uri) {
 }
 
 function notify(title, message) {
-  chrome.notifications.create({
-    type: "basic",
-    iconUrl: "icons/icon48.png",
-    title,
-    message: message.slice(0, 200)
-  });
+  // Notifications are handled by the popup UI instead
 }
 
 async function sendDownload(uri, nasId = null) {
@@ -1719,7 +1714,7 @@ async function sendDownload(uri, nasId = null) {
 
   const s = await getNasById(nasId);
   if (!s) {
-    notify("⚠️ NAS not found", "Configure a NAS device in extension options.");
+    notify("⚠️ No download service configured", "Add a download service in extension options.");
     return;
   }
 
@@ -1732,7 +1727,7 @@ async function sendDownload(uri, nasId = null) {
     const displayName = isMagnet ? decodeName(uri) : extractFileName(uri);
     notify(`✅ Sent to ${s.name}`, displayName || uri.slice(0, 80));
   } catch (err) {
-    notify("❌ NAS error", err.message);
+    notify("❌ Download failed", err.message);
     dbg("ERROR", "SEND_DOWNLOAD failed", err.message);
   }
 }
@@ -1907,7 +1902,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === "LIST_TASKS") {
       (async () => {
         const s = await getNasById(msg.nasId);
-        if (!s) return sendResponse({ ok: false, error: "NAS not found" });
+        if (!s) return sendResponse({ ok: false, error: "Download service not found" });
 
         try {
           const adapter = getAdapter(msg.nasId, s);
@@ -1922,7 +1917,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === "TASK_ACTION") {
       (async () => {
         const s = await getNasById(msg.nasId);
-        if (!s) return sendResponse({ ok: false, error: "NAS not found" });
+        if (!s) return sendResponse({ ok: false, error: "Download service not found" });
 
         try {
           const adapter = getAdapter(msg.nasId, s);

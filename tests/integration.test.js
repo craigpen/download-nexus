@@ -12,7 +12,7 @@ const QB_CONFIG = {
   port: 8080,
   https: false,
   username: 'admin',
-  password: 'admin1'
+  password: 'adminadmin'
 };
 
 const API_BASE = `http://${QB_CONFIG.host}:${QB_CONFIG.port}/api/v2`;
