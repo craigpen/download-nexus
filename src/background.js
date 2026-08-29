@@ -449,7 +449,7 @@ class TransmissionAdapter extends NasAdapter {
     return { ok: true, version: "Transmission", type: "Transmission" };
   }
 
-  async listTasks() {
+  async listTasks(retryCount = 0) {
     const auth = this.config.username ? `${this.config.username}:${this.config.password}` : null;
     const headers = {
       "Content-Type": "application/json",
@@ -471,8 +471,11 @@ class TransmissionAdapter extends NasAdapter {
     });
 
     if (resp.status === 409) {
-      // Session ID expired, retry
-      return this.listTasks();
+      // Session ID expired, retry up to 3 times
+      if (retryCount < 3) {
+        return this.listTasks(retryCount + 1);
+      }
+      throw new Error("Transmission session refresh failed after 3 retries");
     }
 
     const data = await resp.json();
@@ -786,7 +789,11 @@ class DelugeAdapter extends NasAdapter {
       // Extract and store session cookie from response
       const setCookie = resp.headers.get("set-cookie");
       if (setCookie) {
-        this._sessionCookie = setCookie.split(";")[0];
+        // Extract cookie name=value (before first semicolon) and trim whitespace
+        const cookiePart = setCookie.split(";")[0]?.trim();
+        if (cookiePart) {
+          this._sessionCookie = cookiePart;
+        }
       }
 
       const data = await resp.json();
@@ -930,10 +937,10 @@ class Aria2Adapter extends NasAdapter {
   }
 
   async _rpc(method, params = []) {
-    if (!this.config.rpcSecret) {
+    const rpcSecret = this.config.rpcSecret?.trim();
+    if (!rpcSecret) {
       throw new Error("Aria2 RPC secret is required");
     }
-    const rpcSecret = this.config.rpcSecret;
     const paramsWithToken = [`token:${rpcSecret}`, ...params];
     const payload = { jsonrpc: "2.0", id: Date.now().toString(), method, params: paramsWithToken };
     const url = `${this._baseUrl()}/jsonrpc`;
