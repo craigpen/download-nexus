@@ -633,15 +633,19 @@ async function taskAction(action, ids) {
   setStatus("…");
   try {
     const device = nasList.find(n => n.id === currentNasId);
+    console.log(`taskAction: device=${device?.type}, action=${action}, ids=${ids.join(",")}`);
 
     // For Aria2 delete on error tasks, don't even attempt the API call—
     // just archive them locally since Aria2 can't delete error state tasks
     if (action === "delete" && device?.type === "aria2") {
+      console.log(`taskAction: Aria2 delete detected, checking for error tasks`);
       const nonErrorIds = [];
       for (const id of ids) {
         const task = allTasks.find(t => t.id === id);
+        console.log(`taskAction: task ${id} status=${task?.status}`);
         if (task?.status === "error") {
           // Archive error tasks locally
+          console.log(`taskAction: archiving error task ${id}`);
           await hideAria2Task(id);
         } else {
           // Keep non-error tasks for API call
@@ -650,6 +654,7 @@ async function taskAction(action, ids) {
       }
       // Replace ids with only non-error tasks
       ids = nonErrorIds;
+      console.log(`taskAction: after filtering, ids=${ids.join(",")}`);
     }
 
     // If all tasks were archived, we're done
