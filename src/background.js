@@ -897,8 +897,18 @@ class Aria2Adapter extends NasAdapter {
           await this._rpc("aria2.remove", [gid]);
         } catch (err) {
           // If not active, try to remove from stopped/result list
-          if (err.message.includes("not found") || err.message.includes("Active Download")) {
-            await this._rpc("aria2.removeDownloadResult", [gid]);
+          // Check for common aria2 error messages
+          const errMsg = err.message.toLowerCase();
+          if (errMsg.includes("not found") ||
+              errMsg.includes("active download") ||
+              errMsg.includes("gid") ||
+              errMsg.includes("http 400")) {
+            try {
+              await this._rpc("aria2.removeDownloadResult", [gid]);
+            } catch (resultErr) {
+              // Already removed or doesn't exist - acceptable
+              dbg("DEBUG", "aria2 delete", `GID ${gid} already removed or doesn't exist`);
+            }
           } else {
             throw err;
           }
@@ -1129,10 +1139,11 @@ async function addNas(nas) {
 async function updateNas(nasId, updates) {
   const list = await getNasList();
   const idx = list.findIndex(n => n.id === nasId);
-  if (idx >= 0) {
-    list[idx] = { ...list[idx], ...updates };
-    await saveNasList(list);
+  if (idx < 0) {
+    throw new Error(`NAS device not found: ${nasId}`);
   }
+  list[idx] = { ...list[idx], ...updates };
+  await saveNasList(list);
 }
 
 async function deleteNas(nasId) {
@@ -1885,6 +1896,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     dbg("INFO", "msg.type value", `type="${msg.type}" typeof=${typeof msg.type} length=${msg.type?.length ?? "null"}`);
 
     if (msg.type === "SEND_MAGNET") {
+      if (!msg.url || typeof msg.url !== "string") {
+        dbg("ERROR", "SEND_MAGNET", "Invalid URL");
+        sendResponse({ ok: false, error: "Invalid URL parameter" });
+        return true;
+      }
       dbg("INFO", "SEND_MAGNET handler START");
       sendDownload(msg.url, msg.nasId).then(() => {
         dbg("INFO", "SEND_MAGNET", "Success");
@@ -1936,6 +1952,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "TASK_ACTION") {
+      if (!msg.nasId || !msg.action || !Array.isArray(msg.ids)) {
+        dbg("ERROR", "TASK_ACTION", "Invalid parameters");
+        sendResponse({ ok: false, error: "Invalid parameters: nasId, action, and ids array required" });
+        return true;
+      }
       (async () => {
         const s = await getNasById(msg.nasId);
         if (!s) return sendResponse({ ok: false, error: "Download service not found" });
@@ -1963,42 +1984,77 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "ADD_WHITELIST") {
+      if (!msg.domain || typeof msg.domain !== "string") {
+        dbg("ERROR", "ADD_WHITELIST", "Invalid domain");
+        sendResponse({ ok: false, error: "Invalid domain parameter" });
+        return true;
+      }
       addToWhitelist(msg.domain)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "REMOVE_WHITELIST") {
+      if (!msg.domain || typeof msg.domain !== "string") {
+        dbg("ERROR", "REMOVE_WHITELIST", "Invalid domain");
+        sendResponse({ ok: false, error: "Invalid domain parameter" });
+        return true;
+      }
       removeFromWhitelist(msg.domain)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "SET_WHITELIST") {
+      if (!Array.isArray(msg.domains)) {
+        dbg("ERROR", "SET_WHITELIST", "Invalid domains");
+        sendResponse({ ok: false, error: "Invalid domains parameter - must be array" });
+        return true;
+      }
       setWhitelist(msg.domains)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "SET_WHITELIST_MODE") {
+      if (!msg.mode || typeof msg.mode !== "string") {
+        dbg("ERROR", "SET_WHITELIST_MODE", "Invalid mode");
+        sendResponse({ ok: false, error: "Invalid mode parameter" });
+        return true;
+      }
       setWhitelistMode(msg.mode)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "ADD_NAS") {
+      if (!msg.nas || typeof msg.nas !== "object") {
+        dbg("ERROR", "ADD_NAS", "Invalid NAS config");
+        sendResponse({ ok: false, error: "Invalid NAS config parameter" });
+        return true;
+      }
       addNas(msg.nas)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "UPDATE_NAS") {
+      if (!msg.nasId || !msg.updates) {
+        dbg("ERROR", "UPDATE_NAS", "Invalid parameters");
+        sendResponse({ ok: false, error: "Invalid parameters: nasId and updates required" });
+        return true;
+      }
       updateNas(msg.nasId, msg.updates)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "DELETE_NAS") {
+      if (!msg.nasId || typeof msg.nasId !== "string") {
+        dbg("ERROR", "DELETE_NAS", "Invalid nasId");
+        sendResponse({ ok: false, error: "Invalid nasId parameter" });
+        return true;
+      }
       deleteNas(msg.nasId)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
