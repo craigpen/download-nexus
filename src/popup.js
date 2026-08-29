@@ -108,6 +108,7 @@ let currentNasId  = null;
 let nasConnStatus = {}; // Track connection status per NAS
 let editingNasId  = null;
 let archivedAria2Gids = new Set(); // Track hidden Aria2 error tasks
+let selectedTaskIds = new Set(); // Track user-selected tasks for bulk operations
 
 // ── utilities ─────────────────────────────────────────────────────────────
 
@@ -269,6 +270,46 @@ async function clearArchivedAria2Tasks() {
   }
 }
 
+function toggleTaskSelection(taskId) {
+  if (selectedTaskIds.has(taskId)) {
+    selectedTaskIds.delete(taskId);
+  } else {
+    selectedTaskIds.add(taskId);
+  }
+  renderTasks();
+  updateFooterButtons();
+}
+
+function selectAllVisible() {
+  const visible = getVisibleTasks();
+  visible.forEach(t => selectedTaskIds.add(t.id));
+  renderTasks();
+  updateFooterButtons();
+}
+
+function deselectAllVisible() {
+  const visible = getVisibleTasks();
+  visible.forEach(t => selectedTaskIds.delete(t.id));
+  renderTasks();
+  updateFooterButtons();
+}
+
+function getSelectedTasks() {
+  return Array.from(selectedTaskIds);
+}
+
+function getCountForAction(action) {
+  const selected = getVisibleTasks().filter(t => selectedTaskIds.has(t.id));
+  if (action === "pause") return selected.filter(t => canPauseTask(t.status)).length;
+  if (action === "resume") return selected.filter(t => canResumeTask(t.status)).length;
+  if (action === "hide") {
+    const device = nasList.find(n => n.id === currentNasId);
+    if (device?.type !== "aria2") return 0;
+    return selected.filter(t => t.status === "error").length;
+  }
+  return selected.length; // delete/remove is always available
+}
+
 function getVisibleTasks() {
   let filtered = allTasks.filter(t => t.status === filter);
 
@@ -297,17 +338,39 @@ function getVisibleTasks() {
 
 function updateFooterButtons() {
   const visible = getVisibleTasks();
-  const pauseCount = visible.filter(t => canPauseTask(t.status)).length;
-  const resumeCount = visible.filter(t => canResumeTask(t.status)).length;
+  const hasSelection = selectedTaskIds.size > 0;
+
+  const pauseCount = getCountForAction("pause");
+  const resumeCount = getCountForAction("resume");
+  const removeCount = getSelectedTasks().length;
+  const hideCount = getCountForAction("hide");
+
   const pauseBtn = document.getElementById("pauseAllBtn");
   const resumeBtn = document.getElementById("resumeAllBtn");
+  const removeBtn = document.getElementById("removeAllBtn");
+  const hideBtn = document.getElementById("hideAllBtn");
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const deselectAllBtn = document.getElementById("deselectAllBtn");
+
+  // Select all/deselect buttons
+  selectAllBtn.style.display = visible.length > 0 ? "" : "none";
+  deselectAllBtn.style.display = hasSelection ? "" : "none";
+
+  // Action buttons - only show if something is selected
+  pauseBtn.style.display = hasSelection ? "" : "none";
+  resumeBtn.style.display = hasSelection ? "" : "none";
+  removeBtn.style.display = hasSelection ? "" : "none";
+  hideBtn.style.display = hideCount > 0 ? "" : "none";
 
   pauseBtn.disabled = pauseCount === 0;
   resumeBtn.disabled = resumeCount === 0;
-  pauseBtn.textContent = `⏸ Pause visible${pauseCount ? ` (${pauseCount})` : ""}`;
-  resumeBtn.textContent = `▶ Resume visible${resumeCount ? ` (${resumeCount})` : ""}`;
-  pauseBtn.title = `Pause only tasks visible in the current filter (${pauseCount} task${pauseCount !== 1 ? "s" : ""})`;
-  resumeBtn.title = `Resume only tasks visible in the current filter (${resumeCount} task${resumeCount !== 1 ? "s" : ""})`;
+  removeBtn.disabled = removeCount === 0;
+  hideBtn.disabled = hideCount === 0;
+
+  pauseBtn.textContent = `⏸ Pause (${pauseCount})`;
+  resumeBtn.textContent = `▶ Resume (${resumeCount})`;
+  removeBtn.textContent = `✕ Remove (${removeCount})`;
+  hideBtn.textContent = `👁 Hide (${hideCount})`;
 }
 
 function renderTasks() {
@@ -375,6 +438,13 @@ function renderTasks() {
 
       const top = document.createElement("div");
       top.className = "task-top";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "task-checkbox";
+      checkbox.checked = selectedTaskIds.has(task.id);
+      checkbox.addEventListener("change", () => toggleTaskSelection(task.id));
+
       const dot = document.createElement("span");
       dot.className = `status-dot ${statusClass(task.status)}`;
       const name = document.createElement("span");
@@ -402,6 +472,7 @@ function renderTasks() {
       actions.appendChild(pauseBtn);
       actions.appendChild(resumeBtn);
       actions.appendChild(deleteBtn);
+      top.appendChild(checkbox);
       top.appendChild(dot);
       top.appendChild(name);
       top.appendChild(actions);
@@ -711,6 +782,7 @@ function selectFilter(filterType) {
   const activeTab = document.querySelector(`[data-filter="${filterType}"]`);
   if (activeTab) activeTab.classList.add("active");
   filter = filterType;
+  selectedTaskIds.clear(); // Clear selection when switching filters
   renderTasks();
 }
 
@@ -1521,14 +1593,38 @@ document.getElementById("retryBtn").addEventListener("click", refresh);
 
 document.getElementById("pauseAllBtn").addEventListener("click", () => {
   const visible = getVisibleTasks();
-  const ids = visible.filter(t => canPauseTask(t.status)).map(t => t.id);
+  const ids = visible.filter(t => selectedTaskIds.has(t.id) && canPauseTask(t.status)).map(t => t.id);
   if (ids.length) taskAction("pause", ids);
 });
 
 document.getElementById("resumeAllBtn").addEventListener("click", () => {
   const visible = getVisibleTasks();
-  const ids = visible.filter(t => canResumeTask(t.status)).map(t => t.id);
+  const ids = visible.filter(t => selectedTaskIds.has(t.id) && canResumeTask(t.status)).map(t => t.id);
   if (ids.length) taskAction("resume", ids);
+});
+
+document.getElementById("removeAllBtn").addEventListener("click", () => {
+  const ids = getSelectedTasks();
+  if (ids.length && confirm(`Remove ${ids.length} task${ids.length !== 1 ? "s" : ""}? (files will be preserved)`)) {
+    taskAction("delete", ids);
+  }
+});
+
+document.getElementById("hideAllBtn").addEventListener("click", async () => {
+  const ids = getSelectedTasks();
+  if (ids.length) {
+    for (const id of ids) {
+      await hideAria2Task(id);
+    }
+  }
+});
+
+document.getElementById("selectAllBtn").addEventListener("click", () => {
+  selectAllVisible();
+});
+
+document.getElementById("deselectAllBtn").addEventListener("click", () => {
+  deselectAllVisible();
 });
 
 document.getElementById("settingsBtn").addEventListener("click", () => {
