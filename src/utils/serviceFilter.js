@@ -23,9 +23,7 @@
       return {
         magnet: true,
         torrent: true,
-        http: false,
-        https: false,
-        ftp: false
+        otherFileTypes: false
       };
     },
 

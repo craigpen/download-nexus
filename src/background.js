@@ -1086,26 +1086,27 @@ function baseUrl(s) {
 // Multi-NAS storage helpers
 async function getNasList() {
   return new Promise(resolve => {
-    chrome.storage.sync.get({ nasList: [] }, r => {
+    chrome.storage.sync.get({ nasList: [] }, async r => {
       let list = r.nasList || [];
       // Migrate old single-NAS config if it exists
       if (list.length === 0) {
-        chrome.storage.sync.get(DEFAULT_NAS_SYNOLOGY, oldSettings => {
-          if (oldSettings.host && oldSettings.host !== DEFAULT_NAS_SYNOLOGY.host) {
-            // User has old settings, migrate to new format
-            list = [{
-              id: "synology-main",
-              type: "synology",
-              name: "Synology NAS",
-              ...oldSettings
-            }];
-            chrome.storage.sync.set({ nasList: list });
-          }
-          resolve(list);
+        const oldSettings = await new Promise(resolve => {
+          chrome.storage.sync.get(DEFAULT_NAS_SYNOLOGY, resolve);
         });
-      } else {
-        resolve(list);
+        if (oldSettings.host && oldSettings.host !== DEFAULT_NAS_SYNOLOGY.host) {
+          // User has old settings, migrate to new format
+          list = [{
+            id: "synology-main",
+            type: "synology",
+            name: "Synology NAS",
+            ...oldSettings
+          }];
+          await new Promise(resolve => {
+            chrome.storage.sync.set({ nasList: list }, resolve);
+          });
+        }
       }
+      resolve(list);
     });
   });
 }
@@ -1192,34 +1193,49 @@ async function setWhitelistMode(mode) {
 
 async function getStoredSid(nasId) {
   return new Promise(resolve => {
-    chrome.storage.local.get({ sids: {} }, r => {
-      resolve(r.sids?.[nasId] || null);
+    const sidKey = `sid_${nasId}`;
+    chrome.storage.local.get([sidKey], r => {
+      resolve(r[sidKey] || null);
     });
   });
 }
 
 async function storeSid(nasId, sid) {
-  return new Promise(resolve => {
-    chrome.storage.local.get({ sids: {} }, r => {
-      const sids = r.sids || {};
-      sids[nasId] = sid;
-      chrome.storage.local.set({ sids }, resolve);
+  return new Promise((resolve, reject) => {
+    // Use sids key as atomic unit with just this entry
+    const sidKey = `sid_${nasId}`;
+    chrome.storage.local.set({ [sidKey]: sid }, () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
     });
   });
 }
 
 async function removeSid(nasId) {
-  return new Promise(resolve => {
-    chrome.storage.local.get({ sids: {} }, r => {
-      const sids = r.sids || {};
-      delete sids[nasId];
-      chrome.storage.local.set({ sids }, resolve);
+  return new Promise((resolve, reject) => {
+    // Use sids key as atomic unit with just this entry
+    const sidKey = `sid_${nasId}`;
+    chrome.storage.local.remove([sidKey], () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
     });
   });
 }
 
 async function clearAllSids() {
-  return new Promise(resolve => chrome.storage.local.set({ sids: {} }, resolve));
+  // Get all NAS IDs and clear their SIDs
+  const list = await getNasList();
+  const sidKeys = list.map(nas => `sid_${nas.id}`);
+  return new Promise((resolve, reject) => {
+    if (sidKeys.length === 0) {
+      resolve();
+    } else {
+      chrome.storage.local.remove(sidKeys, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
+      });
+    }
+  });
 }
 
 // ── Synology API calls ─────────────────────────────────────────────────────
@@ -1274,6 +1290,7 @@ async function nasLogin(s) {
   try { data = JSON.parse(text); }
   catch(e) { throw new Error(`Login response not JSON: ${text.slice(0, 120)}`); }
   if (!data.success) throw new Error(`Login failed (DSM code ${data.error?.code ?? "?"})`);
+  if (!data.data?.sid) throw new Error("Login response missing session ID");
   dbg("INFO", "LOGIN ok, got sid");
   return data.data.sid;
 }
@@ -1545,7 +1562,11 @@ async function calculateTorrentInfoHash(torrentBuffer, torrent) {
   const infoStartMarker = "4:infod"; // "info" in bencoding
   const buffer = new Uint8Array(torrentBuffer);
   const bufStr = new TextDecoder().decode(buffer);
-  const infoStart = bufStr.indexOf(infoStartMarker) + 5; // skip "4:info"
+  const markerIndex = bufStr.indexOf(infoStartMarker);
+  if (markerIndex === -1) {
+    throw new Error("Invalid torrent: missing info dictionary");
+  }
+  const infoStart = markerIndex + 5; // skip "4:info"
 
   // Find the end of the info dict by finding the matching 'e'
   let depth = 1;
@@ -1568,6 +1589,7 @@ async function calculateTorrentInfoHash(torrentBuffer, torrent) {
 }
 
 // ── URL validation ─────────────────────────────────────────────────────────
+// Note: These are also defined in linkDetector.js; duplicated here for adapter use
 
 function isValidMagnetURI(url) {
   if (!url.startsWith("magnet:?")) return false;
@@ -1711,18 +1733,13 @@ function extractFileName(uri) {
   } catch { return ""; }
 }
 
-function notify(title, message) {
-  // Notifications are handled by the popup UI instead
-}
-
 async function sendDownload(uri, nasId = null) {
   const list = await getNasList();
   if (!nasId && list.length > 0) nasId = list[0].id;
 
   const s = await getNasById(nasId);
   if (!s) {
-    notify("⚠️ No download service configured", "Add a download service in extension options.");
-    return;
+    throw new Error("No download service configured. Add a download service in extension options.");
   }
 
   const isMagnet = uri.startsWith("magnet:");
@@ -1732,15 +1749,12 @@ async function sendDownload(uri, nasId = null) {
     const adapter = getAdapter(nasId, s);
     await adapter.addDownload(uri);
     const displayName = isMagnet ? decodeName(uri) : extractFileName(uri);
-    notify(`✅ Sent to ${s.name}`, displayName || uri.slice(0, 80));
+    dbg("INFO", `Sent to ${s.name}`, displayName || uri.slice(0, 80));
   } catch (err) {
-    notify("❌ Download failed", err.message);
     dbg("ERROR", "SEND_DOWNLOAD failed", err.message);
+    throw err;
   }
 }
-
-// Backward compatibility alias
-const sendMagnet = sendDownload;
 
 
 // ── task list / control ────────────────────────────────────────────────────
@@ -1754,7 +1768,7 @@ async function listTasks(s, sid) {
   try { data = JSON.parse(text); }
   catch(e) { throw new Error(`List tasks response not JSON: ${text.slice(0, 120)}`); }
   if (!data.success) throw new Error(`List tasks failed (DSM code ${data.error?.code ?? "?"})`);
-  return data.data.tasks || [];
+  return data.data?.tasks || [];
 }
 
 async function taskAction(s, sid, action, ids) {
@@ -1937,42 +1951,61 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "GET_NAS_LIST") {
-      getNasList().then(list => sendResponse({ list }));
+      getNasList()
+        .then(list => sendResponse({ list }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "GET_WHITELIST") {
       Promise.all([getWhitelist(), getWhitelistMode()])
-        .then(([list, mode]) => sendResponse({ list, mode }));
+        .then(([list, mode]) => sendResponse({ list, mode }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "ADD_WHITELIST") {
-      addToWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+      addToWhitelist(msg.domain)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "REMOVE_WHITELIST") {
-      removeFromWhitelist(msg.domain).then(() => sendResponse({ ok: true }));
+      removeFromWhitelist(msg.domain)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "SET_WHITELIST") {
-      setWhitelist(msg.domains).then(() => sendResponse({ ok: true }));
+      setWhitelist(msg.domains)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "SET_WHITELIST_MODE") {
-      setWhitelistMode(msg.mode).then(() => sendResponse({ ok: true }));
+      setWhitelistMode(msg.mode)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "ADD_NAS") {
-      addNas(msg.nas).then(() => sendResponse({ ok: true }));
+      addNas(msg.nas)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "UPDATE_NAS") {
-      updateNas(msg.nasId, msg.updates).then(() => sendResponse({ ok: true }));
+      updateNas(msg.nasId, msg.updates)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
     if (msg.type === "DELETE_NAS") {
-      deleteNas(msg.nasId).then(() => sendResponse({ ok: true }));
+      deleteNas(msg.nasId)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
+    // No matching message type - send error response
+    sendResponse({ ok: false, error: `Unknown message type: ${msg.type}` });
   } catch (err) {
     dbg("ERROR", "Message listener error", err.message);
     sendResponse({ ok: false, error: err.message, log: [...debugLog] });

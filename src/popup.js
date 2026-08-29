@@ -203,8 +203,10 @@ function setStatus(msg, isErr) {
 }
 
 function updateCounts() {
-  const counts = { all: allTasks.length, downloading: 0, seeding: 0, paused: 0, stalled: 0, finished: 0, error: 0 };
-  for (const t of allTasks) {
+  // Exclude archived Aria2 tasks from counts
+  const visibleTasks = allTasks.filter(t => !archivedAria2Gids.has(t.id));
+  const counts = { all: visibleTasks.length, downloading: 0, seeding: 0, paused: 0, stalled: 0, finished: 0, error: 0 };
+  for (const t of visibleTasks) {
     if (counts[t.status] !== undefined) counts[t.status]++;
   }
   for (const [k, v] of Object.entries(counts)) {
@@ -214,13 +216,23 @@ function updateCounts() {
 
   // Total speeds (support both normalized and Synology formats)
   let dn = 0, up = 0;
-  for (const t of allTasks) {
+  for (const t of visibleTasks) {
     dn += (t.speed_down !== undefined) ? t.speed_down : (t.additional?.transfer?.speed_download || 0);
     up += (t.speed_up !== undefined) ? t.speed_up : (t.additional?.transfer?.speed_upload || 0);
   }
   document.getElementById("totalDn").textContent = fmtSpeed(dn);
   document.getElementById("totalUp").textContent = fmtSpeed(up);
-  document.getElementById("taskCountLabel").textContent = `${allTasks.length} task${allTasks.length !== 1 ? "s" : ""}`;
+  document.getElementById("taskCountLabel").textContent = `${visibleTasks.length} task${visibleTasks.length !== 1 ? "s" : ""}`;
+}
+
+// Show/hide Aria2 disclaimer based on current service
+function updateAria2Disclaimer() {
+  const device = nasList.find(n => n.id === currentNasId);
+  const isAria2 = device?.type === "aria2";
+  const disclaimer = document.getElementById("aria2Disclaimer");
+  if (disclaimer) {
+    disclaimer.style.display = isAria2 ? "" : "none";
+  }
 }
 
 // Get action capabilities for current adapter
@@ -687,6 +699,7 @@ async function loadNasList() {
       }
 
       renderNasTabs(); // Render tabs after setting currentNasId
+      updateAria2Disclaimer(); // Show/hide disclaimer based on initial service
       renderSettingsNasList();
       resolve(nasList);
     });
@@ -753,7 +766,16 @@ function renderNasTabs() {
       // Update UI for new service
       renderNasTabs();
       renderFilterTabs(); // Render filter tabs based on new adapter
-      updateCounts(); // Clear counts immediately
+      updateAria2Disclaimer(); // Show/hide disclaimer based on service type
+
+      // Immediately clear all tab counts to prevent ghost data from previous service
+      ["cnt-downloading", "cnt-seeding", "cnt-paused", "cnt-stalled", "cnt-finished", "cnt-error"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "0";
+      });
+      // Clear task count label
+      const taskCountLabel = document.getElementById("taskCountLabel");
+      if (taskCountLabel) taskCountLabel.textContent = "0 tasks";
 
       await paintCachedTasks();
       refresh();
@@ -907,6 +929,7 @@ function showSettings() {
   renderSettingsNasList();
   renderWhitelistSettings();
   loadProtocolSettings();
+  loadDownloadExtensions();
 }
 
 async function showMainView() {
@@ -1135,22 +1158,76 @@ function loadProtocolSettings() {
     const settings = window.DownloadNexus.ServiceFilter.normalizeProtocolSettings(result.enabledProtocols);
     document.getElementById("enableMagnet").checked = settings.magnet;
     document.getElementById("enableTorrent").checked = settings.torrent;
-    document.getElementById("enableHttp").checked = settings.http;
-    document.getElementById("enableHttps").checked = settings.https;
-    document.getElementById("enableFtp").checked = settings.ftp;
+    document.getElementById("enableHttp").checked = settings.otherFileTypes;
+    updateFileTypesVisibility();
   });
+}
+
+const DEFAULT_FILE_EXTENSIONS = "zip\nrar\n7z\ntar\ngz\nbz2\niso\nexe\nmsi\npdf\ndoc\ndocx\nxls\nxlsx\nmp4\nmkv\nzip\napk";
+
+function updateFileTypesVisibility() {
+  const isEnabled = document.getElementById("enableHttp").checked;
+  const section = document.getElementById("fileTypesSection");
+  section.style.display = isEnabled ? "block" : "none";
+
+  if (isEnabled) {
+    const textarea = document.getElementById("downloadExtensionsTextarea");
+    // If empty, populate with defaults
+    if (!textarea.value.trim()) {
+      textarea.value = DEFAULT_FILE_EXTENSIONS;
+    }
+  }
 }
 
 function saveProtocolSettings() {
   const settings = {
     magnet: document.getElementById("enableMagnet").checked,
     torrent: document.getElementById("enableTorrent").checked,
-    http: document.getElementById("enableHttp").checked,
-    https: document.getElementById("enableHttps").checked,
-    ftp: document.getElementById("enableFtp").checked
+    otherFileTypes: document.getElementById("enableHttp").checked
   };
-  chrome.storage.local.set({ enabledProtocols: settings });
+  chrome.storage.local.set({ enabledProtocols: settings }, () => {
+    // Notify all tabs to refresh content scripts with new protocol settings
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, { type: "PROTOCOL_SETTINGS_CHANGED" }).catch(() => {
+          // Ignore errors for tabs that don't have content script (e.g., chrome:// pages)
+        });
+      });
+    });
+  });
 }
+
+// ── Download File Types ────────────────────────────────────────────────────
+
+function loadDownloadExtensions() {
+  chrome.storage.sync.get({ downloadExtensions: "" }, (result) => {
+    const textarea = document.getElementById("downloadExtensionsTextarea");
+    const value = result.downloadExtensions;
+    // If no saved extensions, use defaults (will be shown if toggle is enabled)
+    textarea.value = value || DEFAULT_FILE_EXTENSIONS;
+  });
+}
+
+function saveDownloadExtensions() {
+  const textarea = document.getElementById("downloadExtensionsTextarea");
+  const extensions = textarea.value
+    .split("\n")
+    .map(line => line.trim().toLowerCase())
+    .filter(line => line && /^[a-z0-9]+$/.test(line));
+
+  chrome.storage.sync.set({ downloadExtensions: extensions.join("\n") }, () => {
+    // Notify all tabs to refresh content scripts with new file extensions
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, { type: "DOWNLOAD_EXTENSIONS_CHANGED" }).catch(() => {
+          // Ignore errors for tabs that don't have content script
+        });
+      });
+    });
+  });
+}
+
+document.getElementById("downloadExtensionsTextarea").addEventListener("blur", saveDownloadExtensions);
 
 document.getElementById("nasForm").addEventListener("submit", async e => {
   e.preventDefault();
@@ -1307,8 +1384,11 @@ document.getElementById("whitelistModeToggle").addEventListener("change", async 
 });
 
 // Protocol settings change handlers
-["enableMagnet", "enableTorrent", "enableHttp", "enableHttps", "enableFtp"].forEach(id => {
-  document.getElementById(id).addEventListener("change", saveProtocolSettings);
+["enableMagnet", "enableTorrent", "enableHttp"].forEach(id => {
+  document.getElementById(id).addEventListener("change", () => {
+    updateFileTypesVisibility();
+    saveProtocolSettings();
+  });
 });
 
 function isValidDomainPattern(pattern) {
