@@ -32,7 +32,7 @@
     }
   };
 
-  const DOWNLOAD_EXTENSIONS = [
+  const DEFAULT_DOWNLOAD_EXTENSIONS = [
     "zip", "rar", "7z", "tar", "gz", "bz2", "xz",
     "iso", "img", "dmg",
     "exe", "msi", "pkg", "deb", "rpm",
@@ -42,9 +42,13 @@
     "apk", "jar", "bin", "dat"
   ];
 
+  let customDownloadExtensions = null;
+
   window.DownloadNexus.Protocols = {
     PROTOCOL_SUPPORT,
-    DOWNLOAD_EXTENSIONS,
+    get DOWNLOAD_EXTENSIONS() {
+      return customDownloadExtensions || DEFAULT_DOWNLOAD_EXTENSIONS;
+    },
 
     getServiceProtocols(serviceType) {
       const info = PROTOCOL_SUPPORT[serviceType];
@@ -60,6 +64,12 @@
       return serviceList.filter(service =>
         this.supportsProtocol(service.type, protocol)
       );
+    },
+
+    setCustomDownloadExtensions(extensions) {
+      if (Array.isArray(extensions) && extensions.length > 0) {
+        customDownloadExtensions = extensions.map(e => e.toLowerCase());
+      }
     }
   };
 })();

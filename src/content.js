@@ -29,7 +29,13 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
   let whitelistEnabled = false;
   let nasListLoaded = false;
   let whitelistLoaded = false;
-  let enabledProtocols = window.DownloadNexus.ServiceFilter.getDefaultProtocolSettings();
+  let enabledProtocols = (window.DownloadNexus?.ServiceFilter?.getDefaultProtocolSettings?.()) || {
+    magnet: true,
+    torrent: true,
+    http: false,
+    https: false,
+    ftp: false
+  };
 
   function isDomainWhitelisted(domain, patterns) {
     // If no patterns, nothing is whitelisted
@@ -80,8 +86,41 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
   // Load protocol settings
   chrome.storage.local.get("enabledProtocols", (result) => {
-    if (result.enabledProtocols) {
+    if (result.enabledProtocols && window.DownloadNexus?.ServiceFilter?.normalizeProtocolSettings) {
       enabledProtocols = window.DownloadNexus.ServiceFilter.normalizeProtocolSettings(result.enabledProtocols);
+    }
+  });
+
+  // Load custom download extensions
+  chrome.storage.sync.get("downloadExtensions", (result) => {
+    if (result.downloadExtensions && window.DownloadNexus?.Protocols?.setCustomDownloadExtensions) {
+      const extensions = result.downloadExtensions.split("\n").filter(e => e.trim());
+      if (extensions.length > 0) {
+        window.DownloadNexus.Protocols.setCustomDownloadExtensions(extensions);
+      }
+    }
+  });
+
+  // Listen for protocol settings changes and refresh buttons
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "PROTOCOL_SETTINGS_CHANGED") {
+      // Reload protocol settings from storage
+      chrome.storage.local.get("enabledProtocols", (result) => {
+        if (result.enabledProtocols && window.DownloadNexus?.ServiceFilter?.normalizeProtocolSettings) {
+          enabledProtocols = window.DownloadNexus.ServiceFilter.normalizeProtocolSettings(result.enabledProtocols);
+        }
+        // Reinject buttons with new protocol settings
+        injectButtons();
+      });
+    } else if (msg.type === "DOWNLOAD_EXTENSIONS_CHANGED") {
+      // Reload download extensions and reinject buttons
+      chrome.storage.sync.get("downloadExtensions", (result) => {
+        if (result.downloadExtensions && window.DownloadNexus?.Protocols) {
+          window.DownloadNexus.Protocols.setCustomDownloadExtensions(result.downloadExtensions.split("\n").filter(e => e.trim()));
+        }
+        // Reinject buttons with new file extensions
+        injectButtons();
+      });
     }
   });
 
@@ -91,6 +130,15 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
   function sendUrl(btn, url, nasId, type) {
     // Validate URL using LinkDetector
+    if (!window.DownloadNexus?.LinkDetector?.detectLinkType) {
+      btn.textContent = "❌";
+      btn.disabled = false;
+      btn.style.background = "#c0392b";
+      btn.title = "Extension not ready";
+      console.error(`[NAS] LinkDetector not available`);
+      return;
+    }
+
     const link = window.DownloadNexus.LinkDetector.detectLinkType(url);
     if (!link) {
       btn.textContent = "❌";
@@ -103,6 +151,15 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
     btn.textContent = "⏳";
     btn.disabled = true;
+    if (!window.DownloadNexus?.DownloadSender?.sendDownloadToService) {
+      btn.textContent = "❌";
+      btn.disabled = false;
+      btn.style.background = "#c0392b";
+      btn.title = "Extension not ready";
+      console.error(`[NAS] DownloadSender not available`);
+      return;
+    }
+
     window.DownloadNexus.DownloadSender.sendDownloadToService(url, nasId)
       .then(() => {
         btn.textContent = "✅";
@@ -249,13 +306,16 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
     if (nasDevices.length === 0) return;
 
     // Check whitelist: if enabled, only inject on whitelisted domains
-    if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
+    if (whitelistEnabled && !isDomainWhitelisted(currentDomain, whitelist)) return;
+
+    if (!window.DownloadNexus?.LinkDetector?.detectLinkType) return;
 
     const href = a.href || "";
     const link = window.DownloadNexus.LinkDetector.detectLinkType(href);
     if (!link) return;
 
     // Check if this protocol is enabled and has compatible services
+    if (!window.DownloadNexus?.ServiceFilter?.hasCompatibleService) return;
     if (!window.DownloadNexus.ServiceFilter.hasCompatibleService(link.type, nasDevices, enabledProtocols)) return;
 
     makeInlineButton(href, link.type, a);
@@ -288,6 +348,7 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
   function scanTextNodes() {
     if (nasDevices.length === 0) return; // Don't scan if no NAS configured
+    if (!window.DownloadNexus?.LinkDetector?.detectLinkType) return; // Don't scan if utilities not loaded
 
     // Check whitelist: if enabled, only scan on whitelisted domains
     if (whitelistEnabled && !whitelist.includes(currentDomain)) return;
