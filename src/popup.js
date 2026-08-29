@@ -349,12 +349,16 @@ function updateFooterButtons() {
   const resumeBtn = document.getElementById("resumeAllBtn");
   const removeBtn = document.getElementById("removeAllBtn");
   const hideBtn = document.getElementById("hideAllBtn");
-  const selectAllBtn = document.getElementById("selectAllBtn");
-  const deselectAllBtn = document.getElementById("deselectAllBtn");
+  const toggleBtn = document.getElementById("toggleSelectBtn");
 
-  // Select all/deselect buttons
-  selectAllBtn.style.display = visible.length > 0 ? "" : "none";
-  deselectAllBtn.style.display = hasSelection ? "" : "none";
+  // Toggle select button
+  const allSelected = visible.length > 0 && visible.length === getSelectedTasks().filter(id => {
+    const task = visible.find(t => t.id === id);
+    return task !== undefined;
+  }).length;
+  toggleBtn.style.display = visible.length > 0 ? "" : "none";
+  toggleBtn.textContent = allSelected && selectedTaskIds.size > 0 ? "✗ None" : "✓ All";
+  toggleBtn.title = allSelected && selectedTaskIds.size > 0 ? "Deselect all" : "Select all visible";
 
   // Action buttons - only show if something is selected
   pauseBtn.style.display = hasSelection ? "" : "none";
@@ -416,6 +420,8 @@ function renderTasks() {
     if (existing[task.id]) {
       // Update in place
       const row = existing[task.id];
+      const checkbox = row.querySelector(".task-checkbox");
+      if (checkbox) checkbox.checked = selectedTaskIds.has(task.id);
       row.querySelector(".task-name").textContent = task.title;
       row.querySelector(".progress-fill").style.width = `${pct}%`;
       row.querySelector(".progress-fill").style.background = color;
@@ -1619,12 +1625,14 @@ document.getElementById("hideAllBtn").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("selectAllBtn").addEventListener("click", () => {
-  selectAllVisible();
-});
-
-document.getElementById("deselectAllBtn").addEventListener("click", () => {
-  deselectAllVisible();
+document.getElementById("toggleSelectBtn").addEventListener("click", () => {
+  const visible = getVisibleTasks();
+  const selected = getSelectedTasks().filter(id => visible.some(t => t.id === id));
+  if (selected.length === visible.length && visible.length > 0) {
+    deselectAllVisible();
+  } else {
+    selectAllVisible();
+  }
 });
 
 document.getElementById("settingsBtn").addEventListener("click", () => {
