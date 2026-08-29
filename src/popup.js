@@ -372,9 +372,16 @@ function updateFooterButtons() {
   hideBtn.disabled = hideCount === 0;
 
   pauseBtn.textContent = `⏸ (${pauseCount})`;
+  pauseBtn.title = `Pause ${pauseCount} task${pauseCount !== 1 ? "s" : ""}`;
+
   resumeBtn.textContent = `▶ (${resumeCount})`;
+  resumeBtn.title = `Resume ${resumeCount} task${resumeCount !== 1 ? "s" : ""}`;
+
   removeBtn.textContent = `✕ (${removeCount})`;
+  removeBtn.title = `Remove ${removeCount} task${removeCount !== 1 ? "s" : ""} (files will be preserved)`;
+
   hideBtn.textContent = `👁 (${hideCount})`;
+  hideBtn.title = `Hide ${hideCount} task${hideCount !== 1 ? "s" : ""} from list`;
 }
 
 function renderTasks() {
