@@ -242,11 +242,6 @@ function canResumeTask(status) {
   return actions.resume?.includes(status) ?? false;
 }
 
-function shouldShowHideButton(nasId, status) {
-  const device = nasList.find(n => n.id === nasId);
-  return device?.type === "aria2" && status === "error";
-}
-
 async function loadArchivedAria2Gids() {
   const data = await chrome.storage.local.get("archivedAria2Gids");
   archivedAria2Gids = new Set(data.archivedAria2Gids || []);
@@ -302,11 +297,6 @@ function getCountForAction(action) {
   const selected = getVisibleTasks().filter(t => selectedTaskIds.has(t.id));
   if (action === "pause") return selected.filter(t => canPauseTask(t.status)).length;
   if (action === "resume") return selected.filter(t => canResumeTask(t.status)).length;
-  if (action === "hide") {
-    const device = nasList.find(n => n.id === currentNasId);
-    if (device?.type !== "aria2") return 0;
-    return selected.filter(t => t.status === "error").length;
-  }
   return selected.length; // delete/remove is always available
 }
 
@@ -343,12 +333,10 @@ function updateFooterButtons() {
   const pauseCount = getCountForAction("pause");
   const resumeCount = getCountForAction("resume");
   const removeCount = getSelectedTasks().length;
-  const hideCount = getCountForAction("hide");
 
   const pauseBtn = document.getElementById("pauseAllBtn");
   const resumeBtn = document.getElementById("resumeAllBtn");
   const removeBtn = document.getElementById("removeAllBtn");
-  const hideBtn = document.getElementById("hideAllBtn");
   const toggleBtn = document.getElementById("toggleSelectBtn");
 
   // Toggle select button
@@ -364,12 +352,10 @@ function updateFooterButtons() {
   pauseBtn.style.display = hasSelection ? "" : "none";
   resumeBtn.style.display = hasSelection ? "" : "none";
   removeBtn.style.display = hasSelection ? "" : "none";
-  hideBtn.style.display = hideCount > 0 ? "" : "none";
 
   pauseBtn.disabled = pauseCount === 0;
   resumeBtn.disabled = resumeCount === 0;
   removeBtn.disabled = removeCount === 0;
-  hideBtn.disabled = hideCount === 0;
 
   pauseBtn.textContent = `⏸ (${pauseCount})`;
   pauseBtn.title = `Pause ${pauseCount} task${pauseCount !== 1 ? "s" : ""}`;
@@ -379,9 +365,6 @@ function updateFooterButtons() {
 
   removeBtn.textContent = `✕ (${removeCount})`;
   removeBtn.title = `Remove ${removeCount} task${removeCount !== 1 ? "s" : ""} (files will be preserved)`;
-
-  hideBtn.textContent = `👁 (${hideCount})`;
-  hideBtn.title = `Hide ${hideCount} task${hideCount !== 1 ? "s" : ""} from list`;
 }
 
 function renderTasks() {
@@ -476,12 +459,10 @@ function renderTasks() {
       resumeBtn.title = "Resume";
       resumeBtn.style.display = canResume ? "" : "none";
       resumeBtn.textContent = "▶";
-      const showHideBtn = shouldShowHideButton(currentNasId, task.status);
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = showHideBtn ? "task-btn hide-btn" : "task-btn danger delete-btn";
-      deleteBtn.title = showHideBtn ? "Hide from list (archived)" : "Remove task";
-      deleteBtn.textContent = showHideBtn ? "👁" : "✕";
-      deleteBtn.dataset.action = showHideBtn ? "hide" : "delete";
+      deleteBtn.className = "task-btn danger delete-btn";
+      deleteBtn.title = "Remove task";
+      deleteBtn.textContent = "✕";
       actions.appendChild(pauseBtn);
       actions.appendChild(resumeBtn);
       actions.appendChild(deleteBtn);
@@ -531,11 +512,7 @@ function renderTasks() {
       pauseBtn.addEventListener("click", () => taskAction("pause", [task.id]));
       resumeBtn.addEventListener("click", () => taskAction("resume", [task.id]));
       deleteBtn.addEventListener("click", () => {
-        if (deleteBtn.dataset.action === "hide") {
-          hideAria2Task(task.id);
-        } else {
-          if (confirm(`Remove task "${task.title}"? (files will be preserved)`)) taskAction("delete", [task.id]);
-        }
+        if (confirm(`Remove task "${task.title}"? (files will be preserved)`)) taskAction("delete", [task.id]);
       });
       fragment.appendChild(row);
     }
@@ -1621,15 +1598,6 @@ document.getElementById("removeAllBtn").addEventListener("click", () => {
   const ids = getSelectedTasks();
   if (ids.length && confirm(`Remove ${ids.length} task${ids.length !== 1 ? "s" : ""}? (files will be preserved)`)) {
     taskAction("delete", ids);
-  }
-});
-
-document.getElementById("hideAllBtn").addEventListener("click", async () => {
-  const ids = getSelectedTasks();
-  if (ids.length) {
-    for (const id of ids) {
-      await hideAria2Task(id);
-    }
   }
 });
 
