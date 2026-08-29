@@ -741,6 +741,7 @@ function renderNasTabs() {
       // Clear all state for the new service
       allTasks = [];
       filter = "downloading";
+      selectedTaskIds.clear();
 
       // Clear task rows to avoid showing ghost data from previous service
       const taskList = document.getElementById("taskList");
