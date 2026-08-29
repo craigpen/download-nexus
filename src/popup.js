@@ -637,17 +637,19 @@ async function taskAction(action, ids) {
     // For Aria2 delete on error tasks, don't even attempt the API call—
     // just archive them locally since Aria2 can't delete error state tasks
     if (action === "delete" && device?.type === "aria2") {
-      const errorIds = ids.filter(id => {
+      const nonErrorIds = [];
+      for (const id of ids) {
         const task = allTasks.find(t => t.id === id);
-        return task?.status === "error";
-      });
-      if (errorIds.length > 0) {
-        for (const id of errorIds) {
+        if (task?.status === "error") {
+          // Archive error tasks locally
           await hideAria2Task(id);
+        } else {
+          // Keep non-error tasks for API call
+          nonErrorIds.push(id);
         }
-        // Remove error IDs from the list of tasks to actually delete
-        ids = ids.filter(id => !errorIds.includes(id));
       }
+      // Replace ids with only non-error tasks
+      ids = nonErrorIds;
     }
 
     // If all tasks were archived, we're done
