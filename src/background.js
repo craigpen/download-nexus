@@ -1398,78 +1398,8 @@ async function qbCall(deviceId, s, apiFn) {
   }
 }
 
-async function qbListTasks(s) {
-  const resp = await qbFetch(s, "/torrents/info");
-  const text = await resp.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch (e) {
-    throw new Error(`qBit list response not JSON: ${text.slice(0, 120)}`);
-  }
-
-  // Convert qBittorrent torrents to generic task format
-  if (!Array.isArray(data)) {
-    dbg("WARN", "qBit torrents/info returned non-array", typeof data);
-    return [];
-  }
-
-  return data.map(torrent => ({
-    id: torrent.hash,
-    title: torrent.name,
-    status: torrent.state, // "downloading", "uploading", etc.
-    progress: torrent.progress * 100, // qBit uses 0-1, we use 0-100
-    size: torrent.total_size,
-    downloaded: torrent.downloaded,
-    uploaded: torrent.uploaded,
-    speed_down: torrent.dl_speed,
-    speed_up: torrent.up_speed,
-    eta: torrent.eta
-  }));
-}
-
-async function qbAddDownload(s, deviceId, uri) {
-  // Validate URI
-  if (!isValidMagnetURI(uri) && !isValidTorrentURL(uri)) {
-    dbg("ERROR", "Invalid URI rejected", uri.slice(0, 80));
-    throw new Error("Invalid URI format (must be magnet link or .torrent URL)");
-  }
-
-  // Convert .torrent URL to magnet if needed
-  let finalUri = uri;
-  if (isValidTorrentURL(uri)) {
-    dbg("INFO", "Converting .torrent URL to magnet", uri.slice(0, 80));
-    try {
-      const torrentBuffer = await downloadTorrentFile(uri);
-      finalUri = await torrentToMagnet(torrentBuffer);
-      dbg("INFO", "Torrent converted to magnet", finalUri.slice(0, 80));
-    } catch (err) {
-      throw new Error(`Failed to parse torrent: ${err.message}`);
-    }
-  }
-
-  // qBittorrent API: POST /api/v2/torrents/add with magnet link
-  await qbCall(deviceId, s, async () => {
-    const formData = new FormData();
-    formData.append("urls", finalUri);
-
-    const resp = await qbFetch(s, "/torrents/add", {
-      method: "POST",
-      body: formData
-    });
-
-    const text = await resp.text();
-    dbg("INFO", "qBit add torrent response", text);
-    // qBittorrent returns "Ok." on success or error text otherwise
-    if (text.toLowerCase() === "ok." || text.toLowerCase() === "ok") {
-      dbg("INFO", "qBit add download successful", finalUri.slice(0, 80));
-    } else if (text.toLowerCase().includes("already")) {
-      dbg("WARN", "qBit: torrent already added", finalUri.slice(0, 80));
-    } else {
-      throw new Error(`qBit add torrent failed: ${text.slice(0, 200)}`);
-    }
-  });
-}
+// Note: qbListTasks and qbAddDownload removed - functionality moved to QBittorrentAdapter class
+// Old qBittorrent functions (qbLogin, qbFetch, qbCall) kept for backward compatibility in testConnection
 
 // ── Torrent file parser ───────────────────────────────────────────────────
 // Converts .torrent files to magnet links
