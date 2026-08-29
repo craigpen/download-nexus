@@ -633,47 +633,24 @@ async function taskAction(action, ids) {
   setStatus("…");
   try {
     const device = nasList.find(n => n.id === currentNasId);
-    console.log(`taskAction: device=${device?.type}, action=${action}, ids=${ids.join(",")}`);
 
-    // For Aria2 delete on error tasks, don't even attempt the API call—
-    // just archive them locally since Aria2 can't delete error state tasks
+    // For Aria2, deletion just hides the IDs locally—don't call API since Aria2 can't delete error tasks
     if (action === "delete" && device?.type === "aria2") {
-      console.log(`taskAction: Aria2 delete detected, checking for error tasks`);
-      const nonErrorIds = [];
       for (const id of ids) {
-        const task = allTasks.find(t => t.id === id);
-        console.log(`taskAction: task ${id} status=${task?.status}, allTasks.length=${allTasks.length}`);
-        // If task is in error status OR if we can't find it in allTasks but we're in error filter, archive it
-        // (this handles the case where task might not be in allTasks yet)
-        if (task?.status === "error" || (task === undefined && filter === "error")) {
-          // Archive error tasks locally
-          console.log(`taskAction: archiving error task ${id}`);
-          await hideAria2Task(id);
-        } else {
-          // Keep non-error tasks for API call
-          nonErrorIds.push(id);
-        }
+        await hideAria2Task(id);
       }
-      // Replace ids with only non-error tasks
-      ids = nonErrorIds;
-      console.log(`taskAction: after filtering, ids=${ids.join(",")}`);
+      return;
     }
 
-    // If all tasks were archived, we're done
-    if (ids.length === 0) return;
-
-    console.log(`taskAction: ${action} on ${ids.join(",")} for NAS ${currentNasId}`);
+    // For all other services, call the remove API
     const resp = await send({ type: "TASK_ACTION", nasId: currentNasId, action, ids });
-    console.log(`taskAction response:`, resp);
 
     if (!resp.ok) {
       setStatus(resp.error, true);
       return;
     }
 
-    console.log(`taskAction: calling refresh after ${action}`);
     await refresh();
-    console.log(`taskAction: refresh complete, allTasks now has ${allTasks.length} tasks`);
   } catch (err) {
     console.error(`taskAction error:`, err);
     setStatus(err.message, true);
