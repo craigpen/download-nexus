@@ -1428,7 +1428,7 @@ document.getElementById("whitelistTextarea").addEventListener("blur", async e =>
 // ── settings: backup / restore ──────────────────────────────────────────────
 
 // Schema validation for config import (P1-5)
-const VALID_ADAPTER_TYPES = new Set(['synology', 'qbittorrent', 'transmission', 'deluge']);
+const VALID_ADAPTER_TYPES = new Set(['synology', 'qbittorrent', 'transmission', 'deluge', 'aria2']);
 
 function validateNasConfig(nas, index) {
   const errors = [];
@@ -1482,8 +1482,8 @@ function validateConfigSchema(config) {
   // Check required top-level fields
   if (config.version === undefined) {
     errors.push("Missing version field");
-  } else if (config.version !== 1) {
-    errors.push(`Unsupported config version: ${config.version} (expected 1)`);
+  } else if (config.version !== 1 && config.version !== 2) {
+    errors.push(`Unsupported config version: ${config.version} (expected 1 or 2)`);
   }
 
   // Validate nasList if present
@@ -1576,11 +1576,33 @@ async function exportConfig() {
     return copy;
   });
 
+  // Get all current settings from storage
+  const enabledProtocols = await new Promise(resolve => {
+    chrome.storage.local.get("enabledProtocols", result => {
+      resolve(result.enabledProtocols || {});
+    });
+  });
+
+  const downloadExtensions = await new Promise(resolve => {
+    chrome.storage.sync.get("downloadExtensions", result => {
+      resolve(result.downloadExtensions || "");
+    });
+  });
+
+  const archivedAria2Gids = await new Promise(resolve => {
+    chrome.storage.local.get("archivedAria2Gids", result => {
+      resolve(Array.from(result.archivedAria2Gids || []));
+    });
+  });
+
   const config = {
-    version: 1,
+    version: 2,
     nasList: nasListExport,
     whitelist: Array.from(whitelistSet),
-    whitelistMode: whitelistMode
+    whitelistMode: whitelistMode,
+    enabledProtocols: enabledProtocols,
+    downloadExtensions: downloadExtensions,
+    archivedAria2Gids: archivedAria2Gids
   };
 
   try {
@@ -1659,6 +1681,27 @@ document.getElementById("importFile").addEventListener("change", async e => {
 
     if (config.whitelistMode) {
       await send({ type: "SET_WHITELIST_MODE", mode: config.whitelistMode });
+    }
+
+    // Restore protocol settings
+    if (config.enabledProtocols) {
+      await new Promise(resolve => {
+        chrome.storage.local.set({ enabledProtocols: config.enabledProtocols }, resolve);
+      });
+    }
+
+    // Restore download extensions
+    if (config.downloadExtensions) {
+      await new Promise(resolve => {
+        chrome.storage.sync.set({ downloadExtensions: config.downloadExtensions }, resolve);
+      });
+    }
+
+    // Restore archived Aria2 tasks
+    if (config.archivedAria2Gids && Array.isArray(config.archivedAria2Gids)) {
+      await new Promise(resolve => {
+        chrome.storage.local.set({ archivedAria2Gids: new Set(config.archivedAria2Gids) }, resolve);
+      });
     }
 
     el.textContent = `Config imported successfully! (${config.nasList?.length || 0} devices, ${config.whitelist?.length || 0} whitelist entries)`;
