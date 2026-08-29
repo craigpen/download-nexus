@@ -632,29 +632,41 @@ async function refresh() {
 async function taskAction(action, ids) {
   setStatus("…");
   try {
+    const device = nasList.find(n => n.id === currentNasId);
+
+    // For Aria2 delete on error tasks, don't even attempt the API call—
+    // just archive them locally since Aria2 can't delete error state tasks
+    if (action === "delete" && device?.type === "aria2") {
+      const errorIds = ids.filter(id => {
+        const task = allTasks.find(t => t.id === id);
+        return task?.status === "error";
+      });
+      if (errorIds.length > 0) {
+        for (const id of errorIds) {
+          await hideAria2Task(id);
+        }
+        // Remove error IDs from the list of tasks to actually delete
+        ids = ids.filter(id => !errorIds.includes(id));
+      }
+    }
+
+    // If all tasks were archived, we're done
+    if (ids.length === 0) return;
+
     console.log(`taskAction: ${action} on ${ids.join(",")} for NAS ${currentNasId}`);
     const resp = await send({ type: "TASK_ACTION", nasId: currentNasId, action, ids });
     console.log(`taskAction response:`, resp);
-    if (!resp.ok) { setStatus(resp.error, true); return; }
+
+    if (!resp.ok) {
+      setStatus(resp.error, true);
+      return;
+    }
+
     console.log(`taskAction: calling refresh after ${action}`);
     await refresh();
     console.log(`taskAction: refresh complete, allTasks now has ${allTasks.length} tasks`);
   } catch (err) {
     console.error(`taskAction error:`, err);
-
-    // For Aria2 delete on error tasks that can't be removed via API,
-    // silently archive them instead of showing an error
-    const device = nasList.find(n => n.id === currentNasId);
-    if (action === "delete" && device?.type === "aria2" && err.message.includes("aria2")) {
-      for (const id of ids) {
-        const task = allTasks.find(t => t.id === id);
-        if (task?.status === "error") {
-          await hideAria2Task(id);
-        }
-      }
-      return;
-    }
-
     setStatus(err.message, true);
   }
 }
