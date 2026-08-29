@@ -697,6 +697,16 @@
     .form-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     #nasForm { display: none; flex-direction: column; }
     #nasForm.show { display: flex; }
+
+    .task-checkbox {
+      margin-right: 8px;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .task-top { display: flex; align-items: center; gap: 8px; }
   </style>
 </head>
 <body>
@@ -786,9 +796,13 @@
     </div>
 
     <div class="footer">
-      <div style="display:flex;gap:6px">
-        <button class="footer-btn" id="pauseAllBtn" title="Pause only tasks visible in the current filter">⏸ Pause visible</button>
-        <button class="footer-btn" id="resumeAllBtn" title="Resume only tasks visible in the current filter">▶ Resume visible</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="footer-btn" id="selectAllBtn" style="display:none">☑ Select all</button>
+        <button class="footer-btn" id="deselectAllBtn" style="display:none">☐ Deselect</button>
+        <button class="footer-btn" id="pauseAllBtn" style="display:none">⏸ Pause (0)</button>
+        <button class="footer-btn" id="resumeAllBtn" style="display:none">▶ Resume (0)</button>
+        <button class="footer-btn danger" id="removeAllBtn" style="display:none">✕ Remove (0)</button>
+        <button class="footer-btn" id="hideAllBtn" style="display:none">👁 Hide (0)</button>
       </div>
       <button class="footer-btn primary" id="openDSBtn">Open Web ↗</button>
     </div>
