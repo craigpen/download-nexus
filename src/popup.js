@@ -367,10 +367,10 @@ function updateFooterButtons() {
   removeBtn.disabled = removeCount === 0;
   hideBtn.disabled = hideCount === 0;
 
-  pauseBtn.textContent = `⏸ Pause (${pauseCount})`;
-  resumeBtn.textContent = `▶ Resume (${resumeCount})`;
-  removeBtn.textContent = `✕ Remove (${removeCount})`;
-  hideBtn.textContent = `👁 Hide (${hideCount})`;
+  pauseBtn.textContent = `⏸ (${pauseCount})`;
+  resumeBtn.textContent = `▶ (${resumeCount})`;
+  removeBtn.textContent = `✕ (${removeCount})`;
+  hideBtn.textContent = `👁 (${hideCount})`;
 }
 
 function renderTasks() {
