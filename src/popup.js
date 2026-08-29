@@ -641,6 +641,20 @@ async function taskAction(action, ids) {
     console.log(`taskAction: refresh complete, allTasks now has ${allTasks.length} tasks`);
   } catch (err) {
     console.error(`taskAction error:`, err);
+
+    // For Aria2 delete on error tasks that can't be removed via API,
+    // silently archive them instead of showing an error
+    const device = nasList.find(n => n.id === currentNasId);
+    if (action === "delete" && device?.type === "aria2" && err.message.includes("aria2")) {
+      for (const id of ids) {
+        const task = allTasks.find(t => t.id === id);
+        if (task?.status === "error") {
+          await hideAria2Task(id);
+        }
+      }
+      return;
+    }
+
     setStatus(err.message, true);
   }
 }
