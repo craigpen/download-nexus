@@ -642,8 +642,10 @@ async function taskAction(action, ids) {
       const nonErrorIds = [];
       for (const id of ids) {
         const task = allTasks.find(t => t.id === id);
-        console.log(`taskAction: task ${id} status=${task?.status}`);
-        if (task?.status === "error") {
+        console.log(`taskAction: task ${id} status=${task?.status}, allTasks.length=${allTasks.length}`);
+        // If task is in error status OR if we can't find it in allTasks but we're in error filter, archive it
+        // (this handles the case where task might not be in allTasks yet)
+        if (task?.status === "error" || (task === undefined && filter === "error")) {
           // Archive error tasks locally
           console.log(`taskAction: archiving error task ${id}`);
           await hideAria2Task(id);
