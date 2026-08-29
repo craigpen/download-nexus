@@ -270,7 +270,7 @@ async function clearArchivedAria2Tasks() {
 }
 
 function getVisibleTasks() {
-  let filtered = filter === "all" ? allTasks : allTasks.filter(t => t.status === filter);
+  let filtered = allTasks.filter(t => t.status === filter);
 
   // Filter out archived Aria2 tasks
   filtered = filtered.filter(t => !archivedAria2Gids.has(t.id));
@@ -723,8 +723,7 @@ function renderFilterTabs() {
     paused: getPausedLabel(),
     stalled: "Stalled",
     finished: "Done",
-    error: "Error",
-    all: "All"
+    error: "Error"
   };
 
   const tabsContainer = document.getElementById("tabBar");
@@ -751,24 +750,6 @@ function renderFilterTabs() {
     button.addEventListener("click", () => selectFilter(filterType));
     tabsContainer.appendChild(button);
   });
-
-  // Add "All" tab at the end if not already included
-  if (!enabledTabs.includes("all")) {
-    const allButton = document.createElement("button");
-    allButton.className = "tab";
-    allButton.dataset.filter = "all";
-
-    const countSpan = document.createElement("span");
-    countSpan.className = "tab-count";
-    countSpan.id = "cnt-all";
-    countSpan.textContent = "0";
-
-    allButton.textContent = "All";
-    allButton.appendChild(countSpan);
-
-    allButton.addEventListener("click", () => selectFilter("all"));
-    tabsContainer.appendChild(allButton);
-  }
 
   // Restore counts
   updateCounts();
