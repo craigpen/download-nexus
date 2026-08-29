@@ -1027,10 +1027,14 @@ function updateFormFieldsForType() {
   document.getElementById("nasPort").placeholder = defaults.defaultPort.toString();
   document.getElementById("nasUsername").placeholder = defaults.defaultUsername || "Not required";
 
-  // Update RPC secret placeholder for aria2
+  // Update RPC secret help text for aria2 (don't use defaults for security)
   const rpcSecretInput = document.getElementById("nasRpcSecret");
-  if (rpcSecretInput && defaults.defaultRpcSecret) {
-    rpcSecretInput.placeholder = defaults.defaultRpcSecret;
+  if (rpcSecretInput) {
+    if (type === "aria2") {
+      rpcSecretInput.placeholder = "Enter your aria2 RPC secret (check aria2.conf)";
+    } else {
+      rpcSecretInput.placeholder = "";
+    }
   }
 
   // Update help text (P1-3)
@@ -1058,12 +1062,16 @@ function updateFormFieldsForType() {
   const usernameInput = document.getElementById("nasUsername");
   const passwordInput = document.getElementById("nasPassword");
 
-  // Synology and qBittorrent require username/password; Transmission hides them
-  // Deluge shows them but they're optional
-  const needsAuth = type === "synology" || type === "qbittorrent" || type === "deluge";
+  // Show/hide fields based on adapter type
+  // Synology and qBittorrent require username/password
+  // Transmission requires neither
+  // Deluge requires password only (no username)
+  // Aria2 requires only RPC secret token (no username/password)
+  const showUsername = type === "synology" || type === "qbittorrent" || type === "transmission";
+  const showPassword = type === "synology" || type === "qbittorrent" || type === "deluge" || type === "transmission";
 
-  usernameField.style.display = needsAuth ? "" : "none";
-  passwordField.style.display = needsAuth ? "" : "none";
+  usernameField.style.display = showUsername ? "" : "none";
+  passwordField.style.display = showPassword ? "" : "none";
 
   // Update required attribute and set default port based on adapter type (P1-3)
   if (type === "synology") {
@@ -1078,8 +1086,6 @@ function updateFormFieldsForType() {
     passwordInput.required = true;
   } else if (type === "deluge") {
     document.getElementById("nasPort").value = "8112";
-    usernameInput.placeholder = "Not required (password only)";
-    usernameInput.required = false;
     passwordInput.required = true;  // Deluge RPC only needs password
   } else if (type === "transmission") {
     document.getElementById("nasPort").value = "9091";
@@ -1088,9 +1094,6 @@ function updateFormFieldsForType() {
     passwordInput.required = false;
   } else if (type === "aria2") {
     document.getElementById("nasPort").value = "6800";
-    usernameInput.placeholder = "Not required";
-    usernameInput.required = false;
-    passwordInput.required = false;
   }
 
   document.getElementById("nasHttps").checked = false;
@@ -1259,7 +1262,11 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
   // Add rpcSecret for aria2
   if (type === "aria2") {
     const rpcSecret = document.getElementById("nasRpcSecret").value.trim();
-    nasConfig.rpcSecret = rpcSecret || "P3TERX";  // Default to P3TERX if empty
+    if (!rpcSecret) {
+      setStatus("Aria2 RPC secret is required", true);
+      return;
+    }
+    nasConfig.rpcSecret = rpcSecret;
   }
 
   if (editingNasId) {
@@ -1342,7 +1349,10 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
   // Add rpcSecret for aria2
   if (type === "aria2") {
     const rpcSecret = document.getElementById("nasRpcSecret").value.trim();
-    settings.rpcSecret = rpcSecret || "P3TERX";
+    if (!rpcSecret) {
+      throw new Error("Aria2 RPC secret is required");
+    }
+    settings.rpcSecret = rpcSecret;
   }
 
   try {
