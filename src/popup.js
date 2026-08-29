@@ -254,7 +254,7 @@ async function saveArchivedAria2Gids() {
 async function hideAria2Task(gid) {
   archivedAria2Gids.add(gid);
   await saveArchivedAria2Gids();
-  await refreshTasks();
+  await refresh();
 }
 
 async function clearArchivedAria2Tasks() {
