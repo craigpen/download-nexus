@@ -1482,8 +1482,8 @@ function validateConfigSchema(config) {
   // Check required top-level fields
   if (config.version === undefined) {
     errors.push("Missing version field");
-  } else if (config.version !== 1 && config.version !== 2) {
-    errors.push(`Unsupported config version: ${config.version} (expected 1 or 2)`);
+  } else if (config.version !== 1) {
+    errors.push(`Unsupported config version: ${config.version} (expected 1)`);
   }
 
   // Validate nasList if present
@@ -1596,7 +1596,7 @@ async function exportConfig() {
   });
 
   const config = {
-    version: 2,
+    version: 1,
     nasList: nasListExport,
     whitelist: Array.from(whitelistSet),
     whitelistMode: whitelistMode,
