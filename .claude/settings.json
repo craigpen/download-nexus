@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run package",
+            "statusMessage": "Building extension...",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "npm test",
+            "statusMessage": "Running tests...",
+            "timeout": 120
+          },
+          {
+            "type": "agent",
+            "prompt": "Check for new untested code in this change. Look for: (1) new .js/.ts files without corresponding test files, and (2) new functions, classes, or exports added to existing files. Use git diff to identify what changed. For any new untested code found, write comprehensive tests. Skip only if all new code already has test coverage.",
+            "statusMessage": "Checking for untested code...",
+            "timeout": 300,
+            "model": "claude-opus-5"
+          },
+          {
+            "type": "agent",
+            "prompt": "Analyze the changes in this edit. First, check if you've already refactored this code in a previous hook run during this session by examining git status and recent commits. Only proceed with refactoring if you find NEW duplication patterns that haven't been addressed yet. Look for: duplicated functions, repeated logic blocks, or patterns that could reuse existing utilities. If no NEW duplication is found, or if duplication was already fixed, skip refactoring.",
+            "statusMessage": "Checking for new duplication...",
+            "timeout": 300,
+            "model": "claude-opus-5"
+          }
+        ]
+      }
+    ]
+  }
+}

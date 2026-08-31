@@ -33,3 +33,6 @@ MEMORY.md
 # Social media/promotional drafts (local only)
 docs/reddit-post-*.md
 docs/*-post.md
+
+# Local Claude Code settings (personal overrides)
+.claude/settings.local.json
