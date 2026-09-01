@@ -1755,6 +1755,7 @@ async function initContextMenu() {
     await new Promise((resolve) => {
       chrome.contextMenus.remove("download-nexus-menu", () => {
         // Ignore errors - menu might not exist yet
+        chrome.runtime.lastError; // Clear error
         resolve();
       });
     });
@@ -1825,7 +1826,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     // Show success notification
     chrome.notifications.create({
       type: "basic",
-      iconUrl: "/icons/icon-128.png",
+      iconUrl: "/icons/icon128.png",
       title: "Download Sent",
       message: `Link sent to download service`,
       priority: 1
@@ -1835,7 +1836,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     // Show error notification
     chrome.notifications.create({
       type: "basic",
-      iconUrl: "/icons/icon-128.png",
+      iconUrl: "/icons/icon128.png",
       title: "Download Failed",
       message: e.message || "Failed to send download",
       priority: 2
