@@ -26,7 +26,13 @@
     "test:all": "jest",
     "test:watch": "jest --watch",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
-    "changelog:init": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
+    "changelog:init": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
+    "dev:browser": "node scripts/launch-browser.js",
+    "debug:inspect": "node scripts/inspect-browser.js",
+    "debug:logs": "node scripts/inspect-browser.js --logs",
+    "debug:storage": "node scripts/inspect-browser.js --storage",
+    "debug:reload": "node scripts/inspect-browser.js --reload",
+    "debug:listen": "node scripts/inspect-browser.js --listen"
   },
   "repository": {
     "type": "git",

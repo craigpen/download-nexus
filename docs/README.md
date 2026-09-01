@@ -8,6 +8,7 @@ Complete documentation for Download Nexus developers and users.
 
 - **[API Reference](API_REFERENCE.md)** - Official API docs for all supported download services
 - **[Testing Guide](TESTING.md)** - Comprehensive test setup and running tests
+- **[Remote Debugging Guide](REMOTE_DEBUGGING.md)** - Browser CDP debugging port, live log streaming, and agent automation
 - **[Architecture](../README.md)** - Project structure and design decisions
 
 ### For Users
