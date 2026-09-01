@@ -1799,7 +1799,7 @@ async function updateContextMenu() {
     chrome.contextMenus.create({
       id,
       parentId: "download-nexus-menu",
-      title: `${idx + 1}. ${nas.name}`,
+      title: nas.name,
       contexts: ["link"]
     }, () => {
       if (chrome.runtime.lastError) {
