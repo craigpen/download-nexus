@@ -56,12 +56,7 @@ services:
       - PGID=1000
       - TZ=Etc/UTC
     volumes:
-      - aria2-config:/config
-    tmpfs:
-      - /downloads
+      - /tmp/aria2:/config
+      - /tmp/aria2/downloads:/downloads
     restart: unless-stopped
-
-volumes:
-  aria2-config:
-  aria2-downloads:
 
