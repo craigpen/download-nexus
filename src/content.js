@@ -70,8 +70,23 @@ if (window.downloadNexusInitialized) {
     scanTextNodes();
   }
 
+  // Guard against extension context not being available (e.g., in sandboxed frames)
+  if (typeof chrome === 'undefined' || !chrome?.runtime) {
+    console.warn('[ContentScript] Chrome runtime not available, skipping extension initialization');
+    nasListLoaded = true;
+    whitelistLoaded = true;
+    return;
+  }
+
   // Load NAS list
   chrome.runtime.sendMessage({ type: "GET_NAS_LIST" }, resp => {
+    if (chrome.runtime.lastError) {
+      console.error('[ContentScript] GET_NAS_LIST error:', chrome.runtime.lastError);
+      nasListLoaded = true;
+      whitelistLoaded = true;
+      injectButtons();
+      return;
+    }
     nasDevices = resp?.list || [];
     if (nasDevices.length === 1) {
       nasTooltip = `Send to ${nasDevices[0].name}`;
@@ -84,6 +99,9 @@ if (window.downloadNexusInitialized) {
 
   // Load whitelist
   chrome.runtime.sendMessage({ type: "GET_WHITELIST" }, resp => {
+    if (chrome.runtime.lastError) {
+      console.error('[ContentScript] GET_WHITELIST error:', chrome.runtime.lastError);
+    }
     whitelist = resp?.list || [];
     whitelistEnabled = resp?.mode === "restricted";
     whitelistLoaded = true;
@@ -92,6 +110,10 @@ if (window.downloadNexusInitialized) {
 
   // Load protocol settings
   chrome.storage.local.get("enabledProtocols", (result) => {
+    if (chrome.runtime.lastError) {
+      console.error('[ContentScript] Storage error:', chrome.runtime.lastError);
+      return;
+    }
     if (result.enabledProtocols && window.DownloadNexus?.ServiceFilter?.normalizeProtocolSettings) {
       enabledProtocols = window.DownloadNexus.ServiceFilter.normalizeProtocolSettings(result.enabledProtocols);
     }
@@ -99,6 +121,10 @@ if (window.downloadNexusInitialized) {
 
   // Load custom download extensions
   chrome.storage.sync.get("downloadExtensions", (result) => {
+    if (chrome.runtime.lastError) {
+      console.error('[ContentScript] Storage sync error:', chrome.runtime.lastError);
+      return;
+    }
     if (result.downloadExtensions && window.DownloadNexus?.Protocols?.setCustomDownloadExtensions) {
       const extensions = result.downloadExtensions.split("\n").filter(e => e.trim());
       if (extensions.length > 0) {
@@ -108,7 +134,8 @@ if (window.downloadNexusInitialized) {
   });
 
   // Listen for protocol settings changes and refresh buttons
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (chrome?.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "PROTOCOL_SETTINGS_CHANGED") {
       // Reload protocol settings from storage
       chrome.storage.local.get("enabledProtocols", (result) => {
@@ -129,6 +156,7 @@ if (window.downloadNexusInitialized) {
       });
     }
   });
+  }
 
   // URL detection and validation moved to LinkDetector utility
 
