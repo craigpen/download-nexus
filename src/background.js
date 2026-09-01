@@ -841,7 +841,23 @@ class Aria2Adapter extends NasAdapter {
       return;
     }
 
-    // For magnet links and HTTP/FTP URLs, use addUri
+    // For magnet links: Aria2 needs special handling - convert to torrent file first
+    // This ensures aria2 downloads the full content, not just metadata
+    if (isMagnet) {
+      try {
+        // Fetch torrent metadata from magnet link
+        const torrentBuffer = await downloadTorrentFile(uri);
+        const base64 = arrayBufferToBase64(torrentBuffer);
+        const result = await this._rpc("aria2.addTorrent", [base64, [], destination ? { dir: destination } : {}]);
+        if (!result) throw new Error("aria2 addTorrent failed");
+        return;
+      } catch (err) {
+        // Fallback: if torrent conversion fails, try direct magnet via addUri
+        dbg("WARN", "aria2 magnet conversion failed, falling back to addUri", err.message);
+      }
+    }
+
+    // For HTTP/FTP URLs and magnet fallback, use addUri
     const options = destination ? { dir: destination } : {};
     const result = await this._rpc("aria2.addUri", [uris, options]);
     if (!result) throw new Error("aria2 addUri failed");
