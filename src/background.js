@@ -1821,9 +1821,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!url) return;
 
   try {
-    await sendDownload(url, nasId);
+    const result = await sendDownload(url, nasId);
+    // Show success notification
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "/icons/icon-128.png",
+      title: "Download Sent",
+      message: `Link sent to download service`,
+      priority: 1
+    });
   } catch (e) {
     dbg("ERROR", "contextMenus.onClicked", `${e.message}`);
+    // Show error notification
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "/icons/icon-128.png",
+      title: "Download Failed",
+      message: e.message || "Failed to send download",
+      priority: 2
+    });
   }
 });
 
