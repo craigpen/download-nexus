@@ -1751,6 +1751,14 @@ let contextMenuServiceIds = [];
 
 async function initContextMenu() {
   try {
+    // Remove old menu if it exists (handles extension reload)
+    await new Promise((resolve) => {
+      chrome.contextMenus.remove("download-nexus-menu", () => {
+        // Ignore errors - menu might not exist yet
+        resolve();
+      });
+    });
+
     // Create parent menu item
     await new Promise((resolve, reject) => {
       chrome.contextMenus.create({
