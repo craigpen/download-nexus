@@ -612,30 +612,33 @@ async function refresh() {
       setConnStatus(currentNasId, false);
       if (allTasks.length === 0) showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
       setStatus(resp.error, true);
-      return;
+    } else {
+      setConnStatus(currentNasId, true);
+      hideError();
+      allTasks = resp.tasks;
+      console.log("refresh: allTasks updated to", allTasks.length, "tasks");
+      console.log("Popup received tasks:", resp.tasks.length, "tasks");
+      if (resp.tasks.length > 0) {
+        console.log("First task fields:", Object.keys(resp.tasks[0]));
+        console.log("First task data:", resp.tasks[0]);
+      }
+      saveCachedTasks(currentNasId, resp.tasks);
+      const speedBar = document.getElementById("speedBar");
+      const tabBar = document.getElementById("tabBar");
+      if (speedBar) speedBar.style.display = "";
+      if (tabBar) tabBar.style.display   = "";
+      updateCounts();
+      renderTasks();
+      setStatus("");
     }
-    setConnStatus(currentNasId, true);
-    hideError();
-    allTasks = resp.tasks;
-    console.log("refresh: allTasks updated to", allTasks.length, "tasks");
-    console.log("Popup received tasks:", resp.tasks.length, "tasks");
-    if (resp.tasks.length > 0) {
-      console.log("First task fields:", Object.keys(resp.tasks[0]));
-      console.log("First task data:", resp.tasks[0]);
-    }
-    saveCachedTasks(currentNasId, resp.tasks);
-    const speedBar = document.getElementById("speedBar");
-    const tabBar = document.getElementById("tabBar");
-    if (speedBar) speedBar.style.display = "";
-    if (tabBar) tabBar.style.display   = "";
-    updateCounts();
-    renderTasks();
-    setStatus("");
+    // Also refresh connection status for all services
+    checkAllDeviceConnections();
   } catch (err) {
     console.error(`refresh: exception:`, err);
     setConnStatus(currentNasId, false);
     if (allTasks.length === 0) showError("❌ Connection error", err.message);
     setStatus(err.message, true);
+    checkAllDeviceConnections();
   }
 }
 
