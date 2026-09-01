@@ -1,22 +1,28 @@
 ﻿// content.js — Download Nexus content script for magnet/torrent link handling
 
-// ── Instance Lifecycle Management ──────────────────────────────────────────
-// Track instance to prevent multiple content scripts from interfering
+// Guard against multiple injections on the same page
+if (window.downloadNexusInitialized) {
+  console.log('[ContentScript] Already initialized, skipping...');
+} else {
+  window.downloadNexusInitialized = true;
 
-const CLEANUP_EVENT = 'download-nexus-content-script-cleanup';
-const INSTANCE_ID = Math.random().toString(36).slice(2, 9);
+  // ── Instance Lifecycle Management ──────────────────────────────────────────
+  // Track instance to prevent multiple content scripts from interfering
 
-console.log(`[ContentScript] 🆕 New instance spawned: ${INSTANCE_ID}`);
+  const CLEANUP_EVENT = 'download-nexus-content-script-cleanup';
+  const INSTANCE_ID = Math.random().toString(36).slice(2, 9);
 
-// Signal any existing older instance to destroy itself
-document.dispatchEvent(new CustomEvent(CLEANUP_EVENT));
+  console.log(`[ContentScript] 🆕 New instance spawned: ${INSTANCE_ID}`);
 
-// Mark THIS instance as the active one
-(window).downloadNexusScriptActive = INSTANCE_ID;
-console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
+  // Signal any existing older instance to destroy itself
+  document.dispatchEvent(new CustomEvent(CLEANUP_EVENT));
 
-(function () {
-  "use strict";
+  // Mark THIS instance as the active one
+  (window).downloadNexusScriptActive = INSTANCE_ID;
+  console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
+
+  (function () {
+    "use strict";
 
   const ATTR      = "data-syno-injected";
   const TEXT_ATTR = "data-syno-text-injected";
@@ -487,5 +493,6 @@ console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
     window.downloadNexusPerformCleanup?.();
   });
 
-})();
+  })(); // End of IIFE
+} // End of initialization guard
 
