@@ -349,6 +349,11 @@ function updateFooterButtons() {
 
   removeBtn.textContent = `✕ (${removeCount})`;
   removeBtn.title = `Remove ${removeCount} task${removeCount !== 1 ? "s" : ""} (files will be preserved)`;
+
+  const batchFooter = document.getElementById("batchFooter");
+  if (batchFooter) {
+    batchFooter.style.display = visible.length > 0 ? "flex" : "none";
+  }
 }
 
 function renderTasks() {
@@ -674,7 +679,38 @@ async function loadNasList() {
   });
 }
 
+function getServiceWebUrl(service) {
+  if (!service || !service.host) return null;
+  const scheme = service.https ? "https" : "http";
+  const host = service.host;
+  const port = service.port;
+  if (service.type === "jdownloader") {
+    return null; // Desktop application
+  }
+  if (service.type === "transmission") {
+    return `${scheme}://${host}:${port}/transmission/web/`;
+  }
+  if (service.type === "synology") {
+    return `${scheme}://${host}:${port}`;
+  }
+  return `${scheme}://${host}:${port}/`;
+}
+
+function updateWebUiLauncher() {
+  const btn = document.getElementById("openWebUiBtn");
+  if (!btn) return;
+  const currentService = nasList.find(n => n.id === currentNasId);
+  const url = getServiceWebUrl(currentService);
+  if (url) {
+    btn.style.display = "inline-flex";
+    btn.title = `Open ${currentService?.name || "Service"} Web UI`;
+  } else {
+    btn.style.display = "none";
+  }
+}
+
 function renderNasTabs() {
+  updateWebUiLauncher();
   const nasTabBar = document.getElementById("nasTabBar");
   const connStatus = document.getElementById("connStatus");
 
@@ -1691,12 +1727,13 @@ document.getElementById("configureBtn").addEventListener("click", () => {
 document.getElementById("addNasBtn").addEventListener("click", addNewNas);
 document.getElementById("backToListBtn").addEventListener("click", showNasListView);
 
-document.getElementById("openDSBtn").addEventListener("click", () => {
+document.getElementById("openWebUiBtn")?.addEventListener("click", () => {
   if (!currentNasId) return;
   const nas = nasList.find(n => n.id === currentNasId);
-  if (!nas) return;
-  const scheme = nas.https ? "https" : "http";
-  chrome.tabs.create({ url: `${scheme}://${nas.host}:${nas.port}` });
+  const url = getServiceWebUrl(nas);
+  if (url) {
+    chrome.tabs.create({ url });
+  }
 });
 
 // Whitelist dropdown
@@ -1760,3 +1797,11 @@ async function checkAllDeviceConnections() {
 })();
 
 window.addEventListener("unload", () => clearInterval(pollTimer));
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    getServiceWebUrl,
+    SERVICE_DEFAULTS,
+    ADAPTER_FEATURES
+  };
+}

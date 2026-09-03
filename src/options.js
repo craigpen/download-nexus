@@ -101,6 +101,23 @@ async function loadServices() {
   }
 }
 
+function getServiceWebUrl(service) {
+  if (!service || !service.host) return null;
+  const scheme = service.https ? "https" : "http";
+  const host = service.host;
+  const port = service.port;
+  if (service.type === "jdownloader") {
+    return null; // Desktop app, no browser web UI
+  }
+  if (service.type === "transmission") {
+    return `${scheme}://${host}:${port}/transmission/web/`;
+  }
+  if (service.type === "synology") {
+    return `${scheme}://${host}:${port}`;
+  }
+  return `${scheme}://${host}:${port}/`;
+}
+
 function renderServiceList() {
   const container = document.getElementById("serviceListContainer");
   if (!container) return;
@@ -111,7 +128,7 @@ function renderServiceList() {
     container.innerHTML = `
       <div style="text-align:center; padding: 32px 16px; color: var(--text-muted);">
         <p style="font-size:15px; font-weight:600; margin-bottom:8px;">No download services configured yet.</p>
-        <p style="font-size:13px; margin-bottom:16px;">Add your Synology NAS, qBittorrent, Transmission, or Deluge service to start managing downloads.</p>
+        <p style="font-size:13px; margin-bottom:16px;">Add your Synology NAS, qBittorrent, Transmission, Deluge, or JDownloader 2 service to start managing downloads.</p>
         <button class="btn btn-primary btn-sm" id="emptyAddBtn">+ Add Service</button>
       </div>
     `;
@@ -126,6 +143,11 @@ function renderServiceList() {
 
     const scheme = srv.https ? "https" : "http";
     const urlStr = `${scheme}://${srv.host}:${srv.port}`;
+    const webUrl = getServiceWebUrl(srv);
+
+    const urlDisplay = webUrl
+      ? `<a href="${esc(webUrl)}" target="_blank" rel="noopener noreferrer" class="device-url-link" title="Open Web UI">${esc(urlStr)} ↗</a>`
+      : `<span class="device-url">${esc(urlStr)} <span style="font-size:11px; opacity:0.8">(Desktop App)</span></span>`;
 
     card.innerHTML = `
       <div class="device-info">
@@ -133,9 +155,10 @@ function renderServiceList() {
           <span>${esc(srv.name || "Download Service")}</span>
           <span class="device-type-badge">${esc(srv.type || "synology")}</span>
         </div>
-        <span class="device-url">${esc(urlStr)}</span>
+        ${urlDisplay}
       </div>
       <div class="device-actions">
+        ${webUrl ? `<a href="${esc(webUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Open Web UI in new tab" style="text-decoration:none; display:inline-flex; align-items:center; gap:3px;">↗ Web</a>` : ""}
         <button class="btn btn-secondary btn-sm test-btn" data-id="${esc(srv.id)}">⚡ Test</button>
         <button class="btn btn-secondary btn-sm edit-btn" data-id="${esc(srv.id)}">✏️ Edit</button>
         <button class="btn btn-danger btn-sm del-btn" data-id="${esc(srv.id)}">🗑️</button>
