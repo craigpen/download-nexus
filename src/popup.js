@@ -573,15 +573,20 @@ function setConnStatus(nasId, ok) {
   if (nasId === currentNasId) {
     const el = document.getElementById("connStatus");
     if (el) {
-      el.className = `header-status-dot ${ok ? "ok" : "error"}${nasList.length <= 1 ? "" : " d-none"}`;
-      el.title = ok ? "Connected" : "Offline";
+      showEl(el, nasList.length <= 1 && !ok);
+      el.className = "header-status-dot error";
+      el.title = "Offline: Connection failed";
     }
   }
-  // Surgically update tab status dot in place without DOM rebuild
-  const statusDot = document.querySelector(`.nas-tab-btn[data-nas-id="${nasId}"] .nas-tab-dot`);
-  if (statusDot) {
-    statusDot.className = `nas-tab-dot conn-${ok ? "ok" : "error"}`;
-    statusDot.title = ok ? "Connected" : "Offline";
+  // Surgically update tab error indicator in place without DOM rebuild
+  const tabBtn = document.querySelector(`.nas-tab-btn[data-nas-id="${nasId}"]`);
+  if (tabBtn) {
+    const warnIcon = tabBtn.querySelector(".tab-warn-icon");
+    if (warnIcon) {
+      showEl(warnIcon, !ok);
+      warnIcon.title = ok ? "" : "Offline: Connection failed";
+    }
+    tabBtn.classList.toggle("tab-error", !ok);
   }
 }
 
@@ -739,41 +744,43 @@ function renderNasTabs() {
   const connStatus = document.getElementById("connStatus");
 
   if (nasList.length <= 1) {
-    // Hide tabs if only one or zero NAS, show header status dot if exactly 1 NAS
+    // Hide tabs if only one or zero NAS; show header error dot only on error
     hideEl(nasTabBar);
     if (nasList.length === 1 && connStatus) {
-      showEl(connStatus, true);
-      const st = nasConnStatus[nasList[0].id] || "unknown";
-      connStatus.className = `header-status-dot ${st === "ok" ? "ok" : st === "error" ? "error" : "unknown"}`;
-      connStatus.title = st === "ok" ? "Connected" : st === "error" ? "Offline" : "Checking…";
+      const isErr = nasConnStatus[nasList[0].id] === "error";
+      showEl(connStatus, isErr);
+      connStatus.className = "header-status-dot error";
+      connStatus.title = "Offline: Connection failed";
     } else {
       hideEl(connStatus);
     }
     return;
   }
 
-  // Multiple NAS: hide header status, show in tabs instead
+  // Multiple NAS: hide header status, show exceptions in tabs instead
   hideEl(connStatus);
   if (!nasTabBar) return;
   nasTabBar.innerHTML = '';
   nasList.forEach(nas => {
     const isActive = nas.id === currentNasId;
-    const connStatus = nasConnStatus[nas.id] || "unknown";
+    const isError = nasConnStatus[nas.id] === "error";
 
     const btn = document.createElement("button");
-    btn.className = `tab nas-tab-btn${isActive ? " active" : ""}`;
+    btn.className = `tab nas-tab-btn${isActive ? " active" : ""}${isError ? " tab-error" : ""}`;
     btn.dataset.nasId = nas.id;
-
-    const dot = document.createElement("span");
-    dot.className = `nas-tab-dot conn-${connStatus}`;
-    dot.title = connStatus === "ok" ? "Connected" : connStatus === "error" ? "Offline" : "Checking…";
+    btn.title = nas.name;
 
     const nameDiv = document.createElement("span");
     nameDiv.className = "nas-tab-title";
     nameDiv.textContent = nas.name;
 
-    btn.appendChild(dot);
+    const warnSpan = document.createElement("span");
+    warnSpan.className = `tab-warn-icon${isError ? "" : " d-none"}`;
+    warnSpan.title = isError ? "Offline: Connection failed" : "";
+    warnSpan.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+
     btn.appendChild(nameDiv);
+    btn.appendChild(warnSpan);
     nasTabBar.appendChild(btn);
   });
   showEl(nasTabBar, true);
