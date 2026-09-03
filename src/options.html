@@ -361,6 +361,72 @@
       gap: 8px;
     }
 
+    .form-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .mt-md { margin-top: 16px; }
+    .backup-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .backup-block {
+      display: flex;
+      flex-direction: column;
+    }
+    .backup-divider {
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .backup-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .backup-hint {
+      margin-bottom: 10px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 36px 16px;
+      color: var(--text-muted);
+    }
+    .empty-state-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .empty-state-desc {
+      font-size: 13px;
+      margin-bottom: 16px;
+      max-width: 440px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .device-badge-desktop {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    .btn-web-launch {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .d-none { display: none !important; }
+
     /* Toast Notification */
     #toast {
       position: fixed;
@@ -441,7 +507,7 @@
         </div>
 
         <!-- Service Editor Form Modal / Card -->
-        <div class="card" id="serviceEditorCard" style="display:none">
+        <div class="card d-none" id="serviceEditorCard">
           <div class="card-header">
             <h3 class="card-title" id="editorTitle">Edit Service</h3>
             <button class="btn btn-secondary btn-sm" id="cancelEditBtn">Cancel</button>
@@ -457,44 +523,49 @@
                   <option value="synology">Synology DownloadStation</option>
                   <option value="qbittorrent">qBittorrent Web UI</option>
                   <option value="transmission">Transmission Daemon</option>
-                  <option value="deluge">Deluge Web</option>
-                  <option value="jdownloader">JDownloader 2 (Local / Desktop)</option>
+                  <option value="deluge">Deluge Web Client</option>
+                  <option value="jdownloader">JDownloader 2 (Local)</option>
                 </select>
               </div>
               <div class="form-group">
                 <label for="serviceName">Display Name</label>
-                <input type="text" id="serviceName" placeholder="My NAS" required />
+                <input type="text" id="serviceName" placeholder="e.g. Home Synology" required />
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label for="serviceHost">Host / IP</label>
-                <input type="text" id="serviceHost" placeholder="192.168.1.100 or quickconnect.to" required />
+                <input type="text" id="serviceHost" placeholder="e.g. 192.168.1.100 or nas.local" required />
               </div>
               <div class="form-group">
                 <label for="servicePort">Port</label>
-                <input type="number" id="servicePort" placeholder="5000" required />
-                <span class="hint" id="portHint">Default: 5000 (HTTP) or 5001 (HTTPS)</span>
+                <input type="number" id="servicePort" placeholder="5000" min="1" max="65535" required />
               </div>
             </div>
 
             <div class="form-group">
               <label class="checkbox-group">
                 <input type="checkbox" id="serviceHttps" />
-                <span>Use HTTPS (SSL Encryption)</span>
+                <span>Use HTTPS (Secure Connection)</span>
               </label>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
+            <div class="form-row" id="credentialsRow">
+              <div class="form-group" id="usernameGroup">
                 <label for="serviceUsername">Username</label>
-                <input type="text" id="serviceUsername" placeholder="admin" />
+                <input type="text" id="serviceUsername" placeholder="admin" autocomplete="username" />
               </div>
-              <div class="form-group">
-                <label for="servicePassword">Password / Token</label>
-                <input type="password" id="servicePassword" placeholder="••••••••" />
+              <div class="form-group" id="passwordGroup">
+                <label for="servicePassword">Password</label>
+                <input type="password" id="servicePassword" placeholder="••••••••" autocomplete="current-password" />
               </div>
+            </div>
+
+            <div class="form-group d-none" id="apiTokenGroup">
+              <label for="serviceApiToken">API Token <span class="hint">(optional, use instead of password)</span></label>
+              <input type="password" id="serviceApiToken" placeholder="qBittorrent API token (v2.8.3+)" />
+              <span class="hint">Leave empty to use username/password auth. Generate in qBittorrent settings → WebUI → API token.</span>
             </div>
 
             <div class="form-group">
@@ -503,9 +574,9 @@
               <span class="hint">Leave blank to use the service's default folder setting.</span>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--border)">
+            <div class="form-footer">
               <button type="button" class="btn btn-secondary" id="testConnBtn">⚡ Test Connection</button>
-              <div style="display:flex; gap:10px;">
+              <div class="btn-group">
                 <button type="button" class="btn btn-secondary" id="cancelEditBtn2">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="saveServiceBtn">Save Service</button>
               </div>
@@ -545,13 +616,13 @@
             </label>
           </div>
 
-          <div class="form-group" id="fileTypesSection" style="display:none; margin-top:16px;">
+          <div class="form-group d-none mt-md" id="fileTypesSection">
             <label for="customExtensions">Downloadable File Extensions (One per line)</label>
             <textarea id="customExtensions" rows="6" placeholder="zip&#10;rar&#10;7z&#10;iso&#10;mkv&#10;mp4"></textarea>
             <span class="hint">Links matching these file extensions will offer single-click send to your Synology DownloadStation.</span>
           </div>
 
-          <div style="margin-top:16px;">
+          <div class="mt-md">
             <button class="btn btn-primary" id="saveCaptureSettingsBtn">Save Link Settings</button>
           </div>
         </div>
@@ -576,13 +647,13 @@
             </select>
           </div>
 
-          <div class="form-group" style="margin-top:16px;">
+          <div class="form-group mt-md">
             <label for="whitelistDomains">Domain List (One per line)</label>
             <textarea id="whitelistDomains" rows="6" placeholder="tracker.example.com&#10;releases.ubuntu.com"></textarea>
             <span class="hint">Specify domain names without protocol (e.g. <code>example.com</code>). Subdomains match automatically.</span>
           </div>
 
-          <div style="margin-top:16px;">
+          <div class="mt-md">
             <button class="btn btn-primary" id="saveWhitelistBtn">Save Domain Rules</button>
           </div>
         </div>
@@ -598,18 +669,22 @@
             </div>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div>
-              <h4 style="font-size:14px; font-weight:600; margin-bottom:6px;">Export Configuration</h4>
-              <p class="hint" style="margin-bottom:10px;">Download a clean JSON backup file containing your configured download services and whitelist rules.</p>
-              <button class="btn btn-secondary" id="exportBtn">📥 Export Settings (JSON)</button>
+          <div class="backup-stack">
+            <div class="backup-block">
+              <h4 class="backup-title">Export Configuration</h4>
+              <p class="hint backup-hint">Download a clean JSON backup file containing your configured download services and whitelist rules.</p>
+              <div>
+                <button class="btn btn-secondary" id="exportBtn">📥 Export Settings (JSON)</button>
+              </div>
             </div>
 
-            <div style="padding-top:16px; border-top:1px solid var(--border);">
-              <h4 style="font-size:14px; font-weight:600; margin-bottom:6px;">Import Configuration</h4>
-              <p class="hint" style="margin-bottom:10px;">Restore services and rules from a previously exported Download Nexus JSON backup file.</p>
-              <input type="file" id="importFileInput" accept=".json" style="display:none" />
-              <button class="btn btn-secondary" id="importBtn">📤 Choose File to Import...</button>
+            <div class="backup-block backup-divider">
+              <h4 class="backup-title">Import Configuration</h4>
+              <p class="hint backup-hint">Restore services and rules from a previously exported Download Nexus JSON backup file.</p>
+              <input type="file" id="importFileInput" accept=".json" class="d-none" />
+              <div>
+                <button class="btn btn-secondary" id="importBtn">📤 Choose File to Import...</button>
+              </div>
             </div>
           </div>
         </div>

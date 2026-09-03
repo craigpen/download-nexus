@@ -126,9 +126,9 @@ function renderServiceList() {
 
   if (currentServices.length === 0) {
     container.innerHTML = `
-      <div style="text-align:center; padding: 32px 16px; color: var(--text-muted);">
-        <p style="font-size:15px; font-weight:600; margin-bottom:8px;">No download services configured yet.</p>
-        <p style="font-size:13px; margin-bottom:16px;">Add your Synology NAS, qBittorrent, Transmission, Deluge, or JDownloader 2 service to start managing downloads.</p>
+      <div class="empty-state">
+        <p class="empty-state-title">No download services configured yet.</p>
+        <p class="empty-state-desc">Add your Synology NAS, qBittorrent, Transmission, Deluge, or JDownloader 2 service to start managing downloads.</p>
         <button class="btn btn-primary btn-sm" id="emptyAddBtn">+ Add Service</button>
       </div>
     `;
@@ -147,7 +147,7 @@ function renderServiceList() {
 
     const urlDisplay = webUrl
       ? `<a href="${esc(webUrl)}" target="_blank" rel="noopener noreferrer" class="device-url-link" title="Open Web UI">${esc(urlStr)} ↗</a>`
-      : `<span class="device-url">${esc(urlStr)} <span style="font-size:11px; opacity:0.8">(Desktop App)</span></span>`;
+      : `<span class="device-url">${esc(urlStr)} <span class="device-badge-desktop">(Desktop App)</span></span>`;
 
     card.innerHTML = `
       <div class="device-info">
@@ -158,7 +158,7 @@ function renderServiceList() {
         ${urlDisplay}
       </div>
       <div class="device-actions">
-        ${webUrl ? `<a href="${esc(webUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Open Web UI in new tab" style="text-decoration:none; display:inline-flex; align-items:center; gap:3px;">↗ Web</a>` : ""}
+        ${webUrl ? `<a href="${esc(webUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm btn-web-launch" title="Open Web UI in new tab">↗ Web</a>` : ""}
         <button class="btn btn-secondary btn-sm test-btn" data-id="${esc(srv.id)}">⚡ Test</button>
         <button class="btn btn-secondary btn-sm edit-btn" data-id="${esc(srv.id)}">✏️ Edit</button>
         <button class="btn btn-danger btn-sm del-btn" data-id="${esc(srv.id)}">🗑️</button>
@@ -181,7 +181,7 @@ function openServiceEditor(serviceId = null) {
 
   if (!editorCard || !form) return;
 
-  editorCard.style.display = "block";
+  editorCard.classList.remove("d-none");
   editorCard.scrollIntoView({ behavior: "smooth" });
 
   if (serviceId) {
@@ -222,7 +222,7 @@ function applyServiceTypeDefaults(type) {
 
 function closeServiceEditor() {
   const editorCard = document.getElementById("serviceEditorCard");
-  if (editorCard) editorCard.style.display = "none";
+  if (editorCard) editorCard.classList.add("d-none");
   editingServiceId = null;
 }
 
@@ -346,7 +346,7 @@ async function loadCaptureSettings() {
     document.getElementById("captureTorrent").checked = p.torrent !== false;
     const otherChecked = !!p.otherFileTypes;
     document.getElementById("captureOther").checked = otherChecked;
-    document.getElementById("fileTypesSection").style.display = otherChecked ? "block" : "none";
+    document.getElementById("fileTypesSection").classList.toggle("d-none", !otherChecked);
   });
 
   chrome.storage.sync.get({ downloadExtensions: DEFAULT_FILE_EXTENSIONS }, res => {
@@ -354,7 +354,7 @@ async function loadCaptureSettings() {
   });
 
   document.getElementById("captureOther")?.addEventListener("change", (e) => {
-    document.getElementById("fileTypesSection").style.display = e.target.checked ? "block" : "none";
+    document.getElementById("fileTypesSection").classList.toggle("d-none", !e.target.checked);
   });
 }
 

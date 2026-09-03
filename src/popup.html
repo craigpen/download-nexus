@@ -7,179 +7,247 @@
 
     :root {
       color-scheme: light dark;
-    }
 
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      font-size: 13px;
-      width: 420px;
-      min-height: 100px;
-      max-height: 600px;
-      display: flex;
-      flex-direction: column;
+      /* Semantic Accents */
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-subtle: rgba(59, 130, 246, 0.12);
+      --success: #10b981;
+      --success-subtle: rgba(16, 185, 129, 0.14);
+      --warning: #f59e0b;
+      --warning-subtle: rgba(245, 158, 11, 0.14);
+      --error: #ef4444;
+      --error-hover: #dc2626;
+      --error-subtle: rgba(239, 68, 68, 0.14);
+
+      /* Rate Badges */
+      --rate-dn: #38bdf8;
+      --rate-dn-subtle: rgba(56, 189, 248, 0.12);
+      --rate-up: #34d399;
+      --rate-up-subtle: rgba(52, 211, 153, 0.12);
+
+      /* Dark Theme (Default) */
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #273549;
+      --card-bg: #1e293b;
+      --card-hover: #243144;
+      --border: #334155;
+      --border-subtle: rgba(51, 65, 85, 0.6);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --track-bg: #273549;
+      --scrollbar-thumb: #334155;
     }
 
     @media (prefers-color-scheme: light) {
-      body {
-        background: #f5f5f5;
-        color: #333;
+      :root {
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-subtle: rgba(37, 99, 235, 0.1);
+        --success: #16a34a;
+        --success-subtle: rgba(22, 163, 74, 0.1);
+        --warning: #d97706;
+        --warning-subtle: rgba(217, 119, 6, 0.1);
+        --error: #dc2626;
+        --error-hover: #b91c1c;
+        --error-subtle: rgba(220, 38, 38, 0.1);
+
+        --rate-dn: #0284c7;
+        --rate-dn-subtle: rgba(2, 132, 199, 0.1);
+        --rate-up: #16a34a;
+        --rate-up-subtle: rgba(22, 163, 74, 0.1);
+
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-hover: #f1f5f9;
+        --card-bg: #ffffff;
+        --card-hover: #f8fafc;
+        --border: #e2e8f0;
+        --border-subtle: #f1f5f9;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --text-dim: #94a3b8;
+        --track-bg: #e2e8f0;
+        --scrollbar-thumb: #cbd5e1;
       }
     }
 
-    @media (prefers-color-scheme: dark) {
-      body {
-        background: #1a1f2e;
-        color: #e0e6f0;
-      }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 13px;
+      width: 430px;
+      min-height: 120px;
+      max-height: 600px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
     }
 
-    /* ── header ── */
+    /* ── Header ── */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 10px 14px;
       flex-shrink: 0;
-      border-bottom: 1px solid;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
-
-    @media (prefers-color-scheme: light) {
-      .header {
-        background: #f0f0f0;
-        border-color: #ddd;
-      }
-      .header-left {
-        color: #1a6fb5;
-      }
-      .icon-btn {
-        color: #666;
-      }
-      .icon-btn:hover { color: #000; background: #e0e0e0; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .header {
-        background: #141824;
-        border-color: #2a3045;
-      }
-      .header-left {
-        color: #7eb8f7;
-      }
-      .icon-btn {
-        color: #8898b8;
-      }
-      .icon-btn:hover { color: #e0e6f0; background: #2a3045; }
-    }
-
     .header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
       font-weight: 700;
       font-size: 13px;
+      color: var(--text);
+    }
+    .header-icon {
+      border-radius: 4px;
+      flex-shrink: 0;
     }
     .header-right {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .icon-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 4px;
+    .header-controls {
       display: flex;
       align-items: center;
-      transition: color .15s, background .15s;
+      gap: 6px;
+    }
+    .icon-btn {
+      background: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: all .15s ease;
+    }
+    .icon-btn:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+    .icon-btn.whitelisted {
+      color: var(--success);
     }
 
-    /* ── speed bar ── */
+    /* ── Speed Bar ── */
     .speed-bar {
       display: flex;
-      gap: 16px;
-      padding: 6px 14px;
+      align-items: center;
+      gap: 14px;
+      padding: 7px 14px;
       font-size: 11px;
       flex-shrink: 0;
-      border-bottom: 1px solid;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .speed-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .speed-item-right {
+      margin-left: auto;
+    }
+    .speed-val {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .speed-dn { color: var(--rate-dn); }
+    .speed-up { color: var(--rate-up); }
+    #taskCountLabel {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
     }
 
-    @media (prefers-color-scheme: light) {
-      .speed-bar {
-        background: #f0f0f0;
-        border-color: #ddd;
-        color: #666;
-      }
-      .speed-val { color: #000; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .speed-bar {
-        background: #141824;
-        border-color: #2a3045;
-        color: #8898b8;
-      }
-      .speed-val { color: #e0e6f0; }
-    }
-
-    .speed-item { display: flex; align-items: center; gap: 5px; }
-
-    @media (prefers-color-scheme: light) {
-      .speed-up { color: #2a8659; }
-      .speed-dn { color: #1a5fc9; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .speed-up { color: #4caf7d; }
-      .speed-dn { color: #5b9cf6; }
-    }
-
-    /* ── filter tabs ── */
+    /* ── Filter & Service Tabs ── */
     .tabs {
       display: flex;
-      padding: 8px 14px 0;
+      padding: 8px 12px 0;
       gap: 4px;
       flex-shrink: 0;
+      background: var(--bg);
     }
-
-    @media (prefers-color-scheme: light) {
-      .tabs { background: #f5f5f5; }
-      .tab { color: #666; }
-      .tab:hover { color: #000; }
-      .tab.active { background: #e8e8e8; color: #1a6fb5; }
-      .tab-count { background: #ddd; color: #666; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .tabs { background: #1a1f2e; }
-      .tab { color: #8898b8; }
-      .tab:hover { color: #e0e6f0; }
-      .tab.active { background: #2a3045; color: #7eb8f7; }
-      .tab-count { background: #3a4565; color: #aab8d0; }
-    }
-
     .tab {
-      padding: 4px 10px;
-      border: none;
-      border-radius: 4px 4px 0 0;
+      padding: 5px 9px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
       background: transparent;
       cursor: pointer;
       font-size: 11px;
       font-weight: 600;
-      transition: color .15s, background .15s;
+      color: var(--text-muted);
+      transition: all .15s ease;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 2px;
+      user-select: none;
+    }
+    .tab:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+    .tab.active {
+      background: var(--surface);
+      color: var(--primary);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+      margin-bottom: -1px;
+      z-index: 2;
     }
     .tab-count {
       display: inline-block;
-      border-radius: 8px;
-      padding: 0 5px;
-      font-size: 10px;
+      border-radius: 10px;
+      padding: 0 6px;
+      font-size: 9px;
+      font-weight: 700;
+      background: var(--border);
+      color: var(--text-muted);
+    }
+    .tab.active .tab-count {
+      background: var(--primary-subtle);
+      color: var(--primary);
     }
 
-    /* ── main / settings view containers ── */
+    /* NAS Tab Button Components */
+    .nas-tab-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+    }
+    .nas-tab-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .nas-tab-status {
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+    .nas-tab-status.conn-ok { color: var(--success); }
+    .nas-tab-status.conn-error { color: var(--error); }
+    .nas-tab-status.conn-unknown { color: var(--text-dim); }
+
+    /* ── Main / Settings View Containers ── */
     #mainView, #settingsView {
       display: none;
       flex-direction: column;
@@ -188,70 +256,71 @@
     }
     #mainView.show, #settingsView.show { display: flex; }
 
-    /* ── task list ── */
+    /* ── Task List & Cards ── */
     .task-list {
       flex: 1;
       overflow-y: auto;
-      padding: 4px 0;
+      padding: 6px 0;
       min-height: 60px;
     }
     .task-list::-webkit-scrollbar { width: 5px; }
-    .task-list::-webkit-scrollbar-thumb { border-radius: 3px; }
-
-    @media (prefers-color-scheme: light) {
-      .task-list::-webkit-scrollbar-track { background: transparent; }
-      .task-list::-webkit-scrollbar-thumb { background: #ccc; }
-      .empty { color: #555; }
-      .task { border-color: #eee; }
-      .task:hover { background: #f9f9f9; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .task-list::-webkit-scrollbar-track { background: transparent; }
-      .task-list::-webkit-scrollbar-thumb { background: #3a4565; }
-      .empty { color: #4a5570; }
-      .task { border-color: #222840; }
-      .task:hover { background: #1f2538; }
-      .task-name { color: #c8d8f0; }
+    .task-list::-webkit-scrollbar-track { background: transparent; }
+    .task-list::-webkit-scrollbar-thumb {
+      border-radius: 4px;
+      background: var(--scrollbar-thumb);
     }
 
     .empty {
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 80px;
+      height: 90px;
       font-size: 12px;
+      color: var(--text-muted);
+    }
+    .empty-text {
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
+    /* Elevated Card Styling */
     .task {
-      padding: 8px 14px;
-      transition: background .1s;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      margin: 4px 10px;
+      transition: all .15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
-    .task:last-child { border-bottom: none; }
+    .task:hover {
+      background: var(--surface-hover);
+      border-color: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    }
 
     .task-top {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 5px;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 6px;
     }
     .task-name {
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       flex: 1;
       min-width: 0;
+      color: var(--text);
     }
-
-    @media (prefers-color-scheme: light) {
-      .task-name { color: #222; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .task-name { color: #c8d8f0; }
+    .task-checkbox {
+      cursor: pointer;
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      accent-color: var(--primary);
     }
     .task-actions {
       display: flex;
@@ -259,362 +328,330 @@
       flex-shrink: 0;
     }
     .task-btn {
-      background: #2a3045;
-      border: none;
-      border-radius: 3px;
-      color: #8898b8;
+      background: var(--track-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted);
       cursor: pointer;
-      padding: 2px 5px;
-      font-size: 11px;
-      transition: background .15s, color .15s;
-      display: flex;
+      padding: 2px 6px;
+      font-size: 10px;
+      transition: all .15s ease;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
     }
-    .task-btn:hover { background: #3a4565; color: #e0e6f0; }
-    .task-btn.danger:hover { background: #5c2030; color: #ff7b72; }
+    .task-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+      border-color: var(--primary);
+    }
+    .task-btn.danger:hover {
+      background: var(--error-subtle);
+      color: var(--error);
+      border-color: var(--error);
+    }
 
+    /* Progress Track & Fill */
     .task-mid {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
+      gap: 10px;
+      margin-bottom: 6px;
     }
-
     .progress-track {
       flex: 1;
-      height: 3px;
-      border-radius: 2px;
+      height: 5px;
+      border-radius: 9999px;
+      background: var(--track-bg);
       overflow: hidden;
     }
-
-    @media (prefers-color-scheme: light) {
-      .progress-track { background: #bbb; }
-      .progress-pct { color: #333; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .progress-track { background: #2a3045; }
-      .progress-pct { color: #8898b8; }
-    }
-
     .progress-fill {
       height: 100%;
-      border-radius: 2px;
-      transition: width .4s;
+      border-radius: 9999px;
+      transition: width .3s ease;
     }
+    .progress-fill.fill-downloading { background: var(--primary); }
+    .progress-fill.fill-seeding     { background: var(--success); }
+    .progress-fill.fill-paused      { background: var(--warning); }
+    .progress-fill.fill-finished    { background: var(--success); opacity: .7; }
+    .progress-fill.fill-error       { background: var(--error); }
+    .progress-fill.fill-waiting     { background: var(--text-muted); }
+    .progress-fill.fill-other       { background: var(--text-muted); }
+
     .progress-pct {
-      font-size: 10px;
+      font-size: 11px;
+      font-weight: 700;
       min-width: 32px;
       text-align: right;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
     }
 
+    /* Bottom Info & Rate Badges */
     .task-bot {
       display: flex;
-      gap: 12px;
+      align-items: center;
+      gap: 8px;
       font-size: 10px;
+      color: var(--text-muted);
+    }
+    .rate-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .rate-pill.rate-dn {
+      background: var(--rate-dn-subtle);
+      color: var(--rate-dn);
+    }
+    .rate-pill.rate-up {
+      background: var(--rate-up-subtle);
+      color: var(--rate-up);
+    }
+    .task-size {
+      font-weight: 500;
+    }
+    .task-eta {
+      margin-left: auto;
+      font-variant-numeric: tabular-nums;
     }
 
-    @media (prefers-color-scheme: light) {
-      .task-bot { color: #666; }
-      .task-size { color: #666; }
-      .task-eta { color: #666; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .task-bot { color: #5a6880; }
-      .task-size { color: #6a7890; }
-      .task-eta { color: #6a7890; }
-    }
-
-    .task-dn   { color: #5b9cf6; }
-    .task-up   { color: #4caf7d; }
-    .task-eta  { margin-left: auto; }
-
-    /* status badge */
+    /* Status Dots */
     .status-dot {
-      width: 6px; height: 6px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       flex-shrink: 0;
-      margin-top: 4px;
     }
-    .s-downloading { background: #5b9cf6; }
-    .s-seeding     { background: #4caf7d; }
-    .s-paused      { background: #e3b341; }
-    .s-finished    { background: #4caf7d; opacity: .5; }
-    .s-error       { background: #ff7b72; }
-    .s-waiting     { background: #8898b8; }
-    .s-other       { background: #4a5570; }
+    .s-downloading { background: var(--primary); box-shadow: 0 0 5px var(--primary); }
+    .s-seeding     { background: var(--success); box-shadow: 0 0 5px var(--success); }
+    .s-paused      { background: var(--warning); }
+    .s-finished    { background: var(--success); opacity: .6; }
+    .s-error       { background: var(--error); box-shadow: 0 0 5px var(--error); }
+    .s-waiting     { background: var(--text-muted); }
+    .s-other       { background: var(--text-dim); }
 
-    /* ── footer ── */
+    /* ── Footer ── */
     .footer {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 7px 14px;
+      justify-content: flex-start;
+      gap: 6px;
+      padding: 8px 14px;
       flex-shrink: 0;
-      border-top: 1px solid;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
     }
-
-    @media (prefers-color-scheme: light) {
-      .footer {
-        background: #f0f0f0;
-        border-color: #ddd;
-      }
-      .footer-btn { background: #e0e0e0; color: #333; }
-      .footer-btn:hover { background: #d0d0d0; color: #000; }
-      .footer-btn.primary { background: #1a6fb5; color: #fff; }
-      .footer-btn.primary:hover { background: #155d9c; }
-      .footer-btn.danger { background: #f0d8d8; color: #a03220; }
-      .footer-btn.danger:hover { background: #f0c0c0; }
+    .batch-actions-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
     }
-
-    @media (prefers-color-scheme: dark) {
-      .footer {
-        background: #141824;
-        border-color: #2a3045;
-      }
-      .footer-btn { background: #2a3045; color: #8898b8; }
-      .footer-btn:hover { background: #3a4565; color: #e0e6f0; }
-      .footer-btn.primary { background: #1a4f8a; color: #7eb8f7; }
-      .footer-btn.primary:hover { background: #1e5fa0; color: #a8d0ff; }
-      .footer-btn.danger { background: #4a2530; color: #ff8a80; }
-      .footer-btn.danger:hover { background: #5c2030; }
-    }
-
     .footer-btn {
-      border: none;
-      border-radius: 3px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
       cursor: pointer;
-      padding: 3px 8px;
-      font-size: 10px;
+      padding: 5px 10px;
+      font-size: 11px;
       font-weight: 600;
-      transition: background .15s, color .15s;
+      background: var(--surface);
+      color: var(--text);
+      transition: all .15s ease;
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .footer-btn:disabled { opacity: .5; cursor: default; }
+    .footer-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--primary);
+    }
+    .footer-btn.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+    .footer-btn.primary:hover {
+      background: var(--primary-hover);
+    }
+    .footer-btn.danger {
+      background: var(--error-subtle);
+      border-color: var(--error);
+      color: var(--error);
+    }
+    .footer-btn.danger:hover {
+      background: var(--error);
+      color: #ffffff;
+    }
+    .footer-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      border-color: var(--border);
+    }
+    .btn-block {
+      width: 100%;
+      padding: 8px;
+    }
 
+    /* Connection Status Badges */
     .status-msg {
       font-size: 11px;
+      color: var(--text-muted);
     }
-
-    @media (prefers-color-scheme: light) {
-      .status-msg { color: #444; }
-      #connStatus {
-        background: #e0e0e0;
-        color: #333;
-      }
-      #connStatus.ok { color: #1d7c2d; background: rgba(29, 124, 45, 0.1); }
-      #connStatus.error { color: #c0392b; background: rgba(192, 57, 43, 0.1); }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .status-msg { color: #5a6880; }
-      #connStatus {
-        background: #2a3045;
-        color: #8898b8;
-      }
-      #connStatus.ok { color: #4caf7d; background: rgba(76, 175, 125, 0.15); }
-      #connStatus.error { color: #ff7b72; background: rgba(255, 123, 114, 0.15); }
-    }
-
     #connStatus {
       font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 3px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
       white-space: nowrap;
+      background: var(--border);
+      color: var(--text-muted);
     }
+    #connStatus.ok {
+      background: var(--success-subtle);
+      color: var(--success);
+    }
+    #connStatus.error {
+      background: var(--error-subtle);
+      color: var(--error);
+    }
+
+    /* Banners & Alerts */
     .error-container {
       display: none;
       flex-direction: column;
       gap: 8px;
       padding: 12px;
-      background: rgba(255, 123, 114, 0.1);
-      border: 1px solid rgba(255, 123, 114, 0.3);
-      border-radius: 4px;
-      margin: 4px;
+      background: var(--error-subtle);
+      border: 1px solid var(--error);
+      border-radius: 6px;
+      margin: 8px 12px;
     }
     .error-container.show { display: flex; }
-    .error-text { color: #ff7b72; font-size: 11px; font-weight: 500; }
-    .error-detail { color: #8898b8; font-size: 10px; }
-    .retry-btn {
-      background: #1a4f8a; color: #7eb8f7;
-      border: none; border-radius: 3px; padding: 4px 8px;
-      font-size: 10px; font-weight: 600;
-      cursor: pointer; align-self: flex-start;
+    .error-text {
+      color: var(--error);
+      font-size: 12px;
+      font-weight: 600;
     }
-    .retry-btn:hover { background: #1e5fa0; }
+    .error-detail {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .retry-btn {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      align-self: flex-start;
+      transition: background .15s;
+    }
+    .retry-btn:hover { background: var(--primary-hover); }
 
-    /* whitelist dropdown */
+    .info-banner {
+      background: var(--primary-subtle);
+      border-color: var(--primary);
+    }
+    .info-title {
+      color: var(--primary);
+    }
+
+    /* Whitelist Dropdown */
     .dropdown {
       position: relative;
     }
     .dropdown-menu {
       display: none;
       position: absolute;
-      top: 100%;
       right: 0;
-      background: #2a3045;
-      border: 1px solid #3a4565;
-      border-radius: 4px;
-      min-width: 200px;
+      top: 100%;
+      margin-top: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      min-width: 170px;
+      overflow: hidden;
     }
     .dropdown-menu.show { display: block; }
     .dropdown-item {
       display: block;
       width: 100%;
-      text-align: left;
       padding: 8px 12px;
       border: none;
       background: none;
-      color: #e0e6f0;
+      color: var(--text);
+      font-size: 11px;
+      text-align: left;
       cursor: pointer;
-      font-size: 12px;
       transition: background .15s;
     }
-    .dropdown-item:first-child { border-radius: 3px 3px 0 0; }
-    .dropdown-item:last-child { border-radius: 0 0 3px 3px; }
-    .dropdown-item:hover { background: #3a4565; }
+    .dropdown-item:hover { background: var(--surface-hover); }
     .dropdown-item.info {
-      color: #8898b8;
+      color: var(--text-muted);
       cursor: default;
-      font-size: 11px;
-      padding: 6px 12px;
-    }
-    .dropdown-item.info:hover { background: none; }
-
-    /* ── support footer ── */
-    .support-footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 12px;
-      flex-shrink: 0;
-      border-top: 1px solid;
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
     }
 
-    .support-footer-links {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-    }
-
-    .support-footer-links a {
-      text-decoration: none;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    .support-footer-links a:hover {
-      opacity: 0.7;
-    }
-
-    @media (prefers-color-scheme: light) {
-      .support-footer {
-        background: #f9f9f9;
-        border-color: #e5e8ec;
-        color: #666;
-      }
-      .support-footer-links a {
-        color: #1a6fb5;
-      }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .support-footer {
-        background: #0f1420;
-        border-color: #1a2538;
-        color: #8898b8;
-      }
-      .support-footer-links a {
-        color: #7eb8f7;
-      }
-    }
-
-    /* loading spinner */
-    .spinner {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid #3a4565;
-      border-top-color: #7eb8f7;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── settings view ── */
-    #settingsView {
-      overflow-y: auto;
-      padding: 12px 14px 14px;
-      gap: 12px;
-    }
-    #settingsView::-webkit-scrollbar { width: 5px; }
-    #settingsView::-webkit-scrollbar-thumb { border-radius: 3px; }
-
+    /* ── Settings View ── */
     .settings-section {
-      border-radius: 6px;
-      padding: 10px 12px 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
     }
-
-    @media (prefers-color-scheme: light) {
-      #settingsView::-webkit-scrollbar-track { background: transparent; }
-      #settingsView::-webkit-scrollbar-thumb { background: #ccc; }
-      .settings-section { background: #fff; border: 1px solid #ddd; }
-      .settings-label { color: #444; }
-      .settings-hint { color: #666; }
-      .hint { color: #888; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      #settingsView::-webkit-scrollbar-track { background: transparent; }
-      #settingsView::-webkit-scrollbar-thumb { background: #3a4565; }
-      .settings-section { background: #222840; border: 1px solid #2a3045; }
-      .settings-label { color: #aab8d0; }
-      .settings-hint { color: #8898b8; }
-      .hint { color: #6a7890; }
-    }
-
     .settings-label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 8px;
+      color: var(--text);
+      margin-bottom: 4px;
     }
     .settings-hint {
       font-size: 11px;
-      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .settings-field {
+      display: block;
       margin-bottom: 10px;
     }
-    .hint { font-weight: 400; }
-    code {
-      font-family: monospace;
-      font-size: 11px;
-      padding: 2px 4px;
-      border-radius: 3px;
-      background: rgba(0,0,0,0.08);
-    }
-    @media (prefers-color-scheme: dark) {
-      code { background: rgba(255,255,255,0.1); }
-    }
-
-    .settings-field { display: block; margin-bottom: 10px; }
     .settings-field > span:first-child {
       display: block;
       font-size: 11px;
       font-weight: 600;
+      color: var(--text);
       margin-bottom: 4px;
     }
-    .settings-row-inline { display: flex; gap: 8px; }
+    .settings-row-inline {
+      display: flex;
+      gap: 8px;
+    }
     .settings-row-inline .settings-field { flex: 1; }
+    .field-narrow { max-width: 90px; }
 
     input[type="text"], input[type="number"], input[type="password"], select, textarea {
-      width: 100%; padding: 6px 8px;
-      border-radius: 4px;
-      font-size: 12px; font-family: inherit; transition: border-color .15s; outline: none;
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-subtle);
     }
     textarea {
       min-height: 80px;
@@ -622,105 +659,169 @@
       font-family: monospace;
     }
 
-    @media (prefers-color-scheme: light) {
-      input[type="text"], input[type="number"], input[type="password"], select, textarea {
-        border: 1px solid #ccc;
-        background: #fff;
-        color: #333;
-      }
-      input:focus, select:focus, textarea:focus { border-color: #1a6fb5; }
+    .settings-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      cursor: pointer;
     }
-
-    @media (prefers-color-scheme: dark) {
-      input[type="text"], input[type="number"], input[type="password"], select, textarea {
-        border: 1px solid #444;
-        background: #1f2538;
-        color: #e0e6f0;
-      }
-      input:focus, select:focus, textarea:focus { border-color: #7eb8f7; }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 32px;
+      height: 18px;
+      flex-shrink: 0;
     }
-
-    .settings-toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; }
-    .switch { position: relative; display: inline-block; width: 32px; height: 18px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 18px; transition: .2s; }
-    .slider::before { content: ""; position: absolute; height: 12px; width: 12px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-    input:checked + .slider { background: #1a6fb5; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--border);
+      border-radius: 18px;
+      transition: .2s;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      bottom: 3px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: .2s;
+    }
+    input:checked + .slider { background: var(--primary); }
     input:checked + .slider::before { transform: translateX(14px); }
 
-    .settings-status { margin-top: 8px; font-size: 11px; font-weight: 600; min-height: 15px; }
-    .settings-status.ok  { color: #1d7c2d; }
-    .settings-status.err { color: #c0392b; }
-
-    @media (prefers-color-scheme: dark) {
-      .settings-status.ok  { color: #4caf7d; }
-      .settings-status.err { color: #ff7b72; }
+    .settings-status {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      min-height: 15px;
     }
-
-    .settings-empty { font-size: 11px; font-style: italic; padding: 8px 0; }
-
-    @media (prefers-color-scheme: light) { .settings-empty { color: #999; } }
-    @media (prefers-color-scheme: dark)  { .settings-empty { color: #6a7890; } }
+    .settings-status.ok  { color: var(--success); }
+    .settings-status.err { color: var(--error); }
 
     .nas-list { margin-bottom: 8px; }
     .nas-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 7px 9px; border-radius: 4px;
-      margin-bottom: 6px; cursor: pointer; transition: background .15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: all .15s ease;
+    }
+    .nas-item:hover {
+      background: var(--surface-hover);
+      border-color: var(--primary);
     }
     .nas-item-info { flex: 1; min-width: 0; }
-    .nas-item-name { font-weight: 600; font-size: 12px; }
-    .nas-item-host { font-size: 10px; font-family: monospace; }
-
-    @media (prefers-color-scheme: light) {
-      .nas-item { background: #f5f5f5; border: 1px solid #e5e5e5; }
-      .nas-item:hover { background: #ececec; }
-      .nas-item-name { color: #222; }
-      .nas-item-host { color: #777; }
-      .mini-delete-btn { background: #f0f0f0; border: 1px solid #ccc; color: #c0392b; }
-      .mini-delete-btn:hover { background: #ffe0e0; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .nas-item { background: #1f2538; border: 1px solid #2a3045; }
-      .nas-item:hover { background: #262c42; }
-      .nas-item-name { color: #e0e6f0; }
-      .nas-item-host { color: #8898b8; }
-      .mini-delete-btn { background: #2a3045; border: 1px solid #3a4565; color: #ff8a80; }
-      .mini-delete-btn:hover { background: #4a2530; }
-    }
+    .nas-item-name { font-weight: 600; font-size: 12px; color: var(--text); }
+    .nas-item-host { font-size: 11px; font-family: monospace; color: var(--text-muted); }
 
     .mini-delete-btn {
-      border-radius: 3px;
-      padding: 3px 7px; font-size: 10px; cursor: pointer;
-      font-weight: 600; transition: background .15s; flex-shrink: 0;
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      background: var(--error-subtle);
+      border: 1px solid var(--error);
+      color: var(--error);
+      transition: all .15s ease;
+      flex-shrink: 0;
+    }
+    .mini-delete-btn:hover {
+      background: var(--error);
+      color: #ffffff;
     }
 
-    .form-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    #nasForm { display: none; flex-direction: column; }
+    .form-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .form-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .form-header-actions {
+      display: flex;
+      gap: 6px;
+    }
+    #nasForm {
+      display: none;
+      flex-direction: column;
+    }
     #nasForm.show { display: flex; }
 
-    .task-checkbox {
-      margin-right: 6px;
-      cursor: pointer;
-      width: 14px;
-      height: 14px;
-      flex-shrink: 0;
-      accent-color: #3b82f6;
+    .service-help-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin: -6px 0 10px 0;
+      line-height: 1.3;
+    }
+    .field-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .row-actions .footer-btn { flex: 1; }
+
+    /* Support Footer */
+    .support-footer {
+      padding: 8px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      text-align: center;
+      color: var(--text-muted);
+      background: var(--surface);
+    }
+    .support-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .support-footer a:hover {
+      text-decoration: underline;
     }
 
-    .task-top { display: flex; align-items: center; gap: 4px; }
+    /* Helper Utilities */
+    .d-none { display: none !important; }
+    .w-full { width: 100%; }
+    .mt-sm { margin-top: 8px; }
+    code {
+      background: var(--border);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="header-left">
-      <img id="headerIcon" src="icons/icon48.png" width="16" height="16" style="border-radius: 3px;" />
+      <img id="headerIcon" class="header-icon" src="icons/icon48.png" width="18" height="18" alt="Download Nexus" />
       <span id="headerTitle">Download Nexus</span>
     </div>
     <div class="header-right">
-      <div id="mainHeaderControls" style="display:flex;align-items:center;gap:6px">
-        <span id="connStatus" title="Connection status" style="display:none">●</span>
+      <div id="mainHeaderControls" class="header-controls">
+        <span id="connStatus" class="d-none" title="Connection status">●</span>
         <span class="status-msg" id="statusMsg"></span>
         <button class="icon-btn" id="refreshBtn" title="Refresh">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -728,14 +829,14 @@
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
         </button>
-        <button class="icon-btn" id="openWebUiBtn" title="Open Web UI" style="display:none">
+        <button class="icon-btn d-none" id="openWebUiBtn" title="Open Web UI">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             <polyline points="15 3 21 3 21 9"/>
             <line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
         </button>
-        <div class="dropdown" id="whitelistDropdown" style="display:none">
+        <div class="dropdown d-none" id="whitelistDropdown">
           <button class="icon-btn" id="whitelistBtn" title="Whitelist current domain">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
@@ -752,7 +853,7 @@
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
-        <svg id="backIcon" style="display:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg id="backIcon" class="d-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
       </button>
@@ -760,25 +861,25 @@
   </div>
 
   <div id="mainView" class="show">
-    <div class="tabs" id="nasTabBar" style="display:none">
+    <div class="tabs d-none" id="nasTabBar">
       <!-- NAS tabs will be inserted here -->
     </div>
 
-    <div class="speed-bar" id="speedBar" style="display:none">
+    <div class="speed-bar d-none" id="speedBar">
       <div class="speed-item">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5b9cf6" stroke-width="2.5"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--rate-dn)" stroke-width="2.5"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
         <span class="speed-val speed-dn" id="totalDn">0 B/s</span>
       </div>
       <div class="speed-item">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4caf7d" stroke-width="2.5"><polyline points="16 7 12 3 8 7"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--rate-up)" stroke-width="2.5"><polyline points="16 7 12 3 8 7"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
         <span class="speed-val speed-up" id="totalUp">0 B/s</span>
       </div>
-      <div class="speed-item" style="margin-left:auto">
-        <span id="taskCountLabel" style="color:#4a5570"></span>
+      <div class="speed-item speed-item-right">
+        <span id="taskCountLabel"></span>
       </div>
     </div>
 
-    <div class="tabs" id="tabBar" style="display:none">
+    <div class="tabs d-none" id="tabBar">
       <button class="tab active" data-filter="downloading">DL <span class="tab-count" id="cnt-downloading">0</span></button>
       <button class="tab" data-filter="seeding">Seed <span class="tab-count" id="cnt-seeding">0</span></button>
       <button class="tab" data-filter="paused">Paused <span class="tab-count" id="cnt-paused">0</span></button>
@@ -793,10 +894,10 @@
       <button class="retry-btn" id="retryBtn">↻ Retry</button>
     </div>
 
-    <div class="error-container" id="noNasContainer" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
-      <div class="error-text" style="color: #1a6fb5;">⚙️ No Service Configured</div>
+    <div class="error-container info-banner" id="noNasContainer">
+      <div class="error-text info-title">⚙️ No Service Configured</div>
       <div class="error-detail">Go to settings and add a download service to get started.</div>
-      <button class="retry-btn" id="configureBtn" style="background: #1a6fb5;">⚙️ Open Settings</button>
+      <button class="retry-btn" id="configureBtn">⚙️ Open Settings</button>
     </div>
 
     <div class="task-list" id="taskList">
@@ -805,12 +906,12 @@
       </div>
     </div>
 
-    <div class="footer" id="batchFooter" style="display:none">
-      <div style="display:flex;gap:6px;flex-wrap:nowrap;min-width:0;align-items:center;width:100%">
-        <button class="footer-btn" id="toggleSelectBtn" style="display:none" title="Toggle select all">✓ All</button>
-        <button class="footer-btn" id="pauseAllBtn" style="display:none">⏸ (0)</button>
-        <button class="footer-btn" id="resumeAllBtn" style="display:none">▶ (0)</button>
-        <button class="footer-btn danger" id="removeAllBtn" style="display:none">✕ (0)</button>
+    <div class="footer d-none" id="batchFooter">
+      <div class="batch-actions-row">
+        <button class="footer-btn d-none" id="toggleSelectBtn" title="Toggle select all">✓ All</button>
+        <button class="footer-btn d-none" id="pauseAllBtn">⏸ (0)</button>
+        <button class="footer-btn d-none" id="resumeAllBtn">▶ (0)</button>
+        <button class="footer-btn danger d-none" id="removeAllBtn">✕ (0)</button>
       </div>
     </div>
   </div>
@@ -820,14 +921,14 @@
       <div class="settings-label">Download Services</div>
       <div id="settingsNasListWrap">
         <div class="nas-list" id="settingsNasList"></div>
-        <button type="button" class="footer-btn primary" id="addNasBtn" style="width:100%;padding:7px">+ Add Service</button>
+        <button type="button" class="footer-btn primary btn-block" id="addNasBtn">+ Add Service</button>
       </div>
 
       <form id="nasForm">
         <div class="form-header">
-          <span id="formTitle" style="font-weight:700;font-size:12px"></span>
-          <div style="display:flex;gap:6px">
-            <button type="button" class="footer-btn danger" id="deleteNasBtn" style="display:none">Delete</button>
+          <span id="formTitle" class="form-title"></span>
+          <div class="form-header-actions">
+            <button type="button" class="footer-btn danger d-none" id="deleteNasBtn">Delete</button>
             <button type="button" class="footer-btn" id="backToListBtn">← Back</button>
           </div>
         </div>
@@ -848,14 +949,14 @@
           </select>
         </label>
 
-        <div id="serviceHelpText" style="font-size:11px;color:#666;margin:-8px 0 8px 0;line-height:1.3"></div>
+        <div id="serviceHelpText" class="service-help-text"></div>
 
         <div class="settings-row-inline">
           <label class="settings-field">
             <span>Host / IP</span>
             <input type="text" id="nasHost" placeholder="192.168.0.1" required />
           </label>
-          <label class="settings-field" style="max-width:80px">
+          <label class="settings-field field-narrow">
             <span>Port</span>
             <input type="number" id="nasPort" placeholder="5000" min="1" max="65535" required />
           </label>
@@ -876,23 +977,23 @@
           <input type="password" id="nasPassword" placeholder="••••••••" required autocomplete="current-password" />
         </label>
 
-        <label class="settings-field" id="apiTokenField" style="display:none">
-          <span>API Token <span class="hint">optional, use instead of password</span></span>
+        <label class="settings-field d-none" id="apiTokenField">
+          <span>API Token <span class="field-hint">optional, use instead of password</span></span>
           <input type="password" id="nasApiToken" placeholder="qBittorrent API token (v2.8.3+)" />
-          <div style="font-size:11px;color:#888;margin-top:4px">Leave empty to use username/password auth. Generate in qBittorrent settings → WebUI → API token.</div>
+          <div class="field-hint">Leave empty to use username/password auth. Generate in qBittorrent settings → WebUI → API token.</div>
         </label>
 
         <label class="settings-field" id="destinationField">
-          <span>Download Destination <span class="hint">optional</span></span>
+          <span>Download Destination <span class="field-hint">optional</span></span>
           <input type="text" id="nasDestination" placeholder="/volume1/downloads" />
         </label>
 
-        <div style="display:flex;gap:8px;margin-top:2px">
-          <button type="button" class="footer-btn" id="testNasBtn" style="flex:1;padding:7px">Test Connection</button>
+        <div class="row-actions">
+          <button type="button" class="footer-btn" id="testNasBtn">Test Connection</button>
         </div>
         <div id="testNasStatus" class="settings-status"></div>
 
-        <button type="submit" class="footer-btn primary" style="width:100%;margin-top:8px;padding:8px;font-size:12px">Save Download Service</button>
+        <button type="submit" class="footer-btn primary btn-block mt-sm">Save Download Service</button>
         <div id="nasFormStatus" class="settings-status"></div>
       </form>
     </div>
@@ -910,11 +1011,11 @@
       </label>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="enableHttp" /><span class="slider"></span></span>
-        <span>Other file types <span class="hint">(Synology only)</span></span>
+        <span>Other file types <span class="field-hint">(Synology &amp; JDownloader)</span></span>
       </label>
-      <div id="fileTypesSection" style="display:none;margin-top:8px;padding-left:0">
-        <p class="settings-hint" style="margin:0 0 8px 0">Customize downloadable file extensions. One per line.</p>
-        <textarea id="downloadExtensionsTextarea" style="height:100px"></textarea>
+      <div id="fileTypesSection" class="d-none mt-sm">
+        <p class="settings-hint">Customize downloadable file extensions. One per line.</p>
+        <textarea id="downloadExtensionsTextarea"></textarea>
       </div>
     </div>
 
@@ -922,10 +1023,10 @@
       <div class="settings-label">Websites</div>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="whitelistModeToggle" /><span class="slider"></span></span>
-        <span>Restrict to specific websites <span class="hint">(off = all websites)</span></span>
+        <span>Restrict to specific websites <span class="field-hint">(off = all websites)</span></span>
       </label>
-      <div id="whitelistHelp" style="display:none">
-        <p class="settings-hint" style="margin-top: 6px; margin-bottom: 8px;">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
+      <div id="whitelistHelp" class="d-none">
+        <p class="settings-hint">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
         <textarea id="whitelistTextarea" placeholder="example.com&#10;*.example.com&#10;another-site.org"></textarea>
       </div>
     </div>
@@ -935,21 +1036,19 @@
       <p class="settings-hint">Export your download services and whitelist to a file. Useful before reinstalling the extension.</p>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="encryptExport" /><span class="slider"></span></span>
-        <span>Encrypt export <span class="hint">(password-protected backup file)</span></span>
+        <span>Encrypt export <span class="field-hint">(password-protected backup file)</span></span>
       </label>
-      <div style="display:flex;gap:8px">
-        <button type="button" class="footer-btn primary" id="exportBtn" style="flex:1;padding:7px">Export</button>
-        <button type="button" class="footer-btn primary" id="importBtn" style="flex:1;padding:7px">Import</button>
+      <div class="row-actions">
+        <button type="button" class="footer-btn primary" id="exportBtn">Export</button>
+        <button type="button" class="footer-btn primary" id="importBtn">Import</button>
       </div>
-      <input type="file" id="importFile" accept=".json" style="display:none" />
+      <input type="file" id="importFile" accept=".json" class="d-none" />
       <div id="importStatus" class="settings-status"></div>
     </div>
   </div>
 
   <div class="support-footer">
-    <div class="support-footer-links">
-      Support me: <a href="https://ko-fi.com/craigpen" target="_blank" rel="noopener noreferrer">Ko-Fi</a> | <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
-    </div>
+    Support me: <a href="https://ko-fi.com/craigpen" target="_blank" rel="noopener noreferrer">Ko-Fi</a> | <a href="https://www.buymeacoffee.com/craigpen" target="_blank" rel="noopener noreferrer">Buy Me a Coffee</a>
   </div>
 
   <script src="protocols.js"></script>

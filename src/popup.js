@@ -180,6 +180,16 @@ function escHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+function showEl(el, show = true) {
+  if (typeof el === "string") el = document.getElementById(el);
+  if (!el) return;
+  el.classList.toggle("d-none", !show);
+}
+
+function hideEl(el) {
+  showEl(el, false);
+}
+
 // ── messaging ─────────────────────────────────────────────────────────────
 
 function send(msg) {
@@ -196,7 +206,7 @@ function send(msg) {
 function setStatus(msg, isErr) {
   const el = document.getElementById("statusMsg");
   el.textContent = msg;
-  el.style.color = isErr ? "#ff7b72" : "#5a6880";
+  el.className = isErr ? "status-msg error" : "status-msg";
 }
 
 function updateCounts() {
@@ -328,14 +338,14 @@ function updateFooterButtons() {
     const task = visible.find(t => t.id === id);
     return task !== undefined;
   }).length;
-  toggleBtn.style.display = visible.length > 0 ? "" : "none";
+  toggleBtn.classList.toggle("d-none", visible.length === 0);
   toggleBtn.textContent = allSelected && selectedTaskIds.size > 0 ? "✗ None" : "✓ All";
   toggleBtn.title = allSelected && selectedTaskIds.size > 0 ? "Deselect all" : "Select all visible";
 
   // Action buttons - only show if something is selected
-  pauseBtn.style.display = hasSelection ? "" : "none";
-  resumeBtn.style.display = hasSelection ? "" : "none";
-  removeBtn.style.display = hasSelection ? "" : "none";
+  pauseBtn.classList.toggle("d-none", !hasSelection);
+  resumeBtn.classList.toggle("d-none", !hasSelection);
+  removeBtn.classList.toggle("d-none", !hasSelection);
 
   pauseBtn.disabled = pauseCount === 0;
   resumeBtn.disabled = resumeCount === 0;
@@ -352,7 +362,7 @@ function updateFooterButtons() {
 
   const batchFooter = document.getElementById("batchFooter");
   if (batchFooter) {
-    batchFooter.style.display = visible.length > 0 ? "flex" : "none";
+    batchFooter.classList.toggle("d-none", visible.length === 0);
   }
 }
 
@@ -365,15 +375,15 @@ function renderTasks() {
   const visible = getVisibleTasks();
 
   if (visible.length === 0) {
-    empty.style.display = "flex";
-    empty.textContent = "No tasks";
+    showEl(empty, true);
+    empty.innerHTML = `<span class="empty-text">No ${escHtml(filter)} tasks</span>`;
     // Remove old task rows
     list.querySelectorAll(".task").forEach(el => el.remove());
     updateFooterButtons();
     return;
   }
 
-  empty.style.display = "none";
+  hideEl(empty);
 
   // Build a map of existing rows by task id for efficient updates
   const existing = {};
@@ -402,18 +412,19 @@ function renderTasks() {
       const checkbox = row.querySelector(".task-checkbox");
       if (checkbox) checkbox.checked = selectedTaskIds.has(task.id);
       row.querySelector(".task-name").textContent = task.title;
-      row.querySelector(".progress-fill").style.width = `${pct}%`;
-      row.querySelector(".progress-fill").style.background = color;
+      const fill = row.querySelector(".progress-fill");
+      fill.style.width = `${pct}%`;
+      fill.className = `progress-fill fill-${statusClass(task.status).replace(/^s-/, "")}`;
       row.querySelector(".progress-pct").textContent = `${pct}%`;
-      row.querySelector(".task-dn").textContent   = fmtSpeed(spDn);
-      row.querySelector(".task-up").textContent   = fmtSpeed(spUp);
+      row.querySelector(".task-dn").textContent   = `↓ ${fmtSpeed(spDn)}`;
+      row.querySelector(".task-up").textContent   = `↑ ${fmtSpeed(spUp)}`;
       row.querySelector(".task-size").textContent = `${fmt(dlSize)} / ${fmt(size)}`;
       row.querySelector(".task-eta").textContent  = fmtEta(eta);
       row.querySelector(".status-dot").className  = `status-dot ${statusClass(task.status)}`;
       const pauseBtn  = row.querySelector(".pause-btn");
       const resumeBtn = row.querySelector(".resume-btn");
-      if (pauseBtn)  pauseBtn.style.display  = canPause ? "" : "none";
-      if (resumeBtn) resumeBtn.style.display = canResume ? "" : "none";
+      if (pauseBtn)  showEl(pauseBtn, canPause);
+      if (resumeBtn) showEl(resumeBtn, canResume);
       fragment.appendChild(row);
     } else {
       // Create new row
@@ -441,12 +452,12 @@ function renderTasks() {
       const pauseBtn = document.createElement("button");
       pauseBtn.className = "task-btn pause-btn";
       pauseBtn.title = getAdapterPauseText(currentNasId);
-      pauseBtn.style.display = canPause ? "" : "none";
+      showEl(pauseBtn, canPause);
       pauseBtn.textContent = "⏸";
       const resumeBtn = document.createElement("button");
       resumeBtn.className = "task-btn resume-btn";
       resumeBtn.title = "Resume";
-      resumeBtn.style.display = canResume ? "" : "none";
+      showEl(resumeBtn, canResume);
       resumeBtn.textContent = "▶";
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "task-btn danger delete-btn";
@@ -465,9 +476,8 @@ function renderTasks() {
       const track = document.createElement("div");
       track.className = "progress-track";
       const fill = document.createElement("div");
-      fill.className = "progress-fill";
+      fill.className = `progress-fill fill-${statusClass(task.status).replace(/^s-/, "")}`;
       fill.style.width = `${pct}%`;
-      fill.style.background = color;
       track.appendChild(fill);
       const pctSpan = document.createElement("span");
       pctSpan.className = "progress-pct";
@@ -481,10 +491,10 @@ function renderTasks() {
       sizeSpan.className = "task-size";
       sizeSpan.textContent = `${fmt(dlSize)} / ${fmt(size)}`;
       const dnSpan = document.createElement("span");
-      dnSpan.className = "task-dn";
+      dnSpan.className = "rate-pill rate-dn task-dn";
       dnSpan.textContent = `↓ ${fmtSpeed(spDn)}`;
       const upSpan = document.createElement("span");
-      upSpan.className = "task-up";
+      upSpan.className = "rate-pill rate-up task-up";
       upSpan.textContent = `↑ ${fmtSpeed(spUp)}`;
       const etaSpan = document.createElement("span");
       etaSpan.className = "task-eta";
@@ -516,8 +526,6 @@ function renderTasks() {
   updateFooterButtons();
 }
 
-// ── task cache (paint instantly on open, refresh in the background) ────────
-
 function loadCachedTasks(nasId) {
   return new Promise(resolve => {
     chrome.storage.local.get({ taskCache: {} }, r => resolve(r.taskCache[nasId] || null));
@@ -536,10 +544,8 @@ async function paintCachedTasks() {
   if (!currentNasId) return;
   const cached = await loadCachedTasks(currentNasId);
   allTasks = cached?.tasks || [];
-  const speedBar = document.getElementById("speedBar");
-  const tabBar = document.getElementById("tabBar");
-  if (speedBar) speedBar.style.display = "";
-  if (tabBar) tabBar.style.display   = "";
+  showEl("speedBar", true);
+  showEl("tabBar", true);
   updateCounts();
   renderTasks();
   setStatus(cached ? "Showing cached data…" : "");
@@ -550,8 +556,11 @@ async function paintCachedTasks() {
 function setConnStatus(nasId, ok) {
   nasConnStatus[nasId] = ok ? "ok" : "error";
   if (nasId === currentNasId) {
-    document.getElementById("connStatus").className = ok ? "ok" : "error";
-    document.getElementById("connStatus").textContent = ok ? "● Connected" : "● Offline";
+    const el = document.getElementById("connStatus");
+    if (el) {
+      el.className = ok ? "ok" : "error";
+      el.textContent = ok ? "● Connected" : "● Offline";
+    }
   }
   renderNasTabs(); // Update tabs with status
 }
@@ -560,24 +569,20 @@ function showError(title, detail) {
   const errorTitle = document.getElementById("errorTitle");
   const errorDetail = document.getElementById("errorDetail");
   const errorContainer = document.getElementById("errorContainer");
-  const taskList = document.getElementById("taskList");
-  const speedBar = document.getElementById("speedBar");
-  const tabBar = document.getElementById("tabBar");
 
   if (errorTitle) errorTitle.textContent = title;
   if (errorDetail) errorDetail.textContent = detail;
   if (errorContainer) errorContainer.classList.add("show");
-  if (taskList) taskList.style.display = "none";
-  if (speedBar) speedBar.style.display = "none";
-  if (tabBar) tabBar.style.display = "none";
+  hideEl("taskList");
+  hideEl("speedBar");
+  hideEl("tabBar");
   updatePopupHeaderIcon(true);
 }
 
 function hideError() {
   const errorContainer = document.getElementById("errorContainer");
-  const taskList = document.getElementById("taskList");
   if (errorContainer) errorContainer.classList.remove("show");
-  if (taskList) taskList.style.display = "";
+  showEl("taskList", true);
   updatePopupHeaderIcon();
 }
 
@@ -602,10 +607,8 @@ async function refresh() {
         console.log("First task data:", resp.tasks[0]);
       }
       saveCachedTasks(currentNasId, resp.tasks);
-      const speedBar = document.getElementById("speedBar");
-      const tabBar = document.getElementById("tabBar");
-      if (speedBar) speedBar.style.display = "";
-      if (tabBar) tabBar.style.display   = "";
+      showEl("speedBar", true);
+      showEl("tabBar", true);
       updateCounts();
       renderTasks();
       setStatus("");
@@ -653,19 +656,15 @@ async function loadNasList() {
       if (nasList.length === 0) {
         // No NAS configured
         const noNasContainer = document.getElementById("noNasContainer");
-        const taskList = document.getElementById("taskList");
-        const speedBar = document.getElementById("speedBar");
-        const tabBar = document.getElementById("tabBar");
         if (noNasContainer) noNasContainer.classList.add("show");
-        if (taskList) taskList.style.display = "none";
-        if (speedBar) speedBar.style.display = "none";
-        if (tabBar) tabBar.style.display = "none";
+        hideEl("taskList");
+        hideEl("speedBar");
+        hideEl("tabBar");
       } else {
         // NAS configured
         const noNasContainer = document.getElementById("noNasContainer");
-        const taskList = document.getElementById("taskList");
         if (noNasContainer) noNasContainer.classList.remove("show");
-        if (taskList) taskList.style.display = "";
+        showEl("taskList", true);
         // Set current NAS to first in list if not set
         if (!currentNasId || !nasList.some(n => n.id === currentNasId)) {
           currentNasId = nasList[0].id;
@@ -702,10 +701,10 @@ function updateWebUiLauncher() {
   const currentService = nasList.find(n => n.id === currentNasId);
   const url = getServiceWebUrl(currentService);
   if (url) {
-    btn.style.display = "inline-flex";
+    showEl(btn, true);
     btn.title = `Open ${currentService?.name || "Service"} Web UI`;
   } else {
-    btn.style.display = "none";
+    hideEl(btn);
   }
 }
 
@@ -716,37 +715,37 @@ function renderNasTabs() {
 
   if (nasList.length <= 1) {
     // Hide tabs if only one or zero NAS, show header status instead
-    if (nasTabBar) nasTabBar.style.display = "none";
-    if (connStatus) connStatus.style.display = ""; // Show in header for single NAS
+    hideEl(nasTabBar);
+    showEl(connStatus, true);
     return;
   }
 
   // Multiple NAS: hide header status, show in tabs instead
-  if (connStatus) connStatus.style.display = "none";
+  hideEl(connStatus);
   if (!nasTabBar) return;
   nasTabBar.innerHTML = '';
   nasList.forEach(nas => {
     const isActive = nas.id === currentNasId;
     const connStatus = nasConnStatus[nas.id] || "unknown";
     const connIndicator = connStatus === "ok" ? "Connected" : connStatus === "error" ? "Offline" : "…";
-    const connColor = connStatus === "ok" ? "#4caf7d" : connStatus === "error" ? "#ff7b72" : "#8898b8";
 
     const btn = document.createElement("button");
-    btn.className = `tab${isActive ? " active" : ""}`;
+    btn.className = `tab nas-tab-btn${isActive ? " active" : ""}`;
     btn.dataset.nasId = nas.id;
-    btn.style.cssText = "flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;";
 
     const nameDiv = document.createElement("div");
+    nameDiv.className = "nas-tab-title";
     nameDiv.textContent = nas.name;
+
     const connDiv = document.createElement("div");
-    connDiv.style.cssText = `font-size: 9px; color: ${connColor}; opacity: 0.8;`;
+    connDiv.className = `nas-tab-status conn-${connStatus}`;
     connDiv.textContent = connIndicator;
 
     btn.appendChild(nameDiv);
     btn.appendChild(connDiv);
     nasTabBar.appendChild(btn);
   });
-  nasTabBar.style.display = "flex";
+  showEl(nasTabBar, true);
 
   nasTabBar.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", async () => {
@@ -762,7 +761,7 @@ function renderNasTabs() {
         taskList.querySelectorAll(".task").forEach(el => el.remove());
         const emptyMsg = document.getElementById("emptyMsg");
         if (emptyMsg) {
-          emptyMsg.style.display = "flex";
+          showEl(emptyMsg, true);
           emptyMsg.innerHTML = '<span class="spinner"></span>';
         }
       }
@@ -831,7 +830,7 @@ function renderFilterTabs() {
 
   // Clear existing tabs and show container
   tabsContainer.innerHTML = "";
-  tabsContainer.style.display = "flex";
+  showEl(tabsContainer, true);
 
   // Create tabs for enabled filters
   enabledTabs.forEach(filterType => {
@@ -871,10 +870,7 @@ async function loadWhitelist() {
 
 function updateWhitelistUI() {
   // Show whitelist button only when whitelist mode is "restricted"
-  const whitelistDropdown = document.getElementById("whitelistDropdown");
-  if (whitelistDropdown) {
-    whitelistDropdown.style.display = whitelistMode === "restricted" ? "block" : "none";
-  }
+  showEl("whitelistDropdown", whitelistMode === "restricted");
 
   if (!currentDomain) return;
   const isWhitelisted = whitelistSet.has(currentDomain);
@@ -885,10 +881,10 @@ function updateWhitelistUI() {
   actionBtn.textContent = isWhitelisted ? "✓ Remove from whitelist" : "+ Add to whitelist";
 
   if (isWhitelisted) {
-    btn.style.color = "#4caf7d";
+    btn.classList.add("whitelisted");
     btn.title = "Domain is whitelisted";
   } else {
-    btn.style.color = "#8898b8";
+    btn.classList.remove("whitelisted");
     btn.title = "Whitelist current domain";
   }
 }
@@ -923,9 +919,9 @@ function showSettings() {
   document.getElementById("mainView").classList.remove("show");
   document.getElementById("settingsView").classList.add("show");
   document.getElementById("headerTitle").textContent = "Settings";
-  document.getElementById("mainHeaderControls").style.display = "none";
-  document.getElementById("gearIcon").style.display = "none";
-  document.getElementById("backIcon").style.display = "";
+  hideEl("mainHeaderControls");
+  hideEl("gearIcon");
+  showEl("backIcon", true);
   document.getElementById("settingsBtn").title = "Back";
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   showNasListView();
@@ -939,9 +935,9 @@ async function showMainView() {
   document.getElementById("settingsView").classList.remove("show");
   document.getElementById("mainView").classList.add("show");
   document.getElementById("headerTitle").textContent = "Download Nexus";
-  document.getElementById("mainHeaderControls").style.display = "flex";
-  document.getElementById("gearIcon").style.display = "block";
-  document.getElementById("backIcon").style.display = "none";
+  showEl("mainHeaderControls", true);
+  showEl("gearIcon", true);
+  hideEl("backIcon");
   document.getElementById("settingsBtn").title = "Settings";
   await paintCachedTasks();
   updateWhitelistUI();
@@ -1005,20 +1001,19 @@ function renderSettingsNasList() {
 }
 
 function showNasListView() {
-  document.getElementById("settingsNasListWrap").style.display = "";
+  showEl("settingsNasListWrap", true);
   document.getElementById("nasForm").classList.remove("show");
   editingNasId = null;
 }
 
 function showNasFormView() {
-  document.getElementById("settingsNasListWrap").style.display = "none";
+  hideEl("settingsNasListWrap");
   document.getElementById("nasForm").classList.add("show");
 }
 
 function updateDestinationFieldVisibility() {
   const type = document.getElementById("nasType").value;
-  const destinationField = document.getElementById("destinationField");
-  destinationField.style.display = type === "synology" ? "" : "none";
+  showEl("destinationField", type === "synology");
 }
 
 function updateFormFieldsForType() {
@@ -1034,18 +1029,11 @@ function updateFormFieldsForType() {
   const helpEl = document.getElementById("serviceHelpText");
   if (helpEl) {
     helpEl.textContent = defaults.helpText;
-    helpEl.style.color = "#888";
-    helpEl.style.fontStyle = "italic";
   }
 
   // Show/hide API Token field for qBittorrent (P1-2)
-  const apiTokenField = document.getElementById("apiTokenField");
-  if (apiTokenField) {
-    apiTokenField.style.display = type === "qbittorrent" ? "" : "none";
-  }
+  showEl("apiTokenField", type === "qbittorrent");
 
-  const usernameField = document.getElementById("usernameField");
-  const passwordField = document.getElementById("passwordField");
   const usernameInput = document.getElementById("nasUsername");
   const passwordInput = document.getElementById("nasPassword");
 
@@ -1056,8 +1044,8 @@ function updateFormFieldsForType() {
   const showUsername = type === "synology" || type === "qbittorrent" || type === "transmission";
   const showPassword = type === "synology" || type === "qbittorrent" || type === "deluge" || type === "transmission";
 
-  usernameField.style.display = showUsername ? "" : "none";
-  passwordField.style.display = showPassword ? "" : "none";
+  showEl("usernameField", showUsername);
+  showEl("passwordField", showPassword);
 
   // Update required attribute and set default port based on adapter type (P1-3)
   if (type === "synology") {
@@ -1094,7 +1082,7 @@ function editNas(nasId) {
   if (!nas) return;
 
   document.getElementById("formTitle").textContent = `Edit ${nas.name}`;
-  document.getElementById("deleteNasBtn").style.display = "";
+  showEl("deleteNasBtn", true);
   document.getElementById("nasName").value = nas.name;
   document.getElementById("nasType").value = nas.type || "synology";
   document.getElementById("nasHost").value = nas.host;
@@ -1116,7 +1104,7 @@ function editNas(nasId) {
 function addNewNas() {
   editingNasId = null;
   document.getElementById("formTitle").textContent = "Add Download Service";
-  document.getElementById("deleteNasBtn").style.display = "none";
+  hideEl("deleteNasBtn");
   document.getElementById("nasName").value = "";
   document.getElementById("nasType").value = "synology";
   document.getElementById("nasHost").value = "192.168.0.1";
@@ -1157,8 +1145,7 @@ const DEFAULT_FILE_EXTENSIONS = "zip\nrar\n7z\ntar\ngz\nbz2\niso\nexe\nmsi\npdf\
 
 function updateFileTypesVisibility() {
   const isEnabled = document.getElementById("enableHttp").checked;
-  const section = document.getElementById("fileTypesSection");
-  section.style.display = isEnabled ? "block" : "none";
+  showEl("fileTypesSection", isEnabled);
 
   if (isEnabled) {
     const textarea = document.getElementById("downloadExtensionsTextarea");
@@ -1347,8 +1334,7 @@ function renderWhitelistSettings() {
   if (!toggle || !textarea || !helpDiv) return;
 
   toggle.checked = whitelistMode === "restricted";
-  const showContent = toggle.checked ? "" : "none";
-  helpDiv.style.display = showContent;
+  showEl(helpDiv, toggle.checked);
   // Don't clobber what the user is actively typing.
   if (document.activeElement !== textarea) {
     textarea.value = Array.from(whitelistSet).join("\n");
