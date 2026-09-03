@@ -676,3 +676,37 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") executeRestore(true);
   });
 });
+
+// Export for unit tests
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    SERVICE_DEFAULTS,
+    DEFAULT_FILE_EXTENSIONS,
+    esc,
+    getServiceWebUrl,
+    applyServiceTypeDefaults,
+    updateWhitelistModeVisibility,
+    renderServiceList,
+    openServiceEditor,
+    closeServiceEditor,
+    saveServiceForm,
+    deleteService,
+    testSpecificService,
+    testFormConnection,
+    loadServices,
+    loadCaptureSettings,
+    saveCaptureSettings,
+    loadWhitelistSettings,
+    saveWhitelistSettings,
+    exportConfig,
+    handleFileImport,
+    executeRestore,
+    closeRestoreModal,
+    showToast,
+    initTabs,
+    // Test-only accessors for module-level state
+    __getState: () => ({ currentServices, editingServiceId, pendingRestoreData }),
+    __setServices: (list) => { currentServices = list; },
+    __setPendingRestore: (data) => { pendingRestoreData = data; }
+  };
+}

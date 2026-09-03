@@ -1,6 +1,18 @@
 /**
  * Adapter Test Suite
  * Verifies all device adapter functionality (Synology, qBittorrent, etc.)
+ *
+ * ⚠️  CAVEAT: this suite asserts against the MOCK classes defined below, not
+ * against the adapters that actually ship in `src/background.js`. It therefore
+ * documents intended behaviour but CANNOT catch regressions in production code,
+ * and the mocks have already drifted from the real implementations (for
+ * example, the real JDownloader/Transmission `testConnection` performs no
+ * "Settings incomplete" host/port validation — it probes the network).
+ *
+ * For tests that exercise the real shipped adapter, see
+ * `tests/jdownloader-adapter.test.js`, which requires `getAdapter` from
+ * `src/background.js` and mocks `fetch`. New adapter tests should follow that
+ * pattern rather than adding more mocks here.
  */
 
 const assert = require('assert');

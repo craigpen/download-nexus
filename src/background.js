@@ -860,11 +860,10 @@ class JDownloaderAdapter extends NasAdapter {
     const baseUrl = this._getBaseUrl();
     dbg("INFO", `JDownloader testConnection → ${baseUrl}`);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
       const resp = await fetch(`${baseUrl}/jd/version`, { method: "GET", signal: controller.signal });
-      clearTimeout(timeout);
 
       if (resp.ok) {
         const resJson = await resp.json();
@@ -875,6 +874,8 @@ class JDownloaderAdapter extends NasAdapter {
       throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
     } catch (err) {
       throw new Error(`Cannot connect to JDownloader 2 on ${baseUrl}. Make sure JDownloader is running, and in Settings → Advanced Settings, 'RemoteAPI.deprecatedapienabled' is set to true on port 3128.`);
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

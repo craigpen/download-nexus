@@ -18,10 +18,13 @@
     "test:link-detector": "jest tests/linkDetector.test.js",
     "test:service-filter": "jest tests/serviceFilter.test.js",
     "test:background": "jest tests/background.test.js",
+    "test:options": "jest tests/options.test.js",
+    "test:crypto": "jest tests/crypto.test.js",
+    "test:jdownloader": "jest tests/jdownloader-adapter.test.js",
     "test:integration": "jest tests/integration.test.js",
     "test:transmission": "jest tests/transmission-integration.test.js",
     "test:deluge": "jest tests/deluge-integration.test.js",
-    "test:aria2": "jest tests/aria2-integration.test.js",
+    "test:jdownloader:integration": "jest tests/jdownloader-integration.test.js",
     "test:integration:all": "jest --testPathPattern=integration.test.js",
     "test:all": "jest",
     "test:watch": "jest --watch",
@@ -50,6 +53,7 @@
     "@types/chrome": "^0.1.43",
     "conventional-changelog-cli": "^4.1.0",
     "jest": "^29.0.0",
+    "jest-environment-jsdom": "^30.5.1",
     "sharp": "^0.35.3",
     "ws": "^8.21.3"
   },
@@ -59,9 +63,7 @@
       "**/tests/**/*.test.js"
     ],
     "collectCoverageFrom": [
-      "background.js",
-      "popup.js",
-      "content.js",
+      "src/**/*.js",
       "!dist/**"
     ]
   }
