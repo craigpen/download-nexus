@@ -47,12 +47,12 @@ These tests run without any external dependencies.
   - Magnet vs torrent file handling
   - HTTPS/HTTP support
 
-- **Aria2Adapter** (10 tests)
+- **JDownloaderAdapter** (10 tests)
   - Configuration validation
-  - RPC secret requirement
-  - State mapping (active → downloading, waiting → stalled, etc.)
-  - Task data mapping with string-to-number conversion
-  - Filename extraction from files array
+  - Local API connectivity
+  - State mapping
+  - Task data mapping
+  - Download management
 
 - **Adapter Pattern** (5 tests)
   - Consistent interface across all adapters
@@ -92,7 +92,7 @@ Tests protocol filtering and service compatibility.
 | qBittorrent | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Transmission | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Deluge | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Aria2 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JDownloader 2 | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Test Coverage:**
 - Protocol support validation
@@ -139,12 +139,6 @@ npm run test:deluge
 # Requires: docker run -d -p 8112:8112 linuxserver/deluge:latest
 ```
 
-#### Aria2 Integration (`tests/aria2-integration.test.js`)
-```bash
-npm run test:aria2
-# Requires: docker run -d -p 6800:6800 p3terx/aria2-pro:latest
-```
-
 **Integration Test Coverage:**
 - Connection and authentication
 - Adding downloads (magnet, HTTP, torrent)
@@ -152,7 +146,7 @@ npm run test:aria2
 - Task actions (pause, resume, delete)
 - Data format consistency
 - Error handling
-- Edge cases (invalid GIDs, malformed requests)
+- Edge cases (invalid IDs, malformed requests)
 
 #### General Integration (`tests/integration.test.js`)
 ```bash
@@ -169,12 +163,12 @@ npm run test:adapters         # Adapter tests only
 npm run test:link-detector    # Link detector tests only
 npm run test:service-filter   # Service filter tests only
 npm run test:background       # Background handler tests only
+npm run test:crypto           # Encryption tests only
 
 # Integration Tests (Requires Docker)
 npm run test:integration      # qBittorrent integration
 npm run test:transmission     # Transmission integration
 npm run test:deluge           # Deluge integration
-npm run test:aria2            # Aria2 integration
 npm run test:integration:all  # All integration tests
 
 # All Tests
@@ -216,19 +210,17 @@ docker run -d -p 8112:8112 \
   -e PUID=1000 -e PGID=1000 \
   linuxserver/deluge:latest
 
-# Aria2 (port 6800)
-docker run -d -p 6800:6800 \
-  -e PUID=1000 -e PGID=1000 \
-  p3terx/aria2-pro:latest
+# JDownloader 2 (runs locally as desktop application)
+# No Docker container needed - uses local API on port 3129
 ```
 
 ## Test Statistics
 
-**Total Tests: 152+**
+**Total Tests: 150+**
 
-- Unit Tests: 113 ✅
+- Unit Tests: 120+ ✅
 - Integration Tests: ~20 each (varies by service)
-- Suites: 8 (4 unit + 4 integration)
+- Suites: 9 (6 unit + 3 integration)
 
 **Coverage Areas:**
 - ✅ Adapter implementations (all 5 services)
@@ -238,6 +230,7 @@ docker run -d -p 6800:6800 \
 - ✅ Error handling and validation
 - ✅ Configuration management
 - ✅ Context menu functionality
+- ✅ Credential encryption/decryption
 - ✅ Real-world user scenarios
 
 ## Adding New Tests

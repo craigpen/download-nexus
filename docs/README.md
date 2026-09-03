@@ -22,13 +22,13 @@ Complete documentation for Download Nexus developers and users.
 - [qBittorrent](API_REFERENCE.md#qbittorrent-webui-api)
 - [Transmission](API_REFERENCE.md#transmission-rpc-api)
 - [Deluge](API_REFERENCE.md#deluge-json-rpc-api)
-- [Aria2](API_REFERENCE.md#aria2-json-rpc-api)
+- [JDownloader 2](API_REFERENCE.md#jdownloader-2)
 
 ### Protocols
 - ✅ Magnet links
 - ✅ Torrent files (.torrent)
-- ✅ HTTP/HTTPS downloads (Synology, Aria2 only)
-- ✅ FTP downloads (Synology, Aria2 only)
+- ✅ HTTP/HTTPS downloads (Synology, JDownloader 2 only)
+- ✅ FTP downloads (Synology, JDownloader 2 only)
 
 ## Development
 
@@ -49,20 +49,29 @@ Complete documentation for Download Nexus developers and users.
   content.js          # Content script (page injection)
   popup.js            # Popup UI logic
   popup.html          # Popup UI markup
+  options.js          # Options page logic
+  options.html        # Options page markup
+  crypto.js           # Credential encryption/decryption
   manifest.json       # Extension manifest
 
 /scripts              # Build and tool scripts
   build.js            # Package builder
   create-zip.js       # ZIP archive creator
+  launch-browser.js   # Browser launcher for testing
+  inspect-browser.js  # Chrome DevTools Protocol inspector
 
 /tests                # Test suite
-  /adapters.test.js           # Adapter unit tests (113 tests)
-  /*-integration.test.js       # Service integration tests
+  adapters.test.js           # Adapter unit tests
+  crypto.test.js             # Encryption unit tests
+  background.test.js         # Background service unit tests
+  popup.test.js              # Popup UI unit tests
+  *-integration.test.js       # Service integration tests
 
 /docs                 # Documentation
   README.md           # This file
   API_REFERENCE.md    # API documentation for all services
   TESTING.md          # Testing guide and setup
+  REMOTE_DEBUGGING.md # Browser debugging and log streaming
 
 /dist                 # Build output (generated)
   /chrome-mv3         # Chrome extension build
@@ -73,13 +82,12 @@ Complete documentation for Download Nexus developers and users.
 
 ```bash
 # Unit tests (no Docker required)
-npm run test:unit              # 113 unit tests
+npm run test:unit              # Unit tests
 
 # Integration tests (requires Docker)
 npm run test:integration       # qBittorrent
 npm run test:transmission      # Transmission
 npm run test:deluge            # Deluge
-npm run test:aria2             # Aria2
 
 # All tests
 npm test

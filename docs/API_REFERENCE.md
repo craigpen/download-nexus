@@ -99,23 +99,17 @@ Official API documentation for all supported download services.
 
 ---
 
-## Aria2 JSON-RPC API
+## JDownloader 2
 
-**API Documentation:** https://aria2.github.io/manual/en/html/aria2c.html#rpc-interface
+**Documentation:** https://jdownloader.org/knowledge/wiki/glossary/clientapi
 
-**Base URL:** `http://HOST:PORT/jsonrpc`
+**Base URL:** `http://HOST:PORT/jsonrpc` (Local API)
 
 **Key Methods:**
-- `aria2.getVersion()` - Get aria2 version
-- `aria2.addUri(uris, options)` - Add URI/HTTP/FTP download
-- `aria2.addTorrent(torrent_base64, options)` - Add torrent file
-- `aria2.tellActive(keys)` - List active downloads
-- `aria2.tellWaiting(offset, num, keys)` - List waiting downloads
-- `aria2.tellStopped(offset, num, keys)` - List stopped downloads
-- `aria2.pause(gid)` - Pause download
-- `aria2.unpause(gid)` - Resume download
-- `aria2.remove(gid)` - Remove active download
-- `aria2.removeDownloadResult(gid)` - Remove stopped download
+- Get list of all downloads
+- Add magnet links or torrent files
+- Pause/resume downloads
+- Remove downloads
 
 **Protocol Support:**
 - ✅ Magnet links
@@ -123,9 +117,9 @@ Official API documentation for all supported download services.
 - ✅ HTTP/HTTPS downloads
 - ✅ FTP downloads
 
-**Authentication:** RPC secret token (prepended to every RPC call)
+**Authentication:** No authentication required for local API
 
-**Implementation:** [src/background.js - Aria2Adapter](src/background.js)
+**Implementation:** [src/background.js - JDownloaderAdapter](src/background.js)
 
 ---
 
@@ -133,13 +127,13 @@ Official API documentation for all supported download services.
 
 All adapters normalize status strings to a unified format:
 
-| Unified Status | Synology | qBittorrent | Transmission | Deluge | Aria2 |
+| Unified Status | Synology | qBittorrent | Transmission | Deluge | JDownloader 2 |
 |---|---|---|---|---|---|
-| downloading | downloading | downloading, forcedDL, metaDL, allocating | downloading | Downloading | active |
+| downloading | downloading | downloading, forcedDL, metaDL, allocating | downloading | Downloading | downloading |
 | seeding | seeding | uploading, seeding, forcedUP | seeding, uploading | Seeding | (N/A) |
 | paused | paused | stoppedDL, stoppedUP | stopped | Paused | paused |
 | stalled | waiting | stalledDL, stalledUP | stalled | Queued | waiting |
-| finished | finished | completedDL, completedUP | finished | Complete | complete |
+| finished | finished | completedDL, completedUP | finished | Complete | finished |
 | error | error | error, missingFiles | error | Error | error |
 
 ---
@@ -222,8 +216,7 @@ docker run -d -p 9091:9091 linuxserver/transmission:latest
 # Deluge
 docker run -d -p 8112:8112 linuxserver/deluge:latest
 
-# Aria2
-docker run -d -p 6800:6800 p3terx/aria2-pro:latest
+# JDownloader 2 runs locally on desktop (no Docker image)
 ```
 
 Or use the included docker-compose:
@@ -252,7 +245,7 @@ const protocolMatrix = {
   qbittorrent: { magnet: true, torrent: true, http: false, https: false, ftp: false },
   transmission: { magnet: true, torrent: true, http: false, https: false, ftp: false },
   deluge: { magnet: true, torrent: true, http: false, https: false, ftp: false },
-  aria2: { magnet: true, torrent: true, http: true, https: true, ftp: true }
+  jdownloader: { magnet: true, torrent: true, http: true, https: true, ftp: true }
 };
 ```
 

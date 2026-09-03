@@ -1,6 +1,6 @@
 # Download Nexus
 
-If you have qBittorrent, Transmission, Deluge, Aria2, or a Synology NAS running, you can send magnet links and torrent files to them directly from your browser. Click a link, select which service if you have multiple configured, and it's sent to that service. Manage downloads from the extension popup — view status, pause, resume, or hide.
+If you have qBittorrent, Transmission, Deluge, JDownloader 2, or a Synology NAS running, you can send magnet links and torrent files to them directly from your browser. Click a link, select which service if you have multiple configured, and it's sent to that service. Manage downloads from the extension popup — view status, pause, resume, or hide.
 
 **Desktop browsers only** (Chrome, Firefox, Edge).
 
@@ -14,14 +14,14 @@ It's open source, stores everything locally (nothing leaves your browser), and s
 ## What It Does
 
 - **Detects magnet links and torrent files** — finds them on any page and adds buttons next to them. You keep your existing magnet handler; this just gives you an alternative.
-- **Optional file type support** — enable HTTP/HTTPS/FTP downloads (Synology and Aria2 only) via Settings
+- **Optional file type support** — enable HTTP/HTTPS/FTP downloads (Synology and JDownloader 2 only) via Settings
 - **Right-click context menu** — send links directly from the context menu for quick access
-- **Supports multiple download services** — Synology NAS, qBittorrent, Transmission, Deluge, Aria2.
+- **Supports multiple download services** — Synology NAS, qBittorrent, Transmission, Deluge, and JDownloader 2.
 - **Task manager in the popup** — see what's downloading, pause/resume/hide from the browser. Quick access without leaving the page.
 - **Per-service sessions** — each of your download services stays logged in independently
 - **Whitelist domains (optional)** — by default, buttons appear on all sites. Whitelist mode restricts them to specific domains you choose (reduces memory overhead if you want it).
 - **Light/dark theme** — auto-matches your browser/OS preference
-- **Export/import config** — backup and restore your settings. Optionally encrypt the backup with a password.
+- **Export/import config** — backup and restore your settings with optional password encryption for added security.
 
 ## Support This Project
 
@@ -52,13 +52,13 @@ Your contribution helps keep this maintained and supported.
    - **qBittorrent**: qBittorrent Web UI
    - **Transmission**: Transmission daemon
    - **Deluge**: Deluge Web UI
-   - **Aria2**: Aria2 JSON-RPC server
+   - **JDownloader 2**: JDownloader 2 (local/desktop)
 4. Enter service details:
    - **Service Name**: e.g., "Home Server", "My qBit" (displayed in popup tabs)
    - **Host/IP**: Your service IP or hostname
    - **Port**: Your service's web UI port
    - **HTTPS**: Toggle if your service uses HTTPS
-   - **Username & Password**: Service credentials (Aria2 uses RPC secret instead)
+   - **Username & Password**: Service credentials
    - **Download Destination**: Optional path (service-specific format)
 5. Click **"Test Connection"** to verify settings
 6. Save the service
@@ -75,9 +75,9 @@ Your contribution helps keep this maintained and supported.
 In Settings under "Link Types to Show Buttons For", you can choose which link types trigger download buttons:
 - **Magnet links** — enabled by default
 - **Torrent files (.torrent)** — enabled by default
-- **HTTP downloads** — disabled by default (requires Synology or Aria2)
-- **HTTPS downloads** — disabled by default (requires Synology or Aria2)
-- **FTP downloads** — disabled by default (requires Synology or Aria2)
+- **HTTP downloads** — disabled by default (requires Synology or JDownloader 2)
+- **HTTPS downloads** — disabled by default (requires Synology or JDownloader 2)
+- **FTP downloads** — disabled by default (requires Synology or JDownloader 2)
 
 ### Whitelist Management
 
@@ -119,7 +119,7 @@ Right-click on any magnet link or torrent file in your browser to send it direct
 
 ### Testing with Download Clients
 
-The extension works with qBittorrent, Transmission, Deluge, Aria2, and Synology NAS. To test:
+The extension works with qBittorrent, Transmission, Deluge, JDownloader 2, and Synology NAS. To test:
 
 1. Load the extension in developer mode (see Development section above)
 2. Click gear icon → "+ Add Service"
@@ -132,7 +132,7 @@ The extension works with qBittorrent, Transmission, Deluge, Aria2, and Synology 
 ### Multi-Service Design
 - **Service list** (chrome.storage.sync): Array of service configs, each with id, type, name, host, port, https, username, password, destination
 - **Per-service sessions** (chrome.storage.local): Session tokens cached separately for each service to maintain independent sessions
-- **Type extensibility**: Service type ("synology", "qbittorrent", "transmission", "deluge", "aria2") supports multiple download managers
+- **Type extensibility**: Service type ("synology", "qbittorrent", "transmission", "deluge", "jdownloader") supports multiple download managers
 - **Generic codebase**: Internal functions use service-agnostic naming to support multiple service types
 
 ### File Structure

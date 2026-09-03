@@ -70,7 +70,7 @@ node scripts/inspect-browser.js --logs
 ```
 
 ### Dump Extension Storage (`chrome.storage.local` & `chrome.storage.sync`)
-Inspects saved download client configurations (Synology, Deluge, Transmission, qBittorrent, Aria2), options, and intercept preferences:
+Inspects saved download client configurations (Synology, Deluge, Transmission, qBittorrent, JDownloader 2), options, and intercept preferences:
 ```bash
 npm run debug:storage
 # or

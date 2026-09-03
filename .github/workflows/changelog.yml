@@ -1,0 +1,110 @@
+name: Generate Changelog
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., 1.2.0)"
+        required: true
+        type: string
+      create_pr:
+        description: "Create a PR for changelog changes (vs direct commit)"
+        required: false
+        default: false
+        type: boolean
+      create_tag:
+        description: "Create git tag for this version"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate changelog
+        run: npm run changelog
+
+      - name: Check if changelog changed
+        id: changelog
+        run: |
+          if git diff --quiet CHANGELOG.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "## Changelog Generated for v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Preview of changes:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git diff CHANGELOG.md | head -80 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Pull Request
+        if: steps.changelog.outputs.changed == 'true' && inputs.create_pr == true
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "chore: update changelog for v${{ inputs.version }}"
+          title: "chore: changelog for v${{ inputs.version }}"
+          body: |
+            Automated changelog generation for **v${{ inputs.version }}** based on conventional commits.
+
+            Please review and merge if the changelog looks correct. Once merged, the tag will be created for publishing.
+          branch: changelog/v${{ inputs.version }}
+          delete-branch: true
+
+      - name: Commit and push
+        if: steps.changelog.outputs.changed == 'true' && inputs.create_pr == false
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for v${{ inputs.version }}"
+          git push
+
+      - name: Create version tag
+        if: steps.changelog.outputs.changed == 'true' && inputs.create_tag == true && inputs.create_pr == false
+        run: |
+          git tag -a v${{ inputs.version }} -m "Release v${{ inputs.version }}"
+          git push origin v${{ inputs.version }}
+
+      - name: Tag instructions
+        if: inputs.create_pr == true && inputs.create_tag == true
+        run: |
+          echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Merge the PR" >> $GITHUB_STEP_SUMMARY
+          echo "2. Run this workflow again with **create_pr: false** and **create_tag: true** to create the tag" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Or create the tag manually:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "git tag -a v${{ inputs.version }} -m \"Release v${{ inputs.version }}\"" >> $GITHUB_STEP_SUMMARY
+          echo "git push origin v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: No changes
+        if: steps.changelog.outputs.changed == 'false'
+        run: |
+          echo "✓ Changelog is up to date (no new commits since last release)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To proceed with v${{ inputs.version }}, create the tag manually:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "git tag -a v${{ inputs.version }} -m \"Release v${{ inputs.version }}\"" >> $GITHUB_STEP_SUMMARY
+          echo "git push origin v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
