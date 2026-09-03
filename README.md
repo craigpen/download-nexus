@@ -23,15 +23,6 @@ It's open source, stores everything locally (nothing leaves your browser), and s
 - **Light/dark theme** — auto-matches your browser/OS preference
 - **Export/import config** — backup and restore your settings with optional password encryption for added security.
 
-## Support This Project
-
-This is a donation-funded open source project. If it saves you time, consider supporting its development:
-
-- **[Ko-fi](https://ko-fi.com/craigpen)** — one-time or recurring
-- **[Buy Me a Coffee](https://www.buymeacoffee.com/craigpen)** — quick support
-
-Your contribution helps keep this maintained and supported.
-
 ## Security & Privacy
 
 **Privacy**: All your credentials and data stay on your computer. The extension doesn't send anything anywhere — all communication goes directly between your browser and your download service. No tracking, no analytics, no third-party services. Cookies may be stored and used to maintain sessions with your download services (Deluge, etc.), not for tracking. Use HTTPS when possible to secure communication with your download services.
@@ -152,3 +143,8 @@ The extension works with qBittorrent, Transmission, Deluge, JDownloader 2, and S
 - **content.js**: Injects UI buttons next to magnet/torrent links on web pages
 - **src/utils/**: Shared utility modules (link detection, protocol support, service filtering)
 - **manifest.json**: Extension configuration and permissions
+
+## License
+
+Download Nexus (Community Edition) is open-source software licensed under the [GNU General Public License v3.0](LICENSE).
+
