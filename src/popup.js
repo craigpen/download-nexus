@@ -570,14 +570,6 @@ function paintCachedTasks(nasId = currentNasId) {
 
 function setConnStatus(nasId, ok) {
   nasConnStatus[nasId] = ok ? "ok" : "error";
-  if (nasId === currentNasId) {
-    const el = document.getElementById("connStatus");
-    if (el) {
-      showEl(el, nasList.length <= 1 && !ok);
-      el.className = "header-status-dot error";
-      el.title = "Offline: Connection failed";
-    }
-  }
   // Surgically update tab error indicator in place without DOM rebuild
   const tabBtn = document.querySelector(`.nas-tab-btn[data-nas-id="${nasId}"]`);
   if (tabBtn) {
@@ -741,24 +733,13 @@ function updateWebUiLauncher() {
 function renderNasTabs() {
   updateWebUiLauncher();
   const nasTabBar = document.getElementById("nasTabBar");
-  const connStatus = document.getElementById("connStatus");
 
   if (nasList.length <= 1) {
-    // Hide tabs if only one or zero NAS; show header error dot only on error
+    // Hide tabs if only one or zero NAS
     hideEl(nasTabBar);
-    if (nasList.length === 1 && connStatus) {
-      const isErr = nasConnStatus[nasList[0].id] === "error";
-      showEl(connStatus, isErr);
-      connStatus.className = "header-status-dot error";
-      connStatus.title = "Offline: Connection failed";
-    } else {
-      hideEl(connStatus);
-    }
     return;
   }
 
-  // Multiple NAS: hide header status, show exceptions in tabs instead
-  hideEl(connStatus);
   if (!nasTabBar) return;
   nasTabBar.innerHTML = '';
   nasList.forEach(nas => {
