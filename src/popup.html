@@ -911,43 +911,75 @@
     .settings-status.ok  { color: var(--success); }
     .settings-status.err { color: var(--error); }
 
-    .nas-list { margin-bottom: 8px; }
+    .nas-list { margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
     .nas-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 8px 10px;
       border-radius: 6px;
-      margin-bottom: 6px;
-      cursor: pointer;
       background: var(--surface);
       border: 1px solid var(--border);
       transition: all .15s ease;
+      gap: 10px;
     }
     .nas-item:hover {
-      background: var(--surface-hover);
       border-color: var(--primary);
     }
-    .nas-item-info { flex: 1; min-width: 0; }
-    .nas-item-name { font-weight: 600; font-size: 12px; color: var(--text); }
-    .nas-item-host { font-size: 11px; font-family: monospace; color: var(--text-muted); }
-
-    .mini-delete-btn {
-      border-radius: 4px;
-      padding: 3px 7px;
-      font-size: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      background: var(--error-subtle);
-      border: 1px solid var(--error);
-      color: var(--error);
-      transition: all .15s ease;
+    .nas-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .nas-item-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nas-item-name { font-weight: 700; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nas-item-badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--surface-hover);
+      color: var(--primary);
+      border: 1px solid var(--border);
       flex-shrink: 0;
     }
-    .mini-delete-btn:hover {
-      background: var(--error);
+    .nas-item-host { font-size: 11px; font-family: monospace; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nas-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .btn-action-mini {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s ease;
+    }
+    .btn-action-mini:hover {
+      background: var(--primary);
+      border-color: var(--primary);
       color: #ffffff;
     }
+    .btn-action-mini.danger:hover {
+      background: var(--error);
+      border-color: var(--error);
+      color: #ffffff;
+    }
+    .nas-test-status {
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .nas-test-status.ok { color: var(--success); }
+    .nas-test-status.err { color: var(--error); }
 
     .form-header {
       display: flex;
@@ -1164,11 +1196,11 @@
         <label class="settings-field">
           <span>Service Type</span>
           <select id="nasType" required>
-            <option value="synology">Synology</option>
-            <option value="qbittorrent">qBittorrent</option>
-            <option value="transmission">Transmission</option>
-            <option value="deluge">Deluge</option>
-            <option value="jdownloader">JDownloader 2</option>
+            <option value="synology">Synology DownloadStation</option>
+            <option value="qbittorrent">qBittorrent Web UI</option>
+            <option value="transmission">Transmission Daemon</option>
+            <option value="deluge">Deluge Web Client</option>
+            <option value="jdownloader">JDownloader 2 (Local)</option>
           </select>
         </label>
 
@@ -1207,8 +1239,9 @@
         </label>
 
         <label class="settings-field" id="destinationField">
-          <span>Download Destination <span class="field-hint">optional</span></span>
-          <input type="text" id="nasDestination" placeholder="/volume1/downloads" />
+          <span>Default Download Destination Path (Optional)</span>
+          <input type="text" id="nasDestination" placeholder="e.g. /volume1/downloads or downloads" />
+          <span class="field-hint">Leave blank to use the service's default folder setting.</span>
         </label>
 
         <div class="row-actions">
@@ -1223,50 +1256,60 @@
 
     <div class="settings-section">
       <div class="settings-label">Downloadable Link Types</div>
-      <p class="settings-hint">Choose which link types are downloadable.</p>
+      <p class="settings-hint">Choose which link and file types are downloadable.</p>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="enableMagnet" checked /><span class="slider"></span></span>
-        <span>Magnet links</span>
+        <span>Magnet links <code>magnet:?xt=...</code></span>
       </label>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="enableTorrent" checked /><span class="slider"></span></span>
-        <span>Torrent files (.torrent)</span>
+        <span>Torrent files <code>.torrent</code></span>
       </label>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="enableHttp" /><span class="slider"></span></span>
         <span>Other file types <span class="field-hint">(Synology &amp; JDownloader)</span></span>
       </label>
       <div id="fileTypesSection" class="d-none mt-sm">
-        <p class="settings-hint">Customize downloadable file extensions. One per line.</p>
-        <textarea id="downloadExtensionsTextarea"></textarea>
+        <p class="settings-hint">Customize downloadable file extensions (one per line):</p>
+        <textarea id="downloadExtensionsTextarea" rows="4" placeholder="zip&#10;rar&#10;7z&#10;iso&#10;mkv&#10;mp4"></textarea>
       </div>
+      <button type="button" class="footer-btn primary mt-sm" id="saveCaptureSettingsBtn">Save Link Settings</button>
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Websites</div>
-      <label class="settings-toggle-row">
-        <span class="switch"><input type="checkbox" id="whitelistModeToggle" /><span class="slider"></span></span>
-        <span>Restrict to specific websites <span class="field-hint">(off = all websites)</span></span>
+      <div class="settings-label">Domain Routing Rules</div>
+      <p class="settings-hint">Control which websites the download helper should run on.</p>
+      
+      <label class="settings-field">
+        <span>Routing Mode</span>
+        <select id="whitelistModeSelect">
+          <option value="all">Active on All Websites</option>
+          <option value="whitelist">Only Active on Whitelisted Domains</option>
+          <option value="blacklist">Active on All Websites Except Blacklisted Domains</option>
+        </select>
       </label>
-      <div id="whitelistHelp" class="d-none">
-        <p class="settings-hint">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
-        <textarea id="whitelistTextarea" placeholder="example.com&#10;*.example.com&#10;another-site.org"></textarea>
+
+      <div class="settings-field mt-sm">
+        <span>Domain List (One per line)</span>
+        <textarea id="whitelistTextarea" rows="4" placeholder="tracker.example.com&#10;releases.ubuntu.com"></textarea>
+        <div class="field-hint">Specify domain names without protocol (e.g. <code>example.com</code>). Subdomains match automatically.</div>
       </div>
+      <button type="button" class="footer-btn primary mt-sm" id="saveDomainRulesBtn">Save Domain Rules</button>
     </div>
 
     <div class="settings-section">
       <div class="settings-label">Backup &amp; Restore</div>
-      <p class="settings-hint">Export your download services and whitelist to a file. Useful before reinstalling the extension.</p>
-      <label class="settings-toggle-row">
-        <span class="switch"><input type="checkbox" id="encryptExport" /><span class="slider"></span></span>
-        <span>Encrypt export <span class="field-hint">(password-protected backup file)</span></span>
-      </label>
-      <div class="row-actions">
-        <button type="button" class="footer-btn primary" id="exportBtn">Export</button>
-        <button type="button" class="footer-btn primary" id="importBtn">Import</button>
+      <p class="settings-hint">Backup your services and rules or restore from an existing backup file.</p>
+      <div class="row-actions mt-sm">
+        <button type="button" class="footer-btn primary btn-icon-label" id="popupExportBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Backup (.json)
+        </button>
+        <button type="button" class="footer-btn btn-icon-label" id="popupOpenTabBackupBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open in Tab to Restore
+        </button>
       </div>
-      <input type="file" id="importFile" accept=".json" class="d-none" />
-      <div id="importStatus" class="settings-status"></div>
     </div>
   </div>
 

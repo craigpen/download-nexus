@@ -1065,38 +1065,109 @@ function renderSettingsNasList() {
 
     const info = document.createElement("div");
     info.className = "nas-item-info";
-    const name = document.createElement("div");
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "nas-item-title-row";
+
+    const name = document.createElement("span");
     name.className = "nas-item-name";
     name.textContent = nas.name;
+
+    const badge = document.createElement("span");
+    badge.className = "nas-item-badge";
+    badge.textContent = nas.type;
+
+    titleRow.appendChild(name);
+    titleRow.appendChild(badge);
+
+    const scheme = nas.https ? "https" : "http";
     const host = document.createElement("div");
     host.className = "nas-item-host";
-    host.textContent = `${nas.host}:${nas.port}`;
-    info.appendChild(name);
-    info.appendChild(host);
+    host.textContent = `${scheme}://${nas.host}:${nas.port}`;
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "mini-delete-btn";
-    btn.dataset.nasId = nas.id;
-    btn.textContent = "✕";
+    const testStatus = document.createElement("div");
+    testStatus.className = "nas-test-status d-none";
+    testStatus.id = `nas-test-${nas.id}`;
+
+    info.appendChild(titleRow);
+    info.appendChild(host);
+    info.appendChild(testStatus);
+
+    const actions = document.createElement("div");
+    actions.className = "nas-item-actions";
+
+    const webUrl = getServiceWebUrl(nas);
+    if (webUrl) {
+      const webBtn = document.createElement("button");
+      webBtn.type = "button";
+      webBtn.className = "btn-action-mini";
+      webBtn.title = "Open Web UI";
+      webBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+      webBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        chrome.tabs.create({ url: webUrl });
+      });
+      actions.appendChild(webBtn);
+    }
+
+    const testBtn = document.createElement("button");
+    testBtn.type = "button";
+    testBtn.className = "btn-action-mini";
+    testBtn.title = "Test Connection";
+    testBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    testBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const statusEl = document.getElementById(`nas-test-${nas.id}`);
+      if (statusEl) {
+        statusEl.className = "nas-test-status";
+        statusEl.textContent = "Connecting…";
+        statusEl.classList.remove("d-none");
+      }
+      try {
+        const resp = await send({ type: "TEST_CONNECTION", nasId: nas.id });
+        if (statusEl) {
+          if (resp && resp.ok) {
+            statusEl.className = "nas-test-status ok";
+            statusEl.textContent = `Connected (v${resp.version || "ok"})`;
+          } else {
+            statusEl.className = "nas-test-status err";
+            statusEl.textContent = `Failed: ${resp?.error || "Unknown"}`;
+          }
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = "nas-test-status err";
+          statusEl.textContent = `Error: ${err.message}`;
+        }
+      }
+    });
+    actions.appendChild(testBtn);
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn-action-mini";
+    editBtn.title = "Edit Service";
+    editBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      editNas(nas.id);
+    });
+    actions.appendChild(editBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "btn-action-mini danger";
+    delBtn.title = "Delete Service";
+    delBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (confirm(`Delete "${nas.name}"?`)) deleteNasDevice(nas.id);
+    });
+    actions.appendChild(delBtn);
 
     item.appendChild(info);
-    item.appendChild(btn);
+    item.appendChild(actions);
     container.appendChild(item);
-  });
-
-  container.querySelectorAll(".nas-item").forEach(item => {
-    item.addEventListener("click", e => {
-      if (e.target.classList.contains("mini-delete-btn")) return;
-      editNas(item.dataset.nasId);
-    });
-  });
-  container.querySelectorAll(".mini-delete-btn").forEach(btn => {
-    btn.addEventListener("click", e => {
-      e.stopPropagation();
-      const nas = nasList.find(n => n.id === btn.dataset.nasId);
-      if (confirm(`Delete "${nas?.name}"?`)) deleteNasDevice(btn.dataset.nasId);
-    });
   });
 }
 
@@ -1431,335 +1502,121 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
   }
 });
 
-// ── settings: whitelist management ──────────────────────────────────────────
+// ── settings: whitelist & domain routing ────────────────────────────────────
 
-function renderWhitelistSettings() {
-  const toggle = document.getElementById("whitelistModeToggle");
+async function renderWhitelistSettings() {
+  const select = document.getElementById("whitelistModeSelect");
   const textarea = document.getElementById("whitelistTextarea");
-  const helpDiv = document.getElementById("whitelistHelp");
-  if (!toggle || !textarea || !helpDiv) return;
-
-  toggle.checked = whitelistMode === "restricted";
-  showEl(helpDiv, toggle.checked);
-  // Don't clobber what the user is actively typing.
-  if (document.activeElement !== textarea) {
-    textarea.value = Array.from(whitelistSet).join("\n");
-  }
-}
-
-document.getElementById("whitelistModeToggle").addEventListener("change", async e => {
-  whitelistMode = e.target.checked ? "restricted" : "all";
-  renderWhitelistSettings();
-  await send({ type: "SET_WHITELIST_MODE", mode: whitelistMode });
-});
-
-// Protocol settings change handlers
-["enableMagnet", "enableTorrent", "enableHttp"].forEach(id => {
-  document.getElementById(id).addEventListener("change", () => {
-    updateFileTypesVisibility();
-    saveProtocolSettings();
-  });
-});
-
-function isValidDomainPattern(pattern) {
-  // Allow "*" for all domains
-  if (pattern === "*") return true;
-  // Allow "*.example.com" for wildcard subdomains
-  if (pattern.startsWith("*.")) {
-    const domain = pattern.slice(2); // Remove "*."
-    return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/.test(domain);
-  }
-  // Allow exact domain names
-  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/.test(pattern);
-}
-
-document.getElementById("whitelistTextarea").addEventListener("blur", async e => {
-  const patterns = Array.from(new Set(
-    e.target.value.split("\n")
-      .map(p => p.trim().toLowerCase())
-      .filter(p => p && isValidDomainPattern(p))
-  ));
-  whitelistSet = new Set(patterns);
-  e.target.value = patterns.join("\n");
-  await send({ type: "SET_WHITELIST", domains: patterns });
-  updateWhitelistUI();
-});
-
-// ── settings: backup / restore ──────────────────────────────────────────────
-
-// Schema validation for config import (P1-5)
-const VALID_ADAPTER_TYPES = new Set(['synology', 'qbittorrent', 'transmission', 'deluge']);
-
-function validateNasConfig(nas, index) {
-  const errors = [];
-
-  // Check required fields
-  if (!nas.id || typeof nas.id !== 'string') {
-    errors.push(`Device ${index}: missing or invalid id`);
-  }
-  if (!nas.name || typeof nas.name !== 'string') {
-    errors.push(`Device ${index}: missing or invalid name`);
-  }
-  if (!nas.type || !VALID_ADAPTER_TYPES.has(nas.type)) {
-    errors.push(`Device ${index}: invalid type "${nas.type}" (must be synology, qbittorrent, transmission, or deluge)`);
-  }
-  if (!nas.host || typeof nas.host !== 'string') {
-    errors.push(`Device ${index}: missing or invalid host`);
-  }
-  if (!nas.port || (typeof nas.port !== 'number' && typeof nas.port !== 'string')) {
-    errors.push(`Device ${index}: missing or invalid port`);
-  }
-
-  // Validate port is in valid range
-  const port = typeof nas.port === 'string' ? parseInt(nas.port) : nas.port;
-  if (isNaN(port) || port < 1 || port > 65535) {
-    errors.push(`Device ${index}: port must be between 1 and 65535`);
-  }
-
-  // Check optional but important fields
-  if (nas.password !== undefined && typeof nas.password !== 'string') {
-    errors.push(`Device ${index}: password must be a string`);
-  }
-  if (nas.username !== undefined && typeof nas.username !== 'string') {
-    errors.push(`Device ${index}: username must be a string`);
-  }
-  if (nas.destination !== undefined && typeof nas.destination !== 'string') {
-    errors.push(`Device ${index}: destination must be a string`);
-  }
-  if (nas.https !== undefined && typeof nas.https !== 'boolean') {
-    errors.push(`Device ${index}: https must be a boolean`);
-  }
-  if (nas.apiToken !== undefined && typeof nas.apiToken !== 'string') {
-    errors.push(`Device ${index}: apiToken must be a string`);
-  }
-
-  return errors;
-}
-
-function validateConfigSchema(config) {
-  const errors = [];
-
-  // Check required top-level fields
-  if (config.version === undefined) {
-    errors.push("Missing version field");
-  } else if (config.version !== 1) {
-    errors.push(`Unsupported config version: ${config.version} (expected 1)`);
-  }
-
-  // Validate nasList if present
-  if (config.nasList !== undefined) {
-    if (!Array.isArray(config.nasList)) {
-      errors.push("nasList must be an array");
-    } else if (config.nasList.length > 0) {
-      config.nasList.forEach((nas, i) => {
-        if (typeof nas !== 'object' || nas === null) {
-          errors.push(`nasList[${i}]: must be an object`);
-        } else {
-          errors.push(...validateNasConfig(nas, i));
-        }
-      });
-    }
-  }
-
-  // Validate whitelist if present
-  if (config.whitelist !== undefined) {
-    if (!Array.isArray(config.whitelist)) {
-      errors.push("whitelist must be an array");
-    } else {
-      config.whitelist.forEach((domain, i) => {
-        if (typeof domain !== 'string') {
-          errors.push(`whitelist[${i}]: must be a string`);
-        } else if (!isValidDomainPattern(domain)) {
-          errors.push(`whitelist[${i}]: invalid domain pattern "${domain}"`);
-        }
-      });
-    }
-  }
-
-  // Validate whitelistMode if present
-  if (config.whitelistMode !== undefined) {
-    if (!['all', 'restricted'].includes(config.whitelistMode)) {
-      errors.push(`whitelistMode must be "all" or "restricted", got "${config.whitelistMode}"`);
-    }
-  }
-
-  return errors;
-}
-
-async function deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" }, keyMaterial, 256);
-  return crypto.subtle.importKey("raw", bits, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-}
-
-async function encryptConfig(config, password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(password, salt);
-  const enc = new TextEncoder();
-  const plaintext = enc.encode(JSON.stringify(config));
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
-  const encrypted = {
-    encrypted: true,
-    salt: Array.from(salt),
-    iv: Array.from(iv),
-    data: Array.from(new Uint8Array(ciphertext))
-  };
-  return JSON.stringify(encrypted);
-}
-
-async function decryptConfig(encryptedJson, password) {
-  const encrypted = JSON.parse(encryptedJson);
-  if (!encrypted.encrypted) throw new Error("File is not encrypted");
-  const salt = new Uint8Array(encrypted.salt);
-  const iv = new Uint8Array(encrypted.iv);
-  const key = await deriveKey(password, salt);
-  const ciphertext = new Uint8Array(encrypted.data);
-  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
-  const dec = new TextDecoder();
-  return JSON.parse(dec.decode(plaintext));
-}
-
-async function exportConfig() {
-  const shouldEncrypt = document.getElementById("encryptExport").checked;
-  let password = null;
-
-  if (shouldEncrypt) {
-    password = prompt("Enter a password to encrypt your backup:");
-    if (password === null) return;
-    if (!password) { alert("Password cannot be empty"); return; }
-  }
-
-  const nasListExport = nasList.map(nas => {
-    const copy = { ...nas };
-    return copy;
-  });
-
-  // Get all current settings from storage
-  const enabledProtocols = await new Promise(resolve => {
-    chrome.storage.local.get("enabledProtocols", result => {
-      resolve(result.enabledProtocols || {});
-    });
-  });
-
-  const downloadExtensions = await new Promise(resolve => {
-    chrome.storage.sync.get("downloadExtensions", result => {
-      resolve(result.downloadExtensions || "");
-    });
-  });
-
-  const config = {
-    version: 1,
-    nasList: nasListExport,
-    whitelist: Array.from(whitelistSet),
-    whitelistMode: whitelistMode,
-    enabledProtocols: enabledProtocols,
-    downloadExtensions: downloadExtensions
-  };
+  if (!select || !textarea) return;
 
   try {
-    let content;
-    if (shouldEncrypt) {
-      content = await encryptConfig(config, password);
-    } else {
-      content = JSON.stringify(config, null, 2);
+    const [modeResp, listResp] = await Promise.all([
+      send({ type: "GET_WHITELIST_MODE" }),
+      send({ type: "GET_WHITELIST" })
+    ]);
+    select.value = modeResp?.mode || "all";
+    if (document.activeElement !== textarea) {
+      textarea.value = (listResp?.list || []).join("\n");
     }
+  } catch (err) {
+    console.warn("Failed to load whitelist:", err);
+  }
+}
 
-    const blob = new Blob([content], { type: "application/json" });
+async function saveWhitelistSettings() {
+  const select = document.getElementById("whitelistModeSelect");
+  const textarea = document.getElementById("whitelistTextarea");
+  const mode = select?.value || "all";
+  const domains = (textarea?.value || "")
+    .split("\n")
+    .map(d => d.trim().toLowerCase())
+    .filter(Boolean);
+
+  try {
+    await Promise.all([
+      send({ type: "SET_WHITELIST_MODE", mode }),
+      send({ type: "SET_WHITELIST", list: domains })
+    ]);
+    setStatus("Domain routing rules saved!");
+    await loadWhitelist();
+    updateWhitelistUI();
+  } catch (err) {
+    setStatus("Failed to save rules: " + err.message, true);
+  }
+}
+
+document.getElementById("saveDomainRulesBtn")?.addEventListener("click", saveWhitelistSettings);
+
+// ── settings: link capture & extensions ─────────────────────────────────────
+
+async function saveCaptureSettings() {
+  const enabledProtocols = {
+    magnet: document.getElementById("enableMagnet").checked,
+    torrent: document.getElementById("enableTorrent").checked,
+    otherFileTypes: document.getElementById("enableHttp").checked
+  };
+
+  const extensions = (document.getElementById("downloadExtensionsTextarea")?.value || "")
+    .split("\n")
+    .map(s => s.trim().replace(/^\./, ""))
+    .filter(Boolean);
+
+  await new Promise(r => chrome.storage.local.set({ enabledProtocols }, r));
+  await new Promise(r => chrome.storage.sync.set({ downloadExtensions: extensions.join("\n") }, r));
+
+  // Notify active tabs
+  chrome.tabs.query({}, tabs => {
+    tabs.forEach(tab => {
+      chrome.tabs.sendMessage(tab.id, { type: "PROTOCOL_SETTINGS_CHANGED" }).catch(() => {});
+    });
+  });
+
+  setStatus("Downloadable link settings saved!");
+}
+
+document.getElementById("saveCaptureSettingsBtn")?.addEventListener("click", saveCaptureSettings);
+
+// Protocol toggles change handlers
+["enableMagnet", "enableTorrent", "enableHttp"].forEach(id => {
+  document.getElementById(id)?.addEventListener("change", () => {
+    updateFileTypesVisibility();
+  });
+});
+
+// ── settings: backup & restore ──────────────────────────────────────────────
+
+async function popupExportConfig() {
+  try {
+    const [nasResp, whiteResp, modeResp] = await Promise.all([
+      send({ type: "GET_NAS_LIST" }),
+      send({ type: "GET_WHITELIST" }),
+      send({ type: "GET_WHITELIST_MODE" })
+    ]);
+
+    const backup = {
+      version: "1.1.9",
+      exportedAt: new Date().toISOString(),
+      services: (nasResp?.list || []).map(s => ({ ...s, password: "", apiToken: "" })),
+      whitelist: whiteResp?.list || [],
+      whitelistMode: modeResp?.mode || "all"
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const suffix = shouldEncrypt ? "-encrypted" : "";
-    a.download = `download-nexus-config-${new Date().toISOString().split("T")[0]}${suffix}.json`;
-    document.body.appendChild(a);
+    a.download = `download-nexus-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setStatus("Backup downloaded!");
   } catch (err) {
-    alert(`Export failed: ${err.message}`);
+    setStatus("Export failed: " + err.message, true);
   }
 }
 
-document.getElementById("exportBtn").addEventListener("click", exportConfig);
-document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
-
-document.getElementById("importFile").addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const el = document.getElementById("importStatus");
-
-  try {
-    const text = await file.text();
-    let config;
-
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed.encrypted) {
-        const password = prompt("This backup is encrypted. Enter the password:");
-        if (password === null) throw new Error("Decryption cancelled");
-        config = await decryptConfig(text, password);
-      } else {
-        config = parsed;
-      }
-    } catch (err) {
-      if (err.message.includes("Decryption")) throw err;
-      throw new Error("Invalid backup file format");
-    }
-
-    // Validate config schema before importing (P1-5)
-    const validationErrors = validateConfigSchema(config);
-    if (validationErrors.length > 0) {
-      const errorMsg = validationErrors.join("\n");
-      throw new Error(`Config validation failed:\n${errorMsg}`);
-    }
-
-    if (config.nasList && Array.isArray(config.nasList)) {
-      for (const importedNas of config.nasList) {
-        const existing = nasList.find(n => n.name === importedNas.name);
-        if (existing) {
-          await send({ type: "UPDATE_NAS", nasId: existing.id, updates: importedNas });
-        } else {
-          await send({ type: "ADD_NAS", nas: importedNas });
-        }
-      }
-    }
-
-    if (config.whitelist && Array.isArray(config.whitelist)) {
-      for (const domain of config.whitelist) {
-        await send({ type: "ADD_WHITELIST", domain });
-      }
-    }
-
-    if (config.whitelistMode) {
-      await send({ type: "SET_WHITELIST_MODE", mode: config.whitelistMode });
-    }
-
-    // Restore protocol settings
-    if (config.enabledProtocols) {
-      await new Promise(resolve => {
-        chrome.storage.local.set({ enabledProtocols: config.enabledProtocols }, resolve);
-      });
-    }
-
-    // Restore download extensions
-    if (config.downloadExtensions) {
-      await new Promise(resolve => {
-        chrome.storage.sync.set({ downloadExtensions: config.downloadExtensions }, resolve);
-      });
-    }
-
-    el.textContent = `Config imported successfully! (${config.nasList?.length || 0} devices, ${config.whitelist?.length || 0} whitelist entries)`;
-    el.className = "settings-status ok";
-    await loadNasList();
-    await loadWhitelist();
-    setTimeout(() => { el.textContent = ""; }, 2000);
-  } catch (err) {
-    el.textContent = `Import failed: ${err.message}`;
-    el.className = "settings-status err";
-  }
-
-  e.target.value = "";
+document.getElementById("popupExportBtn")?.addEventListener("click", popupExportConfig);
+document.getElementById("popupOpenTabBackupBtn")?.addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
 });
 
 // ── init ──────────────────────────────────────────────────────────────────
