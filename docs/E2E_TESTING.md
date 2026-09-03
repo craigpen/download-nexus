@@ -23,7 +23,34 @@ npm run test:e2e:ui       # Playwright's interactive UI mode
 npm run test:e2e:report   # open the HTML report from the last run
 ```
 
-First-time setup (once per machine):
+### Testing Against Your Existing Chrome Installation
+
+If you have Chrome already running with the extension loaded, you can test against it directly:
+
+```bash
+# Terminal 1: Start Chrome with debugging port
+google-chrome --remote-debugging-port=9222 \
+  --user-data-dir="$HOME/.config/google-chrome-test" &
+
+# Terminal 2: Run tests against the running browser
+npm run test:e2e:connect          # run full suite
+npm run test:e2e:connect:headed   # same, with visible browser
+```
+
+Or on Windows:
+```bash
+# Terminal 1
+"C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+  --remote-debugging-port=9222 ^
+  --user-data-dir="%TEMP%\chrome-test"
+
+# Terminal 2
+npm run test:e2e:connect
+```
+
+This bypasses the `--load-extension` limitation (Chrome 137+ removed that flag) and tests against your actual Chrome installation with your real extension loaded.
+
+**First-time setup (once per machine):**
 
 ```bash
 npm install

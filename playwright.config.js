@@ -46,22 +46,36 @@ module.exports = defineConfig({
   },
 
   projects: [
-    {
-      // Primary project: the whole suite against bundled Chromium.
-      name: "chromium",
-      use: { channel: "chromium" }
-    },
-    {
-      // Cross-browser smoke only — stock Google Chrome.
-      name: "chrome",
-      testMatch: CROSS_BROWSER_SPEC,
-      use: { channel: "chrome" }
-    },
-    {
-      // Cross-browser smoke only — Microsoft Edge.
-      name: "edge",
-      testMatch: CROSS_BROWSER_SPEC,
-      use: { channel: "msedge" }
-    }
+    // If CHROME_DEBUG_PORT is set, connect to an existing Chrome instance
+    // (useful for testing against your already-running Chrome with the extension loaded).
+    // Usage: CHROME_DEBUG_PORT=9222 npm run test:e2e
+    ...(process.env.CHROME_DEBUG_PORT
+      ? [
+          {
+            name: "chrome-connected",
+            use: {
+              connectOverCDP: `http://127.0.0.1:${process.env.CHROME_DEBUG_PORT}`
+            }
+          }
+        ]
+      : [
+          {
+            // Primary project: the whole suite against bundled Chromium.
+            name: "chromium",
+            use: { channel: "chromium" }
+          },
+          {
+            // Cross-browser smoke only — stock Google Chrome.
+            name: "chrome",
+            testMatch: CROSS_BROWSER_SPEC,
+            use: { channel: "chrome" }
+          },
+          {
+            // Cross-browser smoke only — Microsoft Edge.
+            name: "edge",
+            testMatch: CROSS_BROWSER_SPEC,
+            use: { channel: "msedge" }
+          }
+        ])
   ]
 });
