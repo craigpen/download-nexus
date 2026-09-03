@@ -130,6 +130,13 @@
       background: var(--surface-hover);
     }
 
+    .nav-tab svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+    }
+
     .nav-tab.active {
       color: var(--primary);
       background: var(--surface);
@@ -475,16 +482,20 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <button class="nav-tab active" data-tab="services">
-        <span>💾</span> Download Services
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        <span>Download Services</span>
       </button>
       <button class="nav-tab" data-tab="capture">
-        <span>🔗</span> Link Interception
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span>Link Interception</span>
       </button>
       <button class="nav-tab" data-tab="whitelist">
-        <span>🛡️</span> Domain Whitelist
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Domain Whitelist</span>
       </button>
       <button class="nav-tab" data-tab="backup">
-        <span>📦</span> Backup & Restore
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+        <span>Backup &amp; Restore</span>
       </button>
     </aside>
 
@@ -575,7 +586,10 @@
             </div>
 
             <div class="form-footer">
-              <button type="button" class="btn btn-secondary" id="testConnBtn">⚡ Test Connection</button>
+              <button type="button" class="btn btn-secondary" id="testConnBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Test Connection
+              </button>
               <div class="btn-group">
                 <button type="button" class="btn btn-secondary" id="cancelEditBtn2">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="saveServiceBtn">Save Service</button>
@@ -674,7 +688,10 @@
               <h4 class="backup-title">Export Configuration</h4>
               <p class="hint backup-hint">Download a clean JSON backup file containing your configured download services and whitelist rules.</p>
               <div>
-                <button class="btn btn-secondary" id="exportBtn">📥 Export Settings (JSON)</button>
+                <button class="btn btn-secondary" id="exportBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Export Settings (JSON)
+                </button>
               </div>
             </div>
 
@@ -683,7 +700,10 @@
               <p class="hint backup-hint">Restore services and rules from a previously exported Download Nexus JSON backup file.</p>
               <input type="file" id="importFileInput" accept=".json" class="d-none" />
               <div>
-                <button class="btn btn-secondary" id="importBtn">📤 Choose File to Import...</button>
+                <button class="btn btn-secondary" id="importBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Choose File to Import...
+                </button>
               </div>
             </div>
           </div>
