@@ -27,11 +27,6 @@ const Protocols = {
       name: "Deluge",
       protocols: ["magnet", "torrent"],
       description: "Deluge"
-    },
-    aria2: {
-      name: "Aria2",
-      protocols: ["magnet", "torrent", "http", "https", "ftp"],
-      description: "Aria2 Download Manager"
     }
   },
 
@@ -86,7 +81,7 @@ describe('Protocols', () => {
 
   describe('PROTOCOL_SUPPORT', () => {
     test('should define all service types', () => {
-      const services = ['synology', 'qbittorrent', 'transmission', 'deluge', 'aria2'];
+      const services = ['synology', 'qbittorrent', 'transmission', 'deluge'];
 
       services.forEach(service => {
         assert(Protocols.PROTOCOL_SUPPORT[service], `Should define ${service}`);
@@ -180,14 +175,13 @@ describe('Protocols', () => {
       const allServices = [
         { id: '1', type: 'synology', name: 'Synology' },
         { id: '2', type: 'qbittorrent', name: 'qBittorrent' },
-        { id: '3', type: 'aria2', name: 'Aria2' }
+        { id: '3', type: 'transmission', name: 'Transmission' }
       ];
 
       const httpSupported = Protocols.getServicesForProtocol('http', allServices);
 
-      assert(httpSupported.length === 2, 'Should find 2 services supporting HTTP');
+      assert(httpSupported.length === 1, 'Should find 1 service supporting HTTP');
       assert(httpSupported.some(s => s.type === 'synology'));
-      assert(httpSupported.some(s => s.type === 'aria2'));
       assert(!httpSupported.some(s => s.type === 'qbittorrent'));
     });
 
@@ -196,13 +190,12 @@ describe('Protocols', () => {
         { id: '1', type: 'synology' },
         { id: '2', type: 'qbittorrent' },
         { id: '3', type: 'transmission' },
-        { id: '4', type: 'deluge' },
-        { id: '5', type: 'aria2' }
+        { id: '4', type: 'deluge' }
       ];
 
       const magnetServices = Protocols.getServicesForProtocol('magnet', allServices);
 
-      assert(magnetServices.length === 5, 'All services should support magnet');
+      assert(magnetServices.length === 4, 'All services should support magnet');
     });
 
     test('should return empty array when no services support protocol', () => {
@@ -367,16 +360,16 @@ describe('Protocols', () => {
       const services = [
         { id: '1', type: 'synology', name: 'Synology' },
         { id: '2', type: 'qbittorrent', name: 'qBittorrent' },
-        { id: '3', type: 'aria2', name: 'Aria2' }
+        { id: '3', type: 'transmission', name: 'Transmission' }
       ];
 
       // For magnet links, all should be compatible
       const magnetServices = Protocols.getServicesForProtocol('magnet', services);
       assert(magnetServices.length === 3, 'All should support magnet');
 
-      // For HTTP downloads, only Synology and Aria2
+      // For HTTP downloads, only Synology
       const httpServices = Protocols.getServicesForProtocol('http', services);
-      assert(httpServices.length === 2, 'Only Synology and Aria2 support HTTP');
+      assert(httpServices.length === 1, 'Only Synology supports HTTP');
       assert(!httpServices.some(s => s.type === 'qbittorrent'));
     });
 
@@ -391,7 +384,7 @@ describe('Protocols', () => {
 
   describe('Protocol matrix completeness', () => {
     test('all services should support at least magnet and torrent', () => {
-      const services = ['synology', 'qbittorrent', 'transmission', 'deluge', 'aria2'];
+      const services = ['synology', 'qbittorrent', 'transmission', 'deluge'];
 
       services.forEach(service => {
         assert(Protocols.supportsProtocol(service, 'magnet'), `${service} should support magnet`);
@@ -399,12 +392,11 @@ describe('Protocols', () => {
       });
     });
 
-    test('aria2 and synology should support all protocols', () => {
+    test('synology should support HTTP-based downloads', () => {
       const protocols = ['magnet', 'torrent', 'http', 'https', 'ftp'];
 
       protocols.forEach(protocol => {
         assert(Protocols.supportsProtocol('synology', protocol), `synology should support ${protocol}`);
-        assert(Protocols.supportsProtocol('aria2', protocol), `aria2 should support ${protocol}`);
       });
     });
   });

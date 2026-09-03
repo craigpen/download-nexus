@@ -62,7 +62,7 @@ fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest,
 console.log(`  ✓ manifest.json`);
 
 // Copy JavaScript files
-const jsFiles = ['background.js', 'content.js', 'popup.js'];
+const jsFiles = ['background.js', 'content.js', 'popup.js', 'options.js'];
 jsFiles.forEach(file => {
   const src = path.join(__dirname, '..', 'src', file);
   if (fs.existsSync(src)) {
@@ -82,7 +82,7 @@ utilFiles.forEach(file => {
 });
 
 // Copy HTML files
-const htmlFiles = ['popup.html'];
+const htmlFiles = ['popup.html', 'options.html'];
 htmlFiles.forEach(file => {
   const src = path.join(__dirname, '..', 'src', file);
   if (fs.existsSync(src)) {
@@ -91,6 +91,9 @@ htmlFiles.forEach(file => {
   }
 });
 
+// Generate state icons if missing
+const { generateStateIcons } = require('./generate-state-icons');
+
 // Copy icons
 const iconsDir = path.join(outputDir, 'icons');
 if (!fs.existsSync(iconsDir)) {
@@ -98,9 +101,11 @@ if (!fs.existsSync(iconsDir)) {
 }
 const srcIconsDir = path.join(__dirname, '..', 'icons');
 fs.readdirSync(srcIconsDir).forEach(file => {
-  fs.copyFileSync(path.join(srcIconsDir, file), path.join(iconsDir, file));
+  if (file.endsWith('.png')) {
+    fs.copyFileSync(path.join(srcIconsDir, file), path.join(iconsDir, file));
+  }
 });
-console.log(`  ✓ icons/`);
+console.log(`  ✓ icons/ (${fs.readdirSync(iconsDir).length} icons)`);
 
 // Copy LICENSE for Firefox
 if (target === 'firefox') {

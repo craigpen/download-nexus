@@ -362,3 +362,160 @@ describe('Error Handling', () => {
     assert(!result.error.includes('super-secret'), 'Should not expose secrets');
   });
 });
+
+describe('Dynamic Toolbar Icon State Management', () => {
+  // Test speed formatter
+  function formatSpeed(bytesPerSec) {
+    if (!bytesPerSec || bytesPerSec <= 0) return "0 B/s";
+    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+    const i = Math.min(Math.floor(Math.log(bytesPerSec) / Math.log(1024)), units.length - 1);
+    const val = (bytesPerSec / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0);
+    return `${val} ${units[i]}`;
+  }
+
+  const ICON_STATES = {
+    idle: { path: { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" } },
+    active: { path: { "16": "icons/icon16-active.png", "48": "icons/icon48-active.png", "128": "icons/icon128-active.png" } },
+    paused: { path: { "16": "icons/icon16-paused.png", "48": "icons/icon48-paused.png", "128": "icons/icon128-paused.png" } },
+    error: { path: { "16": "icons/icon16-error.png", "48": "icons/icon48-error.png", "128": "icons/icon128-error.png" } },
+    offline: { path: { "16": "icons/icon16-offline.png", "48": "icons/icon48-offline.png", "128": "icons/icon128-offline.png" } }
+  };
+
+  test('should format speeds cleanly', () => {
+    assert.strictEqual(formatSpeed(0), '0 B/s');
+    assert.strictEqual(formatSpeed(500), '500 B/s');
+    assert.strictEqual(formatSpeed(1024), '1.0 KB/s');
+    assert.strictEqual(formatSpeed(1048576 * 4.2), '4.2 MB/s');
+    assert.strictEqual(formatSpeed(1073741824 * 1.5), '1.5 GB/s');
+  });
+
+  test('should provide valid icon paths for all states', () => {
+    const states = ['idle', 'active', 'paused', 'error', 'offline'];
+    for (const s of states) {
+      assert(ICON_STATES[s], `State ${s} should exist`);
+      assert(ICON_STATES[s].path['16'], `State ${s} should have 16px icon`);
+      assert(ICON_STATES[s].path['48'], `State ${s} should have 48px icon`);
+      assert(ICON_STATES[s].path['128'], `State ${s} should have 128px icon`);
+    }
+  });
+});
+
+describe('Credential Storage Hardening & Separation', () => {
+  function sanitizeSyncPayload(list) {
+    const localCreds = {};
+    const sanitizedList = list.map(item => {
+      if (item.password !== undefined || item.apiToken !== undefined) {
+        localCreds[item.id] = {
+          password: item.password || '',
+          apiToken: item.apiToken || ''
+        };
+      }
+      const sanitized = { ...item };
+      delete sanitized.password;
+      delete sanitized.apiToken;
+      return sanitized;
+    });
+    return { sanitizedList, localCreds };
+  }
+
+  function mergeCredentials(syncList, localCreds) {
+    return syncList.map(item => {
+      const creds = localCreds[item.id] || {};
+      return {
+        ...item,
+        password: creds.password || item.password || '',
+        apiToken: creds.apiToken || item.apiToken || ''
+      };
+    });
+  }
+
+  test('should strip passwords from sync payload and isolate to local', () => {
+    const rawServices = [
+      { id: 'nas-1', name: 'Synology 1', host: '192.168.1.50', port: 5000, password: 'mySecretPassword123' },
+      { id: 'nas-2', name: 'qBittorrent', host: '192.168.1.60', port: 8080, apiToken: 'tokenABC' }
+    ];
+
+    const { sanitizedList, localCreds } = sanitizeSyncPayload(rawServices);
+
+    assert.strictEqual(sanitizedList[0].password, undefined);
+    assert.strictEqual(sanitizedList[1].apiToken, undefined);
+    assert.strictEqual(localCreds['nas-1'].password, 'mySecretPassword123');
+    assert.strictEqual(localCreds['nas-2'].apiToken, 'tokenABC');
+  });
+
+  test('should transparently merge local credentials with sync metadata on read', () => {
+    const syncList = [
+      { id: 'nas-1', name: 'Synology 1', host: '192.168.1.50', port: 5000 },
+      { id: 'nas-2', name: 'qBittorrent', host: '192.168.1.60', port: 8080 }
+    ];
+    const localCreds = {
+      'nas-1': { password: 'mySecretPassword123', apiToken: '' },
+      'nas-2': { password: '', apiToken: 'tokenABC' }
+    };
+
+    const merged = mergeCredentials(syncList, localCreds);
+
+    assert.strictEqual(merged.length, 2);
+    assert.strictEqual(merged[0].password, 'mySecretPassword123');
+    assert.strictEqual(merged[1].apiToken, 'tokenABC');
+  });
+});
+
+describe('Auto-Reconnect & Network Retry Logic', () => {
+  async function withRetry(fn, { maxRetries = 2, delayMs = 10 } = {}) {
+    let lastErr;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn(attempt);
+      } catch (err) {
+        lastErr = err;
+        const isTransient = /Failed to fetch|NetworkError|ECONNRESET|ECONNREFUSED|timeout/i.test(err.message);
+        if (attempt < maxRetries && isTransient) {
+          await new Promise(r => setTimeout(r, delayMs));
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  test('should succeed immediately on first attempt without retries', async () => {
+    let attempts = 0;
+    const result = await withRetry(async (attempt) => {
+      attempts = attempt;
+      return 'OK';
+    });
+
+    assert.strictEqual(result, 'OK');
+    assert.strictEqual(attempts, 1);
+  });
+
+  test('should retry on transient network error and succeed on second attempt', async () => {
+    let calls = 0;
+    const result = await withRetry(async () => {
+      calls++;
+      if (calls === 1) {
+        throw new Error('TypeError: Failed to fetch');
+      }
+      return 'RECOVERED';
+    }, { maxRetries: 3, delayMs: 1 });
+
+    assert.strictEqual(result, 'RECOVERED');
+    assert.strictEqual(calls, 2);
+  });
+
+  test('should immediately reject non-transient fatal errors without retrying', async () => {
+    let calls = 0;
+    await assert.rejects(async () => {
+      await withRetry(async () => {
+        calls++;
+        throw new Error('Invalid credentials');
+      }, { maxRetries: 3, delayMs: 1 });
+    }, /Invalid credentials/);
+
+    assert.strictEqual(calls, 1);
+  });
+});
+
+

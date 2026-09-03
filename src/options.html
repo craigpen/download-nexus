@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Download Nexus Settings</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #16a34a;
+      --warning: #d97706;
+      --error: #ef4444;
+      --card-bg: #1e293b;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-hover: #f1f5f9;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --card-bg: #ffffff;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation */
+    .top-nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .brand img {
+      border-radius: 6px;
+    }
+
+    .version-tag {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--border);
+      color: var(--text-muted);
+      padding: 2px 8px;
+      border-radius: 9999px;
+    }
+
+    /* Layout */
+    .app-container {
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 28px 20px;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 28px;
+      flex: 1;
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: all .15s ease;
+    }
+
+    .nav-tab:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .nav-tab.active {
+      color: var(--primary);
+      background: var(--surface);
+      border-color: var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    /* Content Area */
+    .content-pane {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .content-pane.active {
+      display: flex;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border-color: var(--error);
+      color: var(--error);
+    }
+    .btn-danger:hover {
+      background: var(--error);
+      color: #ffffff;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    /* Form Fields */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 500px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    select,
+    textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      width: 100%;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .checkbox-group input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Device List Cards */
+    .device-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .device-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: border-color .15s;
+    }
+
+    .device-card:hover {
+      border-color: var(--primary);
+    }
+
+    .device-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .device-title {
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .device-type-badge {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--primary);
+      border: 1px solid var(--border);
+    }
+
+    .device-url {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .device-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 1000;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.success { border-color: var(--success); color: var(--success); }
+    #toast.error { border-color: var(--error); color: var(--error); }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <a href="#" class="brand">
+      <img src="icons/icon32.png" width="24" height="24" alt="Download Nexus" />
+      <span>Download Nexus</span>
+      <span class="version-tag" id="extVersion">v1.1.9</span>
+    </a>
+    <button class="btn btn-secondary btn-sm" id="closeTabBtn">Done</button>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <button class="nav-tab active" data-tab="services">
+        <span>💾</span> Download Services
+      </button>
+      <button class="nav-tab" data-tab="capture">
+        <span>🔗</span> Link Interception
+      </button>
+      <button class="nav-tab" data-tab="whitelist">
+        <span>🛡️</span> Domain Whitelist
+      </button>
+      <button class="nav-tab" data-tab="backup">
+        <span>📦</span> Backup & Restore
+      </button>
+    </aside>
+
+    <!-- Content Sections -->
+    <main>
+      <!-- Tab 1: Download Services -->
+      <section class="content-pane active" id="pane-services">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Configured Services</h2>
+              <p class="card-desc">Add and manage your Synology, qBittorrent, Transmission, or Deluge services.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="addServiceBtn">+ Add Service</button>
+          </div>
+
+          <div class="device-grid" id="serviceListContainer">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Service Editor Form Modal / Card -->
+        <div class="card" id="serviceEditorCard" style="display:none">
+          <div class="card-header">
+            <h3 class="card-title" id="editorTitle">Edit Service</h3>
+            <button class="btn btn-secondary btn-sm" id="cancelEditBtn">Cancel</button>
+          </div>
+
+          <form id="serviceForm">
+            <input type="hidden" id="serviceId" />
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="serviceType">Service Type</label>
+                <select id="serviceType" required>
+                  <option value="synology">Synology DownloadStation</option>
+                  <option value="qbittorrent">qBittorrent Web UI</option>
+                  <option value="transmission">Transmission Daemon</option>
+                  <option value="deluge">Deluge Web</option>
+                  <option value="jdownloader">JDownloader 2 (Local / Desktop)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="serviceName">Display Name</label>
+                <input type="text" id="serviceName" placeholder="My NAS" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="serviceHost">Host / IP</label>
+                <input type="text" id="serviceHost" placeholder="192.168.1.100 or quickconnect.to" required />
+              </div>
+              <div class="form-group">
+                <label for="servicePort">Port</label>
+                <input type="number" id="servicePort" placeholder="5000" required />
+                <span class="hint" id="portHint">Default: 5000 (HTTP) or 5001 (HTTPS)</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-group">
+                <input type="checkbox" id="serviceHttps" />
+                <span>Use HTTPS (SSL Encryption)</span>
+              </label>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="serviceUsername">Username</label>
+                <input type="text" id="serviceUsername" placeholder="admin" />
+              </div>
+              <div class="form-group">
+                <label for="servicePassword">Password / Token</label>
+                <input type="password" id="servicePassword" placeholder="••••••••" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="serviceDefaultPath">Default Download Destination Path (Optional)</label>
+              <input type="text" id="serviceDefaultPath" placeholder="e.g. /volume1/downloads or downloads" />
+              <span class="hint">Leave blank to use the service's default folder setting.</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--border)">
+              <button type="button" class="btn btn-secondary" id="testConnBtn">⚡ Test Connection</button>
+              <div style="display:flex; gap:10px;">
+                <button type="button" class="btn btn-secondary" id="cancelEditBtn2">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveServiceBtn">Save Service</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Tab 2: Downloadable Link Types -->
+      <section class="content-pane" id="pane-capture">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Downloadable Link Types</h2>
+              <p class="card-desc">Choose which link and file types are downloadable.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-group">
+              <input type="checkbox" id="captureMagnet" checked />
+              <span>Magnet links (<code>magnet:?xt=...</code>)</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-group">
+              <input type="checkbox" id="captureTorrent" checked />
+              <span>Torrent files (<code>.torrent</code>)</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-group">
+              <input type="checkbox" id="captureOther" />
+              <span>Other file types <span class="hint">(Synology only)</span></span>
+            </label>
+          </div>
+
+          <div class="form-group" id="fileTypesSection" style="display:none; margin-top:16px;">
+            <label for="customExtensions">Downloadable File Extensions (One per line)</label>
+            <textarea id="customExtensions" rows="6" placeholder="zip&#10;rar&#10;7z&#10;iso&#10;mkv&#10;mp4"></textarea>
+            <span class="hint">Links matching these file extensions will offer single-click send to your Synology DownloadStation.</span>
+          </div>
+
+          <div style="margin-top:16px;">
+            <button class="btn btn-primary" id="saveCaptureSettingsBtn">Save Link Settings</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 3: Domain Whitelist -->
+      <section class="content-pane" id="pane-whitelist">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Domain Routing Rules</h2>
+              <p class="card-desc">Control which websites the download helper should run on.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="whitelistMode">Routing Mode</label>
+            <select id="whitelistMode">
+              <option value="all">Active on All Websites</option>
+              <option value="whitelist">Only Active on Whitelisted Domains</option>
+              <option value="blacklist">Active on All Websites Except Blacklisted Domains</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-top:16px;">
+            <label for="whitelistDomains">Domain List (One per line)</label>
+            <textarea id="whitelistDomains" rows="6" placeholder="tracker.example.com&#10;releases.ubuntu.com"></textarea>
+            <span class="hint">Specify domain names without protocol (e.g. <code>example.com</code>). Subdomains match automatically.</span>
+          </div>
+
+          <div style="margin-top:16px;">
+            <button class="btn btn-primary" id="saveWhitelistBtn">Save Domain Rules</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab 4: Backup & Restore -->
+      <section class="content-pane" id="pane-backup">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Export / Import Settings</h2>
+              <p class="card-desc">Backup your services and preferences or restore them onto another browser instance.</p>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <h4 style="font-size:14px; font-weight:600; margin-bottom:6px;">Export Configuration</h4>
+              <p class="hint" style="margin-bottom:10px;">Download a clean JSON backup file containing your configured download services and whitelist rules.</p>
+              <button class="btn btn-secondary" id="exportBtn">📥 Export Settings (JSON)</button>
+            </div>
+
+            <div style="padding-top:16px; border-top:1px solid var(--border);">
+              <h4 style="font-size:14px; font-weight:600; margin-bottom:6px;">Import Configuration</h4>
+              <p class="hint" style="margin-bottom:10px;">Restore services and rules from a previously exported Download Nexus JSON backup file.</p>
+              <input type="file" id="importFileInput" accept=".json" style="display:none" />
+              <button class="btn btn-secondary" id="importBtn">📤 Choose File to Import...</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Element -->
+  <div id="toast">Settings Saved</div>
+
+  <script src="options.js"></script>
+</body>
+</html>

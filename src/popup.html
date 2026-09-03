@@ -512,13 +512,6 @@
       opacity: 0.7;
     }
 
-    .aria2-disclaimer {
-      font-size: 10px;
-      text-align: center;
-      padding: 6px 12px;
-      line-height: 1.3;
-    }
-
     @media (prefers-color-scheme: light) {
       .support-footer {
         background: #f9f9f9;
@@ -527,9 +520,6 @@
       }
       .support-footer-links a {
         color: #1a6fb5;
-      }
-      .aria2-disclaimer {
-        color: #666;
       }
     }
 
@@ -541,9 +531,6 @@
       }
       .support-footer-links a {
         color: #7eb8f7;
-      }
-      .aria2-disclaimer {
-        color: #8898b8;
       }
     }
 
@@ -728,7 +715,7 @@
 <body>
   <div class="header">
     <div class="header-left">
-      <img src="icons/icon48.png" width="16" height="16" style="border-radius: 3px;" />
+      <img id="headerIcon" src="icons/icon48.png" width="16" height="16" style="border-radius: 3px;" />
       <span id="headerTitle">Download Nexus</span>
     </div>
     <div class="header-right">
@@ -820,9 +807,6 @@
       </div>
       <button class="footer-btn primary" id="openDSBtn">Open Web ↗</button>
     </div>
-    <div class="aria2-disclaimer" id="aria2Disclaimer" style="display:none">
-      Aria2 tasks can only be hidden from view, not removed
-    </div>
   </div>
 
   <div id="settingsView">
@@ -854,7 +838,7 @@
             <option value="qbittorrent">qBittorrent</option>
             <option value="transmission">Transmission</option>
             <option value="deluge">Deluge</option>
-            <option value="aria2">Aria2</option>
+            <option value="jdownloader">JDownloader 2</option>
           </select>
         </label>
 
@@ -892,12 +876,6 @@
           <div style="font-size:11px;color:#888;margin-top:4px">Leave empty to use username/password auth. Generate in qBittorrent settings → WebUI → API token.</div>
         </label>
 
-        <label class="settings-field" id="rpcSecretField" style="display:none">
-          <span>RPC Secret <span class="hint">required for aria2</span></span>
-          <input type="password" id="nasRpcSecret" placeholder="RPC key" />
-          <div style="font-size:11px;color:#888;margin-top:4px">Enter the RPC secret configured in aria2.conf (rpc-secret setting).</div>
-        </label>
-
         <label class="settings-field" id="destinationField">
           <span>Download Destination <span class="hint">optional</span></span>
           <input type="text" id="nasDestination" placeholder="/volume1/downloads" />
@@ -926,7 +904,7 @@
       </label>
       <label class="settings-toggle-row">
         <span class="switch"><input type="checkbox" id="enableHttp" /><span class="slider"></span></span>
-        <span>Other file types <span class="hint">(Synology or Aria2 only)</span></span>
+        <span>Other file types <span class="hint">(Synology only)</span></span>
       </label>
       <div id="fileTypesSection" style="display:none;margin-top:8px;padding-left:0">
         <p class="settings-hint" style="margin:0 0 8px 0">Customize downloadable file extensions. One per line.</p>
@@ -944,12 +922,6 @@
         <p class="settings-hint" style="margin-top: 6px; margin-bottom: 8px;">One per line. Use <code>*.example.com</code> for subdomains, <code>*</code> for all sites.</p>
         <textarea id="whitelistTextarea" placeholder="example.com&#10;*.example.com&#10;another-site.org"></textarea>
       </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-label">Archived Tasks</div>
-      <p class="settings-hint">Aria2 error tasks that have been hidden from the list can be restored here.</p>
-      <button type="button" class="footer-btn primary" id="clearArchivedBtn" style="width:100%;padding:7px">Restore hidden Aria2 tasks</button>
     </div>
 
     <div class="settings-section">

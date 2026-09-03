@@ -25,10 +25,10 @@
       protocols: ["magnet", "torrent"],
       description: "Deluge"
     },
-    aria2: {
-      name: "Aria2",
+    jdownloader: {
+      name: "JDownloader 2",
       protocols: ["magnet", "torrent", "http", "https", "ftp"],
-      description: "Aria2 Download Manager"
+      description: "JDownloader 2 (Local / Desktop)"
     }
   };
 
