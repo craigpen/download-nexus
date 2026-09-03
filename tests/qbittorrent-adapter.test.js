@@ -578,16 +578,16 @@ describe('QBittorrentAdapter (real implementation)', () => {
         .resolves.toBeUndefined();
     });
 
-    test('rejects qBittorrent\'s real "Ok." success reply', async () => {
-      // KNOWN BEHAVIOUR: the success check is `text.toLowerCase() !== "ok"`,
-      // which does not tolerate the trailing period that qBittorrent's
-      // /torrents/add endpoint actually returns. A successful add therefore
-      // surfaces as an error unless the server replies with a bare "Ok" or a
-      // JSON body. This test pins the shipped behaviour; fixing the adapter
-      // (e.g. trimming trailing punctuation) should flip this expectation.
+    test('accepts qBittorrent\'s real "Ok." success reply', async () => {
       route({ '/torrents/add': res('Ok.') });
       await expect(makeTokenAdapter().addDownload('magnet:?xt=urn:btih:abc'))
-        .rejects.toThrow(/qBit add torrent failed: Ok\./);
+        .resolves.toBeUndefined();
+    });
+
+    test('accepts an "Ok." reply padded with whitespace', async () => {
+      route({ '/torrents/add': res('  Ok.\n') });
+      await expect(makeTokenAdapter().addDownload('magnet:?xt=urn:btih:abc'))
+        .resolves.toBeUndefined();
     });
 
     test('accepts a bare "Ok" reply with no trailing punctuation', async () => {
@@ -608,14 +608,16 @@ describe('QBittorrentAdapter (real implementation)', () => {
         .rejects.toThrow(/qBit add torrent failed/);
     });
 
-    test('a 409 duplicate is surfaced as an API error, not silently ignored', async () => {
-      // KNOWN BEHAVIOUR: addDownload() has an `if (resp.status === 409) return`
-      // branch, but `_fetch()` rejects every non-OK status first, so the
-      // duplicate-torrent case still throws. This test pins the shipped
-      // behaviour so the dead branch is not mistaken for working.
+    test('a 409 duplicate is treated as a successful add', async () => {
       route({ '/torrents/add': httpErr(409) });
       await expect(makeTokenAdapter().addDownload('magnet:?xt=urn:btih:abc'))
-        .rejects.toThrow(/qBit API error: 409/);
+        .resolves.toBeUndefined();
+    });
+
+    test('a non-409 HTTP error during add is still surfaced', async () => {
+      route({ '/torrents/add': httpErr(500) });
+      await expect(makeTokenAdapter().addDownload('magnet:?xt=urn:btih:abc'))
+        .rejects.toThrow(/qBit API error: 500/);
     });
 
     test('a 403 during add is reported as an auth failure', async () => {

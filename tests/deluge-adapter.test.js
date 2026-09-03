@@ -130,7 +130,7 @@ const makeAdapter = (cfg = {}) => getAdapter('dl-1', { ...DELUGE_CONFIG, ...cfg 
 const torrentStatus = (over = {}) => ({
   name: 'ubuntu.iso',
   state: 'Downloading',
-  progress: 0.5,
+  progress: 50,
   total_done: 500,
   total_uploaded: 20,
   total_size: 1000,
@@ -381,13 +381,16 @@ describe('DelugeAdapter (real implementation)', () => {
         .rejects.toThrow(/complete the password change prompt/);
     });
 
-    test('misattributes a network failure on the probe to the password prompt', async () => {
-      // KNOWN BEHAVIOUR: the verification probe is wrapped in a bare
-      // try/catch, so ANY failure (including a dropped connection) is
-      // reported as a pending password-change prompt.
+    test('reports a network failure on the probe as a connection error', async () => {
       route({ login: rpcOk(true), status: new Error('socket hang up') });
       await expect(makeAdapter().listTasks())
-        .rejects.toThrow(/Deluge password change required/);
+        .rejects.toThrow(/Deluge RPC failed: socket hang up/);
+    });
+
+    test('does not blame the password prompt for a dropped connection', async () => {
+      route({ login: rpcOk(true), status: new Error('socket hang up') });
+      await expect(makeAdapter().listTasks())
+        .rejects.not.toThrow(/password change required/);
     });
 
     test('authenticates only once per adapter instance', async () => {
@@ -548,17 +551,14 @@ describe('DelugeAdapter (real implementation)', () => {
       expect(payloads()[2].params[0]).toEqual({});
     });
 
-    test('multiplies the progress field by 100', async () => {
-      // KNOWN QUIRK: Deluge already reports `progress` as 0-100, so this
-      // multiplication over-reports by 100x against a real daemon. Pinned as
-      // shipped behaviour; the fixture uses a 0-1 fraction to match.
-      route({ status: [rpcOk({}), rpcOk({ h: torrentStatus({ progress: 0.755 }) })] });
-      expect((await makeAdapter().listTasks())[0].progress).toBeCloseTo(75.5, 5);
+    test('passes Deluge\'s 0-100 progress through unscaled', async () => {
+      route({ status: [rpcOk({}), rpcOk({ h: torrentStatus({ progress: 65.5 }) })] });
+      expect((await makeAdapter().listTasks())[0].progress).toBeCloseTo(65.5, 5);
     });
 
-    test('a real Deluge 0-100 progress value is scaled past 100', async () => {
-      route({ status: [rpcOk({}), rpcOk({ h: torrentStatus({ progress: 65.5 }) })] });
-      expect((await makeAdapter().listTasks())[0].progress).toBeCloseTo(6550, 5);
+    test('keeps a completed torrent at 100 rather than scaling past it', async () => {
+      route({ status: [rpcOk({}), rpcOk({ h: torrentStatus({ progress: 100 }) })] });
+      expect((await makeAdapter().listTasks())[0].progress).toBe(100);
     });
 
     test('defaults a missing progress to 0', async () => {

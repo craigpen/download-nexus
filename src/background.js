@@ -299,19 +299,27 @@ class QBittorrentAdapter extends NasAdapter {
     if (destination) {
       formData.append("savepath", destination);
     }
-    const resp = await this._fetch("/torrents/add", {
-      method: "POST",
-      body: formData
-    });
-
-    // 409 means torrent already exists (already added), which is fine
-    if (resp.status === 409) {
-      return;
+    let resp;
+    try {
+      resp = await this._fetch("/torrents/add", {
+        method: "POST",
+        body: formData
+      });
+    } catch (err) {
+      // 409 means the torrent already exists (already added), which is fine.
+      // _fetch() rejects every non-OK status, so the duplicate case has to be
+      // recognised here rather than by inspecting resp.status.
+      if (err.status === 409) {
+        return;
+      }
+      throw err;
     }
 
     const text = await resp.text();
-    // qBittorrent returns either "Ok" or a JSON with torrent info
-    if (text.toLowerCase() !== "ok" && !text.startsWith("{")) {
+    // qBittorrent replies "Ok." (real daemons include the trailing period),
+    // "Ok", or a JSON body with torrent info.
+    const normalized = text.trim().replace(/\.$/, "").toLowerCase();
+    if (normalized !== "ok" && !text.startsWith("{")) {
       throw new Error(`qBit add torrent failed: ${text}`);
     }
   }
@@ -409,8 +417,12 @@ class QBittorrentAdapter extends NasAdapter {
     }
 
     const resp = await fetch(url, { ...options, headers });
-    if (resp.status === 403 || resp.status === 401) throw new Error("qBit auth failed");
-    if (!resp.ok) throw new Error(`qBit API error: ${resp.status}`);
+    if (resp.status === 403 || resp.status === 401) {
+      throw Object.assign(new Error("qBit auth failed"), { status: resp.status });
+    }
+    if (!resp.ok) {
+      throw Object.assign(new Error(`qBit API error: ${resp.status}`), { status: resp.status });
+    }
     return resp;
   }
 
@@ -653,6 +665,13 @@ class DelugeAdapter extends NasAdapter {
         await this._rpcRaw("core.get_torrents_status", [{}, []]);
         this._isAuthenticated = true;
       } catch (err) {
+        // Only an RPC-level rejection means the daemon accepted the login but
+        // refused the call (the password change prompt). A transport failure is
+        // a connectivity problem and must not be blamed on the password.
+        if (err.rpcStage === "transport") {
+          dbg("ERROR", "DelugeAdapter verification probe connection failed", err.message);
+          throw err;
+        }
         dbg("ERROR", "DelugeAdapter password change prompt detected", err.message);
         throw new Error("Deluge password change required: Access the Deluge web UI and complete the password change prompt before using the extension");
       }
@@ -695,7 +714,8 @@ class DelugeAdapter extends NasAdapter {
       title: t.name,
       status: this._displayStatus(t.state),
       rawStatus: t.state,
-      progress: (t.progress || 0) * 100,
+      // Deluge already reports progress as 0-100, so no scaling is needed
+      progress: (t.progress || 0),
       downloaded: t.total_done || 0,
       uploaded: t.total_uploaded || 0,
       size: t.total_size || 0,
@@ -787,7 +807,9 @@ class DelugeAdapter extends NasAdapter {
         credentials: "include"
       });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (!resp.ok) {
+        throw Object.assign(new Error(`HTTP ${resp.status}`), { rpcStage: "http", status: resp.status });
+      }
 
       // Extract and store session cookie from response
       const setCookie = resp.headers.get("set-cookie");
@@ -804,11 +826,16 @@ class DelugeAdapter extends NasAdapter {
 
       // Deluge returns { result: ... } or { error: ... }
       if (data.error) {
-        throw new Error(data.error.message || "RPC error");
+        throw Object.assign(new Error(data.error.message || "RPC error"), { rpcStage: "rpc" });
       }
       return data;
     } catch (err) {
-      throw new Error(`Deluge RPC failed: ${err.message}`);
+      // Preserve how far the call got: "rpc"/"http" means the daemon answered,
+      // while "transport" means the connection itself failed.
+      throw Object.assign(new Error(`Deluge RPC failed: ${err.message}`), {
+        rpcStage: err.rpcStage || "transport",
+        status: err.status
+      });
     }
   }
 }
