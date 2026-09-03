@@ -23,6 +23,13 @@ It's open source, stores everything locally (nothing leaves your browser), and s
 - **Light/dark theme** — auto-matches your browser/OS preference
 - **Export/import config** — backup and restore your settings with optional password encryption for added security.
 
+## Support Development
+
+If Download Nexus saves you time, consider supporting ongoing development:
+
+- **[Ko-fi](https://ko-fi.com/craigpen)** — one-time or monthly
+- **[Buy Me a Coffee](https://www.buymeacoffee.com/craigpen)** — quick tip
+
 ## Security & Privacy
 
 **Privacy**: All your credentials and data stay on your computer. The extension doesn't send anything anywhere — all communication goes directly between your browser and your download service. No tracking, no analytics, no third-party services. Cookies may be stored and used to maintain sessions with your download services (Deluge, etc.), not for tracking. Use HTTPS when possible to secure communication with your download services.
