@@ -48,7 +48,7 @@ const SERVICE_DEFAULTS = {
 // Actions: pause (stop active transfer), resume (start/retry paused/stalled task), delete (remove task, preserves files)
 const ADAPTER_FEATURES = {
   synology: {
-    tabs: ["downloading", "seeding", "paused", "finished", "error"],
+    tabs: ["downloading", "seeding", "error", "paused", "finished"],
     pausedLabel: "Paused",
     // Action support per state (true = action valid for that state)
     actions: {
@@ -58,7 +58,7 @@ const ADAPTER_FEATURES = {
     }
   },
   qbittorrent: {
-    tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
+    tabs: ["downloading", "seeding", "stalled", "error", "paused", "finished"],
     pausedLabel: "Stopped",
     actions: {
       pause: ["downloading", "seeding", "uploading", "allocating", "forcedDL", "forcedUP", "metaDL", "forcedMetaDL"],
@@ -67,7 +67,7 @@ const ADAPTER_FEATURES = {
     }
   },
   transmission: {
-    tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
+    tabs: ["downloading", "seeding", "stalled", "error", "paused", "finished"],
     pausedLabel: "Paused",
     actions: {
       pause: ["downloading", "seeding", "uploading", "downloading-wait", "seeding-wait"],
@@ -76,7 +76,7 @@ const ADAPTER_FEATURES = {
     }
   },
   deluge: {
-    tabs: ["downloading", "seeding", "paused", "stalled", "finished", "error"],
+    tabs: ["downloading", "seeding", "stalled", "error", "paused", "finished"],
     pausedLabel: "Paused",
     actions: {
       pause: ["downloading", "seeding"],
@@ -85,7 +85,7 @@ const ADAPTER_FEATURES = {
     }
   },
   jdownloader: {
-    tabs: ["downloading", "paused", "stalled", "finished", "error"],
+    tabs: ["downloading", "stalled", "error", "paused", "finished"],
     pausedLabel: "Paused",
     actions: {
       pause: ["downloading"],
