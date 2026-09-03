@@ -67,6 +67,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/chrome": "^0.1.43",
+    "chrome-webstore-upload-cli": "^4.0.1",
     "conventional-changelog-cli": "^4.1.0",
     "jest": "^29.0.0",
     "jest-environment-jsdom": "^30.5.1",
