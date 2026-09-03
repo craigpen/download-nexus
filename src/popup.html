@@ -104,6 +104,11 @@
       font-weight: 700;
       font-size: 13px;
       color: var(--text);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #headerTitle {
+      white-space: nowrap;
     }
     .header-icon {
       border-radius: 4px;
@@ -113,11 +118,24 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      min-width: 0;
     }
     .header-controls {
       display: flex;
       align-items: center;
       gap: 6px;
+      min-width: 0;
+    }
+    .status-msg {
+      font-size: 11px;
+      color: var(--text-muted);
+      max-width: 130px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .status-msg.error {
+      color: var(--error);
     }
     .icon-btn {
       background: none;

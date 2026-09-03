@@ -563,7 +563,6 @@ function paintCachedTasks(nasId = currentNasId) {
     showEl("tabBar", true);
     updateCounts();
     renderTasks();
-    setStatus("Showing cached data…");
     return true;
   }
   return false;
