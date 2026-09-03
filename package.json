@@ -15,6 +15,7 @@
     "test": "jest",
     "test:unit": "jest tests/adapters.test.js tests/linkDetector.test.js tests/serviceFilter.test.js tests/background.test.js",
     "test:adapters": "jest tests/adapters.test.js",
+    "test:adapters:real": "jest --testPathPattern=\"-adapter.test.js$\"",
     "test:link-detector": "jest tests/linkDetector.test.js",
     "test:service-filter": "jest tests/serviceFilter.test.js",
     "test:background": "jest tests/background.test.js",

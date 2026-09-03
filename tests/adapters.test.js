@@ -1,5 +1,5 @@
 /**
- * Adapter Test Suite
+ * Adapter Test Suite (LEGACY — mock-based)
  * Verifies all device adapter functionality (Synology, qBittorrent, etc.)
  *
  * ⚠️  CAVEAT: this suite asserts against the MOCK classes defined below, not
@@ -9,10 +9,24 @@
  * example, the real JDownloader/Transmission `testConnection` performs no
  * "Settings incomplete" host/port validation — it probes the network).
  *
- * For tests that exercise the real shipped adapter, see
- * `tests/jdownloader-adapter.test.js`, which requires `getAdapter` from
- * `src/background.js` and mocks `fetch`. New adapter tests should follow that
- * pattern rather than adding more mocks here.
+ * ➡️  DO NOT ADD NEW ADAPTER TESTS HERE. Every adapter now has a real-code
+ * suite that requires `getAdapter` from `src/background.js` and mocks only
+ * `fetch` (plus the `chrome.*` stub in `tests/helpers/chromeStub.js`):
+ *
+ *   • tests/synology-adapter.test.js      — SynologyAdapter
+ *   • tests/qbittorrent-adapter.test.js   — QBittorrentAdapter
+ *   • tests/transmission-adapter.test.js  — TransmissionAdapter
+ *   • tests/deluge-adapter.test.js        — DelugeAdapter
+ *   • tests/jdownloader-adapter.test.js   — JDownloaderAdapter
+ *
+ * Those suites cover status mapping, progress arithmetic, auth handshakes,
+ * request shapes, error handling and edge cases against the shipped code, and
+ * they pin several known quirks the mocks below silently paper over. Add or
+ * change adapter coverage there; treat this file as a frozen record of the
+ * originally intended contract, and prefer deleting a mock here over updating
+ * it when the two disagree.
+ *
+ * Run them all with: npm run test:adapters:real
  */
 
 const assert = require('assert');
