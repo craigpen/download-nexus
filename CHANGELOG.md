@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-03
+
+### Added
+- JDownloader 2 support
+- Credential encryption for backup/restore
+- In-popup settings with Add Downloads view
+- Comprehensive Playwright E2E test suite
+- Real-code adapter test suites
+
+### Fixed
+- Adapter bugs (Deluge progress calculation, qBittorrent response parsing, Transmission network detection)
+- Standardized routing mode values from whitelist/blacklist to all/restricted
+
+### Removed
+- Aria2 adapter (architectural incompatibility)
+
+### Changed
+- Professional SVG icon replacements
+- Smart filter memory and priority-based defaults
+- Improved popup menu architecture
+
 ## [1.1.9] - 2026-08-27
 
 ### Added
