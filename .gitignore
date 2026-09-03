@@ -7,12 +7,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Environment & Secrets
+.env
+.env.*
+*.env
+*.local
+
 # OS files
 .DS_Store
 Thumbs.db
 
-# Editor folders
+# Editor & AI tools folders
 .vscode/
+.claude/
 
 # Browser extension build output
 dist/
@@ -27,6 +34,9 @@ build/
 *.tmp
 *.temp
 
+# Test coverage output
+coverage/
+
 # Playwright E2E output
 playwright-report/
 test-results/
@@ -38,6 +48,3 @@ MEMORY.md
 
 # Promotion materials (local only)
 promotion/
-
-# Local Claude Code settings (personal overrides)
-.claude/settings.local.json

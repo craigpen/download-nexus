@@ -6,6 +6,6 @@
     "firefox": ["download-management"]
   },
   "version": {
-    "license": "ISC"
+    "license": "GPL-3.0"
   }
 }
