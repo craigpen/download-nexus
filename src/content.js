@@ -1,28 +1,22 @@
-﻿// content.js — Download Nexus content script for magnet/torrent link handling
+// content.js — Download Nexus content script for magnet/torrent link handling
 
-// Guard against multiple injections on the same page
-if (window.downloadNexusInitialized) {
-  console.log('[ContentScript] Already initialized, skipping...');
-} else {
-  window.downloadNexusInitialized = true;
+// ── Instance Lifecycle Management ──────────────────────────────────────────
+// Track instance to allow hot-reloading and prevent multiple content scripts from interfering
 
-  // ── Instance Lifecycle Management ──────────────────────────────────────────
-  // Track instance to prevent multiple content scripts from interfering
+const CLEANUP_EVENT = 'download-nexus-content-script-cleanup';
+const INSTANCE_ID = Math.random().toString(36).slice(2, 9);
 
-  const CLEANUP_EVENT = 'download-nexus-content-script-cleanup';
-  const INSTANCE_ID = Math.random().toString(36).slice(2, 9);
+console.log(`[ContentScript] 🆕 New instance spawned: ${INSTANCE_ID}`);
 
-  console.log(`[ContentScript] 🆕 New instance spawned: ${INSTANCE_ID}`);
+// Signal any existing older instance to destroy itself
+document.dispatchEvent(new CustomEvent(CLEANUP_EVENT));
 
-  // Signal any existing older instance to destroy itself
-  document.dispatchEvent(new CustomEvent(CLEANUP_EVENT));
+// Mark THIS instance as the active one
+window.downloadNexusScriptActive = INSTANCE_ID;
+console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
 
-  // Mark THIS instance as the active one
-  (window).downloadNexusScriptActive = INSTANCE_ID;
-  console.log(`[ContentScript] ✨ Instance ${INSTANCE_ID} is now active`);
-
-  (function () {
-    "use strict";
+(function () {
+  "use strict";
 
   const ATTR      = "data-syno-injected";
   const TEXT_ATTR = "data-syno-text-injected";
@@ -65,6 +59,10 @@ if (window.downloadNexusInitialized) {
 
     // Check if this domain should have buttons
     if (whitelistEnabled && !isDomainWhitelisted(currentDomain, whitelist)) return;
+
+    // Clean up any existing buttons before injecting fresh ones
+    document.querySelectorAll(`button[${ATTR}="btn"]`).forEach(el => el.remove());
+    document.querySelectorAll("[data-syno-popup]").forEach(el => el.remove());
 
     document.querySelectorAll("a").forEach(processLink);
     scanTextNodes();
@@ -251,7 +249,7 @@ if (window.downloadNexusInitialized) {
     // Add NAS options
     nasDevices.forEach((nas, idx) => {
       const option = document.createElement("div");
-      option.textContent = `${idx + 1}. ${nas.name}`;
+      option.textContent = nas.name;
       Object.assign(option.style, {
         padding:     "4px 8px",
         cursor:      "pointer",
@@ -503,24 +501,33 @@ if (window.downloadNexusInitialized) {
   // ── Cleanup Handler ───────────────────────────────────────────────────────
   // When new script instance loads, old instance cleans up gracefully
 
-  window.downloadNexusPerformCleanup = function performCleanup() {
+  function performCleanup() {
     console.log(`[ContentScript] 🛑 Instance ${INSTANCE_ID} cleaning up...`);
 
     try {
       // Disconnect the observer
       window.downloadNexusObserver?.disconnect?.();
+
+      // Remove existing injected buttons and popups
+      document.querySelectorAll(`button[${ATTR}="btn"]`).forEach(el => el.remove());
+      document.querySelectorAll("[data-syno-popup]").forEach(el => el.remove());
+      document.querySelectorAll(`[${ATTR}]`).forEach(el => el.removeAttribute(ATTR));
+
       console.log('[ContentScript] ✅ Cleanup complete');
     } catch (err) {
       console.error('[ContentScript] Cleanup error:', err);
     }
-  };
+  }
 
   // Listen for cleanup signal from new instance
-  document.addEventListener(CLEANUP_EVENT, () => {
-    console.log(`[ContentScript] 🔔 Cleanup event received, terminating instance ${INSTANCE_ID}`);
-    window.downloadNexusPerformCleanup?.();
-  });
+  const onCleanup = () => {
+    if (window.downloadNexusScriptActive !== INSTANCE_ID) {
+      console.log(`[ContentScript] 🔔 Cleanup event received, terminating instance ${INSTANCE_ID}`);
+      document.removeEventListener(CLEANUP_EVENT, onCleanup);
+      performCleanup();
+    }
+  };
+  document.addEventListener(CLEANUP_EVENT, onCleanup);
 
-  })(); // End of IIFE
-} // End of initialization guard
+})(); // End of IIFE
 

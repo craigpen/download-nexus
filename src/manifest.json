@@ -9,15 +9,15 @@
     "notifications",
     "tabs",
     "scripting",
-    "contextMenus"
+    "contextMenus",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
 
   "background": {
-    "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
 
   "content_scripts": [
@@ -33,6 +33,8 @@
     "default_title": "Download Nexus",
     "default_icon": {
       "16":  "icons/icon16.png",
+      "24":  "icons/icon24.png",
+      "32":  "icons/icon32.png",
       "48":  "icons/icon48.png",
       "128": "icons/icon128.png"
     }
@@ -40,8 +42,15 @@
 
   "icons": {
     "16":  "icons/icon16.png",
+    "24":  "icons/icon24.png",
+    "32":  "icons/icon32.png",
     "48":  "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
 
   "browser_specific_settings": {

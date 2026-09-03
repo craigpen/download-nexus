@@ -34,15 +34,13 @@ const SERVICE_DEFAULTS = {
     usernameHint: "Not used (password only)",
     helpText: "Enter your Deluge hostname and password. Deluge uses password-only authentication. Default port is 8112."
   },
-  aria2: {
+  jdownloader: {
     defaultHost: "127.0.0.1",
-    defaultPort: 6800,
+    defaultPort: 3128,
     defaultUsername: "",
-    defaultRpcSecret: "P3TERX",
-    portHint: "6800 (default)",
+    portHint: "3128 (RemoteAPI) or 9666 (Click'n'Load)",
     usernameHint: "Not required",
-    rpcSecretHint: "RPC secret (default: P3TERX)",
-    helpText: "Enter your Aria2 hostname. Default port is 6800. Supports HTTP/HTTPS downloads, torrents, and magnet links."
+    helpText: "JDownloader 2 running locally. Use port 3128 for full remote controls or 9666 for standard link dispatch."
   }
 };
 
@@ -86,13 +84,13 @@ const ADAPTER_FEATURES = {
       delete: ["downloading", "seeding", "paused", "stalled", "finished", "error"]
     }
   },
-  aria2: {
-    tabs: ["downloading", "stalled", "finished", "error"],
+  jdownloader: {
+    tabs: ["downloading", "paused", "stalled", "finished", "error"],
     pausedLabel: "Paused",
     actions: {
-      pause: ["active"],
-      resume: ["waiting", "paused"],
-      delete: ["downloading", "waiting", "paused", "completed", "error", "removed"]
+      pause: ["downloading"],
+      resume: ["paused", "stalled", "error"],
+      delete: ["downloading", "paused", "stalled", "finished", "error"]
     }
   }
 };
@@ -107,7 +105,6 @@ let nasList       = [];
 let currentNasId  = null;
 let nasConnStatus = {}; // Track connection status per NAS
 let editingNasId  = null;
-let archivedAria2Gids = new Set(); // Track hidden Aria2 error tasks
 let selectedTaskIds = new Set(); // Track user-selected tasks for bulk operations
 
 // ── utilities ─────────────────────────────────────────────────────────────
@@ -203,8 +200,7 @@ function setStatus(msg, isErr) {
 }
 
 function updateCounts() {
-  // Exclude archived Aria2 tasks from counts
-  const visibleTasks = allTasks.filter(t => !archivedAria2Gids.has(t.id));
+  const visibleTasks = allTasks;
   const counts = { all: visibleTasks.length, downloading: 0, seeding: 0, paused: 0, stalled: 0, finished: 0, error: 0 };
   for (const t of visibleTasks) {
     if (counts[t.status] !== undefined) counts[t.status]++;
@@ -223,16 +219,17 @@ function updateCounts() {
   document.getElementById("totalDn").textContent = fmtSpeed(dn);
   document.getElementById("totalUp").textContent = fmtSpeed(up);
   document.getElementById("taskCountLabel").textContent = `${visibleTasks.length} task${visibleTasks.length !== 1 ? "s" : ""}`;
+  updatePopupHeaderIcon();
 }
 
-// Show/hide Aria2 disclaimer based on current service
-function updateAria2Disclaimer() {
-  const device = nasList.find(n => n.id === currentNasId);
-  const isAria2 = device?.type === "aria2";
-  const disclaimer = document.getElementById("aria2Disclaimer");
-  if (disclaimer) {
-    disclaimer.style.display = isAria2 ? "" : "none";
+function updatePopupHeaderIcon(isError = false) {
+  const iconEl = document.getElementById("headerIcon");
+  if (!iconEl) return;
+  if (!nasList || nasList.length === 0) {
+    iconEl.src = "icons/icon48-offline.png";
+    return;
   }
+  iconEl.src = "icons/icon48.png";
 }
 
 // Get action capabilities for current adapter
@@ -254,28 +251,6 @@ function canResumeTask(status) {
   return actions.resume?.includes(status) ?? false;
 }
 
-async function loadArchivedAria2Gids() {
-  const data = await chrome.storage.local.get("archivedAria2Gids");
-  archivedAria2Gids = new Set(data.archivedAria2Gids || []);
-}
-
-async function saveArchivedAria2Gids() {
-  await chrome.storage.local.set({ archivedAria2Gids: Array.from(archivedAria2Gids) });
-}
-
-async function hideAria2Task(gid) {
-  archivedAria2Gids.add(gid);
-  await saveArchivedAria2Gids();
-  await refresh();
-}
-
-async function clearArchivedAria2Tasks() {
-  if (confirm("Clear all archived Aria2 tasks? They will reappear if still in error state.")) {
-    archivedAria2Gids.clear();
-    await saveArchivedAria2Gids();
-    await refreshTasks();
-  }
-}
 
 function toggleTaskSelection(taskId) {
   if (selectedTaskIds.has(taskId)) {
@@ -314,9 +289,6 @@ function getCountForAction(action) {
 
 function getVisibleTasks() {
   let filtered = allTasks.filter(t => t.status === filter);
-
-  // Filter out archived Aria2 tasks
-  filtered = filtered.filter(t => !archivedAria2Gids.has(t.id));
 
   // Sort based on filter
   if (filter === "downloading") {
@@ -593,6 +565,7 @@ function showError(title, detail) {
   if (taskList) taskList.style.display = "none";
   if (speedBar) speedBar.style.display = "none";
   if (tabBar) tabBar.style.display = "none";
+  updatePopupHeaderIcon(true);
 }
 
 function hideError() {
@@ -600,6 +573,7 @@ function hideError() {
   const taskList = document.getElementById("taskList");
   if (errorContainer) errorContainer.classList.remove("show");
   if (taskList) taskList.style.display = "";
+  updatePopupHeaderIcon();
 }
 
 async function refresh() {
@@ -649,15 +623,7 @@ async function taskAction(action, ids) {
   try {
     const device = nasList.find(n => n.id === currentNasId);
 
-    // For Aria2, deletion just hides the IDs locally—don't call API since Aria2 can't delete error tasks
-    if (action === "delete" && device?.type === "aria2") {
-      for (const id of ids) {
-        await hideAria2Task(id);
-      }
-      return;
-    }
-
-    // For all other services, call the remove API
+    // Call the remove API
     const resp = await send({ type: "TASK_ACTION", nasId: currentNasId, action, ids });
 
     if (!resp.ok) {
@@ -702,7 +668,6 @@ async function loadNasList() {
       }
 
       renderNasTabs(); // Render tabs after setting currentNasId
-      updateAria2Disclaimer(); // Show/hide disclaimer based on initial service
       renderSettingsNasList();
       resolve(nasList);
     });
@@ -769,7 +734,6 @@ function renderNasTabs() {
       // Update UI for new service
       renderNasTabs();
       renderFilterTabs(); // Render filter tabs based on new adapter
-      updateAria2Disclaimer(); // Show/hide disclaimer based on service type
 
       // Immediately clear all tab counts to prevent ghost data from previous service
       ["cnt-downloading", "cnt-seeding", "cnt-paused", "cnt-stalled", "cnt-finished", "cnt-error"].forEach(id => {
@@ -1030,16 +994,6 @@ function updateFormFieldsForType() {
   document.getElementById("nasPort").placeholder = defaults.defaultPort.toString();
   document.getElementById("nasUsername").placeholder = defaults.defaultUsername || "Not required";
 
-  // Update RPC secret help text for aria2 (don't use defaults for security)
-  const rpcSecretInput = document.getElementById("nasRpcSecret");
-  if (rpcSecretInput) {
-    if (type === "aria2") {
-      rpcSecretInput.placeholder = "Enter your aria2 RPC secret (check aria2.conf)";
-    } else {
-      rpcSecretInput.placeholder = "";
-    }
-  }
-
   // Update help text (P1-3)
   const helpEl = document.getElementById("serviceHelpText");
   if (helpEl) {
@@ -1054,12 +1008,6 @@ function updateFormFieldsForType() {
     apiTokenField.style.display = type === "qbittorrent" ? "" : "none";
   }
 
-  // Show/hide RPC Secret field for aria2
-  const rpcSecretField = document.getElementById("rpcSecretField");
-  if (rpcSecretField) {
-    rpcSecretField.style.display = type === "aria2" ? "" : "none";
-  }
-
   const usernameField = document.getElementById("usernameField");
   const passwordField = document.getElementById("passwordField");
   const usernameInput = document.getElementById("nasUsername");
@@ -1067,9 +1015,8 @@ function updateFormFieldsForType() {
 
   // Show/hide fields based on adapter type
   // Synology and qBittorrent require username/password
-  // Transmission requires neither
+  // Transmission and JDownloader require neither
   // Deluge requires password only (no username)
-  // Aria2 requires only RPC secret token (no username/password)
   const showUsername = type === "synology" || type === "qbittorrent" || type === "transmission";
   const showPassword = type === "synology" || type === "qbittorrent" || type === "deluge" || type === "transmission";
 
@@ -1095,8 +1042,11 @@ function updateFormFieldsForType() {
     usernameInput.placeholder = defaults.defaultUsername || "Optional";
     usernameInput.required = false;
     passwordInput.required = false;
-  } else if (type === "aria2") {
-    document.getElementById("nasPort").value = "6800";
+  } else if (type === "jdownloader") {
+    document.getElementById("nasPort").value = "3128";
+    document.getElementById("nasHost").value = "127.0.0.1";
+    usernameInput.required = false;
+    passwordInput.required = false;
   }
 
   document.getElementById("nasHttps").checked = false;
@@ -1118,7 +1068,6 @@ function editNas(nasId) {
   document.getElementById("nasPassword").value = nas.password;
   document.getElementById("nasDestination").value = nas.destination || "";
   document.getElementById("nasApiToken").value = nas.apiToken || "";
-  document.getElementById("nasRpcSecret").value = nas.rpcSecret || "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
@@ -1139,7 +1088,6 @@ function addNewNas() {
   document.getElementById("nasPassword").value = "";
   document.getElementById("nasDestination").value = "";
   document.getElementById("nasApiToken").value = "";
-  document.getElementById("nasRpcSecret").value = "";
   document.getElementById("nasFormStatus").textContent = "";
   document.getElementById("testNasStatus").textContent = "";
 
@@ -1262,16 +1210,6 @@ document.getElementById("nasForm").addEventListener("submit", async e => {
     }
   }
 
-  // Add rpcSecret for aria2
-  if (type === "aria2") {
-    const rpcSecret = document.getElementById("nasRpcSecret").value.trim();
-    if (!rpcSecret) {
-      setStatus("Aria2 RPC secret is required", true);
-      return;
-    }
-    nasConfig.rpcSecret = rpcSecret;
-  }
-
   if (editingNasId) {
     await send({ type: "UPDATE_NAS", nasId: editingNasId, updates: nasConfig });
   } else {
@@ -1349,15 +1287,6 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
     }
   }
 
-  // Add rpcSecret for aria2
-  if (type === "aria2") {
-    const rpcSecret = document.getElementById("nasRpcSecret").value.trim();
-    if (!rpcSecret) {
-      throw new Error("Aria2 RPC secret is required");
-    }
-    settings.rpcSecret = rpcSecret;
-  }
-
   try {
     const resp = await send({ type: "TEST_CONNECTION", nasId, settings });
     if (resp?.ok) {
@@ -1431,7 +1360,7 @@ document.getElementById("whitelistTextarea").addEventListener("blur", async e =>
 // ── settings: backup / restore ──────────────────────────────────────────────
 
 // Schema validation for config import (P1-5)
-const VALID_ADAPTER_TYPES = new Set(['synology', 'qbittorrent', 'transmission', 'deluge', 'aria2']);
+const VALID_ADAPTER_TYPES = new Set(['synology', 'qbittorrent', 'transmission', 'deluge']);
 
 function validateNasConfig(nas, index) {
   const errors = [];
@@ -1592,20 +1521,13 @@ async function exportConfig() {
     });
   });
 
-  const archivedAria2Gids = await new Promise(resolve => {
-    chrome.storage.local.get("archivedAria2Gids", result => {
-      resolve(Array.from(result.archivedAria2Gids || []));
-    });
-  });
-
   const config = {
     version: 1,
     nasList: nasListExport,
     whitelist: Array.from(whitelistSet),
     whitelistMode: whitelistMode,
     enabledProtocols: enabledProtocols,
-    downloadExtensions: downloadExtensions,
-    archivedAria2Gids: archivedAria2Gids
+    downloadExtensions: downloadExtensions
   };
 
   try {
@@ -1633,7 +1555,6 @@ async function exportConfig() {
 
 document.getElementById("exportBtn").addEventListener("click", exportConfig);
 document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
-document.getElementById("clearArchivedBtn").addEventListener("click", clearArchivedAria2Tasks);
 
 document.getElementById("importFile").addEventListener("change", async e => {
   const file = e.target.files[0];
@@ -1700,13 +1621,6 @@ document.getElementById("importFile").addEventListener("change", async e => {
       });
     }
 
-    // Restore archived Aria2 tasks
-    if (config.archivedAria2Gids && Array.isArray(config.archivedAria2Gids)) {
-      await new Promise(resolve => {
-        chrome.storage.local.set({ archivedAria2Gids: new Set(config.archivedAria2Gids) }, resolve);
-      });
-    }
-
     el.textContent = `Config imported successfully! (${config.nasList?.length || 0} devices, ${config.whitelist?.length || 0} whitelist entries)`;
     el.className = "settings-status ok";
     await loadNasList();
@@ -1760,11 +1674,20 @@ document.getElementById("toggleSelectBtn").addEventListener("click", () => {
 });
 
 document.getElementById("settingsBtn").addEventListener("click", () => {
-  const inSettings = document.getElementById("settingsView").classList.contains("show");
-  if (inSettings) showMainView(); else showSettings();
+  if (chrome.runtime.openOptionsPage) {
+    chrome.runtime.openOptionsPage();
+  } else {
+    window.open(chrome.runtime.getURL("options.html"));
+  }
 });
 
-document.getElementById("configureBtn").addEventListener("click", showSettings);
+document.getElementById("configureBtn").addEventListener("click", () => {
+  if (chrome.runtime.openOptionsPage) {
+    chrome.runtime.openOptionsPage();
+  } else {
+    window.open(chrome.runtime.getURL("options.html"));
+  }
+});
 document.getElementById("addNasBtn").addEventListener("click", addNewNas);
 document.getElementById("backToListBtn").addEventListener("click", showNasListView);
 
@@ -1828,7 +1751,6 @@ async function checkAllDeviceConnections() {
 // Initial load + 5s poll while popup is open
 (async () => {
   await loadNasList();
-  await loadArchivedAria2Gids();
   checkAllDeviceConnections(); // Check all device statuses on open
   getCurrentDomain();
   loadWhitelist();

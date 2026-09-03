@@ -4,6 +4,14 @@
 // ── Content Script Registry ────────────────────────────────────────────────
 // Handles dynamic content script registration and re-injection
 
+const CONTENT_SCRIPT_FILES = [
+  'protocols.js',
+  'linkDetector.js',
+  'serviceFilter.js',
+  'downloadSender.js',
+  'content.js'
+];
+
 let isRegisteringContentScripts = false;
 
 async function registerContentScripts() {
@@ -15,7 +23,7 @@ async function registerContentScripts() {
   isRegisteringContentScripts = true;
 
   try {
-    if (!chrome?.scripting) {
+    if (!chrome?.scripting?.registerContentScripts) {
       console.warn('[ContentScriptRegistry] chrome.scripting not available');
       return;
     }
@@ -33,7 +41,7 @@ async function registerContentScripts() {
       {
         id: 'download-nexus-content',
         matches: ['<all_urls>'],
-        js: ['content.js'],
+        js: CONTENT_SCRIPT_FILES,
         runAt: 'document_idle',
       },
     ]);
@@ -49,7 +57,7 @@ async function registerContentScripts() {
 async function reinjectContentScripts() {
   console.log('[ContentScriptRegistry] 🔄 Re-injecting content scripts into all tabs...');
   try {
-    if (!chrome?.scripting) {
+    if (!chrome?.scripting?.executeScript) {
       console.error('[ContentScriptRegistry] ❌ chrome.scripting API not available');
       return;
     }
@@ -58,55 +66,46 @@ async function reinjectContentScripts() {
       url: ['http://*/*', 'https://*/*'],
     });
 
-    console.log(`[ContentScriptRegistry] Found ${allTabs.length} eligible tabs`);
+    const eligibleTabs = allTabs.filter(tab => {
+      if (!tab.id || tab.discarded || tab.status === 'unloaded') return false;
+      const tabUrl = tab.url || '';
+      if (tabUrl.startsWith('chrome-extension://') ||
+          tabUrl.startsWith('chrome://') ||
+          tabUrl.startsWith('edge://') ||
+          tabUrl.startsWith('edge-extension://') ||
+          tabUrl.startsWith('about:')) {
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`[ContentScriptRegistry] Injecting into ${eligibleTabs.length} active tabs in parallel...`);
+
+    const results = await Promise.allSettled(eligibleTabs.map(async tab => {
+      const injectionPromise = chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: CONTENT_SCRIPT_FILES,
+      });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Injection timeout after 2500ms")), 2500)
+      );
+
+      return await Promise.race([injectionPromise, timeoutPromise]);
+    }));
 
     let successCount = 0;
     let failureCount = 0;
-
-    for (const tab of allTabs) {
-      if (!tab.id) continue;
-
-      try {
-        const tabStatus = tab.status || 'unknown';
-        const tabUrl = tab.url || 'unknown';
-
-        if (tabUrl.startsWith('chrome-extension://') ||
-            tabUrl.startsWith('chrome://') ||
-            tabUrl.startsWith('edge://') ||
-            tabUrl.startsWith('edge-extension://')) {
-          console.debug(`[ContentScriptRegistry] Skipping tab ${tab.id} (extension page) - ${tabUrl}`);
-          continue;
-        }
-
-        console.log(`[ContentScriptRegistry] Injecting into tab ${tab.id} (${tabStatus}) - ${tabUrl}`);
-
-        const injectionPromise = chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js'],
-        });
-
-        const timeoutMs = tabStatus === 'unloaded' ? 10000 : 8000;
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Injection timeout after ${timeoutMs}ms`)), timeoutMs)
-        );
-
-        await Promise.race([injectionPromise, timeoutPromise]);
+    results.forEach((res, i) => {
+      if (res.status === "fulfilled") {
         successCount++;
-        console.log(`[ContentScriptRegistry] ✅ Injected into tab ${tab.id}`);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-
-        if (errMsg.includes('Cannot access contents of the page')) {
-          console.debug(`[ContentScriptRegistry] Tab ${tab.id} denied extension access - skipping`);
-          continue;
-        }
-
+      } else {
         failureCount++;
-        console.warn(`[ContentScriptRegistry] ⚠️ Failed to inject into tab ${tab.id}:`, errMsg);
+        console.debug(`[ContentScriptRegistry] Tab ${eligibleTabs[i].id} injection note:`, res.reason?.message);
       }
-    }
+    });
 
-    console.log(`[ContentScriptRegistry] 🏁 Re-injection complete: ${successCount} successful, ${failureCount} failed`);
+    console.log(`[ContentScriptRegistry] 🏁 Re-injection complete: ${successCount} successful, ${failureCount} skipped/failed`);
   } catch (err) {
     console.error('[ContentScriptRegistry] ❌ Re-injection routine failed:', err instanceof Error ? err.message : String(err));
   }
@@ -177,7 +176,7 @@ class SynologyAdapter extends NasAdapter {
 
   async addDownload(uri, destination) {
     const isMagnet = uri.startsWith("magnet:");
-    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+    const isTorrentUrl = !isMagnet && isValidTorrentURL(uri);
 
     if (!isMagnet && !isTorrentUrl) {
       throw new Error("Invalid URI: must be a magnet link or .torrent URL");
@@ -278,7 +277,7 @@ class QBittorrentAdapter extends NasAdapter {
 
   async addDownload(uri, destination) {
     const isMagnet = uri.startsWith("magnet:");
-    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+    const isTorrentUrl = !isMagnet && isValidTorrentURL(uri);
 
     if (!isMagnet && !isTorrentUrl) {
       throw new Error("Invalid URI: must be a magnet link or .torrent URL");
@@ -501,7 +500,7 @@ class TransmissionAdapter extends NasAdapter {
 
   async addDownload(uri, destination) {
     const isMagnet = uri.startsWith("magnet:");
-    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+    const isTorrentUrl = !isMagnet && isValidTorrentURL(uri);
 
     if (!isMagnet && !isTorrentUrl) {
       throw new Error("Invalid URI: must be a magnet link or .torrent URL");
@@ -560,7 +559,8 @@ class TransmissionAdapter extends NasAdapter {
     const body = {
       method: transmissionAction,
       arguments: {
-        ids: ids.map(id => parseInt(id))
+        ids: ids.map(id => parseInt(id)),
+        ...(action === "delete" ? { "delete-local-data": false } : {})
       }
     };
 
@@ -720,7 +720,7 @@ class DelugeAdapter extends NasAdapter {
   async addDownload(uri, destination) {
     await this._ensureAuthenticated();
     const isMagnet = uri.startsWith("magnet:");
-    const isTorrentUrl = /\.torrent(\?|$)/i.test(uri);
+    const isTorrentUrl = !isMagnet && isValidTorrentURL(uri);
 
     if (!isMagnet && !isTorrentUrl) {
       throw new Error("Invalid URI: must be a magnet link or .torrent URL");
@@ -732,7 +732,7 @@ class DelugeAdapter extends NasAdapter {
     if (isMagnet) {
       const resp = await this._rpc("core.add_torrent_magnet", [uri, options]);
       if (resp.error) throw new Error(`Deluge add failed: ${resp.error.message}`);
-    } else {
+    } else if (isTorrentUrl) {
       const torrentBuffer = await downloadTorrentFile(uri);
       const filedata = arrayBufferToBase64(torrentBuffer);
       const resp = await this._rpc("core.add_torrent_file", ["", filedata, options]);
@@ -810,186 +810,168 @@ class DelugeAdapter extends NasAdapter {
   }
 }
 
-class Aria2Adapter extends NasAdapter {
-  async testConnection() {
-    if (!this.config?.host || !this.config?.port) {
-      throw new Error("Settings incomplete: missing host or port");
-    }
-    const result = await this._rpc("aria2.getVersion");
-    if (!result?.version) throw new Error("aria2 connection failed");
-    return { ok: true, version: result.version };
+class JDownloaderAdapter extends NasAdapter {
+  constructor(nasId, config) {
+    super(nasId, config);
   }
 
-  async addDownload(uri, destination) {
-    const isMagnet = uri.startsWith("magnet:");
-    const isTorrent = /\.torrent(\?|$)/i.test(uri);
-    const isHttp = uri.startsWith("http://") || uri.startsWith("https://");
-    const isFtp = uri.startsWith("ftp://");
+  _getBaseUrl() {
+    const host = this.config?.host || "127.0.0.1";
+    const port = this.config?.port || 3128;
+    const scheme = this.config?.https ? "https" : "http";
+    return `${scheme}://${host}:${port}`;
+  }
 
-    if (!isMagnet && !isTorrent && !isHttp && !isFtp) {
-      throw new Error("Invalid URI: must be magnet, torrent, http, https, or ftp");
+  _displayStatus(item, isLinkCollector = false) {
+    if (isLinkCollector) return "stalled";
+    if (item.finished) return "finished";
+    if (item.skipped) return "paused";
+
+    const s = String(item.status || "").toLowerCase();
+    const ext = String(item.extractionStatus || "").toLowerCase();
+
+    // Error states (download failure, plugin defect, file missing, extraction error, bad CRC)
+    if (ext.includes("error") || s.includes("error") || s.includes("fail") || s.includes("defect") || s.includes("missing") || s.includes("crc")) {
+      return "error";
     }
 
-    let uris = [uri];
-
-    // For .torrent URLs, download and convert to base64
-    if (isTorrent) {
-      const torrentBuffer = await downloadTorrentFile(uri);
-      const base64 = arrayBufferToBase64(torrentBuffer);
-      const result = await this._rpc("aria2.addTorrent", [base64, [], destination ? { dir: destination } : {}]);
-      if (!result) throw new Error("aria2 addTorrent failed");
-      return;
+    // Paused states
+    if (s.includes("pause") || s.includes("stop")) {
+      return "paused";
     }
 
-    // For magnet links: Aria2 needs special handling - convert to torrent file first
-    // This ensures aria2 downloads the full content, not just metadata
-    if (isMagnet) {
-      try {
-        // Fetch torrent metadata from magnet link
-        const torrentBuffer = await downloadTorrentFile(uri);
-        const base64 = arrayBufferToBase64(torrentBuffer);
-        const result = await this._rpc("aria2.addTorrent", [base64, [], destination ? { dir: destination } : {}]);
-        if (!result) throw new Error("aria2 addTorrent failed");
-        return;
-      } catch (err) {
-        // Fallback: if torrent conversion fails, try direct magnet via addUri
-        dbg("WARN", "aria2 magnet conversion failed, falling back to addUri", err.message);
+    // Stalled / Waiting / Queued states
+    if (s.includes("wait") || s.includes("queue") || s.includes("captcha") || s.includes("reconnect") || s.includes("limit")) {
+      return "stalled";
+    }
+
+    // Active downloading states
+    if (item.running || (item.speed && item.speed > 0) || s.includes("download") || s.includes("start") || s.includes("connect") || ext.includes("running")) {
+      return "downloading";
+    }
+
+    return "downloading";
+  }
+
+  async testConnection() {
+    const baseUrl = this._getBaseUrl();
+    dbg("INFO", `JDownloader testConnection → ${baseUrl}`);
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const resp = await fetch(`${baseUrl}/jd/version`, { method: "GET", signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (resp.ok) {
+        const resJson = await resp.json();
+        const build = resJson?.data || "Active";
+        dbg("INFO", `JDownloader RemoteAPI connected, build:`, build);
+        return { ok: true, version: `JDownloader 2 (Build ${build})` };
       }
+      throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+    } catch (err) {
+      throw new Error(`Cannot connect to JDownloader 2 on ${baseUrl}. Make sure JDownloader is running, and in Settings → Advanced Settings, 'RemoteAPI.deprecatedapienabled' is set to true on port 3128.`);
     }
-
-    // For HTTP/FTP URLs and magnet fallback, use addUri
-    const options = destination ? { dir: destination } : {};
-    const result = await this._rpc("aria2.addUri", [uris, options]);
-    if (!result) throw new Error("aria2 addUri failed");
   }
 
   async listTasks() {
+    const baseUrl = this._getBaseUrl();
+    const tasks = [];
+
+    // 1. Query active / finished downloads via /downloadsV2/queryLinks
     try {
-      const fields = ["gid", "name", "status", "totalLength", "completedLength", "downloadSpeed", "uploadSpeed", "eta", "errorMessage", "files"];
-      const active = await this._rpc("aria2.tellActive", [fields]);
-      const waiting = await this._rpc("aria2.tellWaiting", [0, 100, fields]);
-      const stopped = await this._rpc("aria2.tellStopped", [0, 100, fields]);
+      const resp = await fetch(`${baseUrl}/downloadsV2/queryLinks?params=%7B%22bytesLoaded%22%3Atrue%2C%22bytesTotal%22%3Atrue%2C%22speed%22%3Atrue%2C%22status%22%3Atrue%2C%22eta%22%3Atrue%2C%22finished%22%3Atrue%2C%22running%22%3Atrue%2C%22extractionStatus%22%3Atrue%2C%22skipped%22%3Atrue%7D`, { method: "GET" });
+      if (resp.ok) {
+        const data = await resp.json();
+        const links = data?.data || [];
+        for (const item of links) {
+          const total = item.bytesTotal || 0;
+          const loaded = item.bytesLoaded || 0;
+          const percent = total > 0 ? (loaded / total) * 100 : (item.finished ? 100 : 0);
 
-      const tasks = [...(active || []), ...(waiting || []), ...(stopped || [])];
-      return tasks.map(t => {
-        const totalLength = Number(t.totalLength) || 0;
-        const completedLength = Number(t.completedLength) || 0;
-        const downloadSpeed = Number(t.downloadSpeed) || 0;
-        const uploadSpeed = Number(t.uploadSpeed) || 0;
-        const eta = Number(t.eta) || 0;
-
-        // Extract filename from files array if name is not provided
-        let title = t.name;
-        if (!title && t.files && t.files.length > 0) {
-          const filePath = t.files[0].path;
-          title = filePath ? filePath.split('/').pop() : "Unknown";
+          tasks.push({
+            id: String(item.uuid || item.id || item.name),
+            title: item.name || "Download",
+            status: this._displayStatus(item, false),
+            progress: Math.min(100, Math.max(0, percent)),
+            downloaded: loaded,
+            size: total,
+            speed_down: item.speed || 0,
+            speed_up: 0
+          });
         }
-        title = title || "Unknown";
+      }
+    } catch (err) {
+      dbg("INFO", "JDownloader downloadsV2 queryLinks failed:", err.message);
+    }
 
-        return {
-          id: t.gid,
-          title,
-          status: this._statusString(t.status),
-          progress: totalLength > 0 ? Math.round((completedLength / totalLength) * 100) : 0,
-          downloaded: completedLength,
-          size: totalLength,
-          speed_down: downloadSpeed,
-          speed_up: uploadSpeed,
-          eta: eta > 0 ? eta : 0
-        };
-      });
-    } catch (e) {
-      dbg("ERROR", "aria2 listTasks failed", e.message);
-      return [];
+    // 2. Query LinkGrabber queued items via /linkcollector/queryLinks
+    try {
+      const resp = await fetch(`${baseUrl}/linkcollector/queryLinks?params=%7B%22name%22%3Atrue%2C%22bytesTotal%22%3Atrue%2C%22status%22%3Atrue%2C%22packageUUID%22%3Atrue%7D`, { method: "GET" });
+      if (resp.ok) {
+        const data = await resp.json();
+        const links = data?.data || [];
+        for (const item of links) {
+          tasks.push({
+            id: String(item.uuid || item.uniqueID || item.name),
+            title: item.name || "Queued Link",
+            status: this._displayStatus(item, true),
+            progress: 0,
+            downloaded: 0,
+            size: item.bytesTotal || 0,
+            speed_down: 0,
+            speed_up: 0
+          });
+        }
+      }
+    } catch (err) {
+      dbg("INFO", "JDownloader linkcollector queryLinks failed:", err.message);
+    }
+
+    return tasks;
+  }
+
+  async addDownload(uri, destination) {
+    const baseUrl = this._getBaseUrl();
+    dbg("INFO", `JDownloader addDownload → ${baseUrl}`, uri.slice(0, 80));
+
+    try {
+      const destParam = destination ? `&destinationFolder=${encodeURIComponent(destination)}` : "";
+      const addUrl = `${baseUrl}/linkcollector/addLinks?links=${encodeURIComponent(uri)}&packageName=DownloadNexus&extractPassword=&downloadPassword=${destParam}`;
+      const addResp = await fetch(addUrl, { method: "GET" });
+      if (addResp.ok) {
+        // Trigger download start in JDownloader
+        fetch(`${baseUrl}/toolbar/startDownloads`, { method: "GET" }).catch(() => {});
+        return { ok: true };
+      }
+      throw new Error(`HTTP ${addResp.status}`);
+    } catch (err) {
+      dbg("ERROR", "JDownloader addDownload failed:", err.message);
+      throw new Error(`Failed to send to JDownloader 2 on ${baseUrl}: ${err.message}. Ensure JDownloader is running with RemoteAPI enabled on port 3128.`);
     }
   }
 
   async taskAction(action, ids) {
-    if (action === "pause") {
-      for (const gid of ids) {
-        await this._rpc("aria2.pause", [gid]);
-      }
-    } else if (action === "resume") {
-      for (const gid of ids) {
-        await this._rpc("aria2.unpause", [gid]);
-      }
-    } else if (action === "delete") {
-      for (const gid of ids) {
-        try {
-          // Try to remove active download first
-          await this._rpc("aria2.remove", [gid]);
-        } catch (err) {
-          // If not active, try to remove from stopped/result list
-          // Check for common aria2 error messages
-          const errMsg = err.message.toLowerCase();
-          if (errMsg.includes("not found") ||
-              errMsg.includes("active download") ||
-              errMsg.includes("gid") ||
-              errMsg.includes("http 400")) {
-            try {
-              await this._rpc("aria2.removeDownloadResult", [gid]);
-            } catch (resultErr) {
-              // Already removed or doesn't exist - acceptable
-              dbg("DEBUG", "aria2 delete", `GID ${gid} already removed or doesn't exist`);
-            }
-          } else {
-            throw err;
-          }
-        }
-      }
-    }
-  }
-
-  _statusString(status) {
-    const statusMap = {
-      "active": "downloading",
-      "waiting": "stalled",
-      "paused": "paused",
-      "error": "error",
-      "complete": "finished",
-      "removed": "finished"
-    };
-    return statusMap[status] || "stalled";
-  }
-
-  async _rpc(method, params = []) {
-    const rpcSecret = this.config.rpcSecret?.trim();
-    if (!rpcSecret) {
-      throw new Error("Aria2 RPC secret is required");
-    }
-    const paramsWithToken = [`token:${rpcSecret}`, ...params];
-    const payload = { jsonrpc: "2.0", id: Date.now().toString(), method, params: paramsWithToken };
-    const url = `${this._baseUrl()}/jsonrpc`;
-
-    dbg("INFO", `aria2 RPC: ${method}`, `url=${url}, rpcSecret=${rpcSecret ? 'set' : 'empty'}, params=${JSON.stringify(paramsWithToken).slice(0, 100)}`);
+    const baseUrl = this._getBaseUrl();
+    dbg("INFO", `JDownloader taskAction: ${action}`, ids);
 
     try {
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      dbg("INFO", `aria2 RPC response: ${method}`, `status=${resp.status}, ok=${resp.ok}`);
-
-      if (!resp.ok) {
-        const text = await resp.text();
-        dbg("ERROR", `aria2 RPC: ${method}`, `HTTP ${resp.status}: ${text.slice(0, 200)}`);
-        throw new Error(`aria2 RPC error: HTTP ${resp.status}`);
+      if (action === "pause") {
+        await fetch(`${baseUrl}/toolbar/togglePauseDownloads`, { method: "GET" });
+      } else if (action === "resume") {
+        await fetch(`${baseUrl}/toolbar/startDownloads`, { method: "GET" });
+      } else if (action === "delete") {
+        const linkIds = Array.isArray(ids) ? ids.map(id => isNaN(Number(id)) ? id : Number(id)) : [];
+        const encodedLinks = encodeURIComponent(JSON.stringify(linkIds));
+        await fetch(`${baseUrl}/downloadsV2/removeLinks?linkIds=${encodedLinks}&packageIds=%5B%5D`, { method: "GET" });
+        await fetch(`${baseUrl}/linkcollector/removeLinks?linkIds=${encodedLinks}&packageIds=%5B%5D`, { method: "GET" });
       }
-
-      const data = await resp.json();
-      if (data.error) throw new Error(`aria2 RPC error: ${data.error.message}`);
-      return data.result;
+      return { ok: true };
     } catch (err) {
-      dbg("ERROR", `aria2 RPC: ${method}`, `${err.message}`);
-      throw err;
+      dbg("WARN", `JDownloader taskAction ${action} error:`, err.message);
+      return { ok: false, error: err.message };
     }
-  }
-
-  _baseUrl() {
-    const protocol = this.config.https ? "https" : "http";
-    return `${protocol}://${this.config.host}:${this.config.port}`;
   }
 }
 
@@ -1004,8 +986,8 @@ function getAdapter(nasId, config) {
       return new TransmissionAdapter(nasId, config);
     case "deluge":
       return new DelugeAdapter(nasId, config);
-    case "aria2":
-      return new Aria2Adapter(nasId, config);
+    case "jdownloader":
+      return new JDownloaderAdapter(nasId, config);
     default:
       throw new Error(`Unknown NAS type: ${type}`);
   }
@@ -1053,6 +1035,17 @@ async function storageSet(items) {
   });
 }
 
+const MAX_STORED_LOG_LINES = 300;
+
+function trimLogs(logString) {
+  if (!logString) return '';
+  const lines = logString.split('\n');
+  if (lines.length > MAX_STORED_LOG_LINES) {
+    return lines.slice(lines.length - MAX_STORED_LOG_LINES).join('\n');
+  }
+  return logString;
+}
+
 // Init log to verify service worker started
 (async () => {
   try {
@@ -1061,7 +1054,7 @@ async function storageSet(items) {
     const timestamp = new Date().toISOString().replace("T", " ").slice(0, 23);
     const initLog = `[${timestamp}] [INFO] Service worker loaded and ready`;
     const allLogs = existing ? existing + '\n' + initLog : initLog;
-    await storageSet({ nas_debug_logs: allLogs });
+    await storageSet({ nas_debug_logs: trimLogs(allLogs) });
     console.log('[NAS] Init log written to storage');
   } catch (error) {
     console.error('[NAS] Failed to write init log:', error);
@@ -1083,7 +1076,7 @@ function dbg(level, msg, detail) {
     `[NAS][${level}] ${msg}`, detail ?? ""
   );
 
-  // Buffer log for storage (append-only pattern like hang-time)
+  // Buffer log for storage (append-only pattern with trimming)
   logBuffer.push(logLine);
   if (!flushTimer) {
     flushTimer = setTimeout(() => _flushLogs(), 500);
@@ -1102,7 +1095,7 @@ async function _flushLogs() {
     const result = await storageGet('nas_debug_logs');
     const existing = result.nas_debug_logs || '';
     const allLogs = existing ? existing + '\n' + newLogs : newLogs;
-    await storageSet({ nas_debug_logs: allLogs });
+    await storageSet({ nas_debug_logs: trimLogs(allLogs) });
     logBuffer = [];
   } catch (error) {
     console.error('[NAS] Failed to flush logs:', error);
@@ -1116,30 +1109,75 @@ function baseUrl(s) {
   return `${scheme}://${s.host}:${s.port}/webapi`;
 }
 
-// Multi-NAS storage helpers
+// ── Credential Storage Hardening & Multi-NAS storage helpers ──────────────
+// Sensitive credentials (passwords, tokens) are isolated to chrome.storage.local.
+// Non-sensitive metadata (names, host, port, whitelist) resides in chrome.storage.sync.
+
+async function getStoredCredentials() {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ nasCredentials: {} }, r => resolve(r.nasCredentials || {}));
+  });
+}
+
+async function saveStoredCredentials(creds) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ nasCredentials: creds }, resolve);
+  });
+}
+
 async function getNasList() {
   return new Promise(resolve => {
     chrome.storage.sync.get({ nasList: [] }, async r => {
       let list = r.nasList || [];
+      const creds = await getStoredCredentials();
+      let needsMigration = false;
+
       // Migrate old single-NAS config if it exists
       if (list.length === 0) {
-        const oldSettings = await new Promise(resolve => {
-          chrome.storage.sync.get(DEFAULT_NAS_SYNOLOGY, resolve);
+        const oldSettings = await new Promise(res => {
+          chrome.storage.sync.get(DEFAULT_NAS_SYNOLOGY, res);
         });
         if (oldSettings.host && oldSettings.host !== DEFAULT_NAS_SYNOLOGY.host) {
-          // User has old settings, migrate to new format
           list = [{
             id: "synology-main",
             type: "synology",
             name: "Synology NAS",
             ...oldSettings
           }];
-          await new Promise(resolve => {
-            chrome.storage.sync.set({ nasList: list }, resolve);
-          });
+          needsMigration = true;
         }
       }
-      resolve(list);
+
+      // Check for and migrate sensitive credentials from sync to local
+      for (const item of list) {
+        if (!item || !item.id) continue;
+        if (item.password !== undefined || item.apiToken !== undefined) {
+          needsMigration = true;
+          creds[item.id] = {
+            password: item.password || "",
+            apiToken: item.apiToken || ""
+          };
+          delete item.password;
+          delete item.apiToken;
+        }
+      }
+
+      if (needsMigration) {
+        await saveStoredCredentials(creds);
+        await new Promise(res => chrome.storage.sync.set({ nasList: list }, res));
+      }
+
+      // Merge local credentials with sync metadata in memory
+      const fullList = list.map(item => {
+        const itemCreds = creds[item.id] || {};
+        return {
+          ...item,
+          password: itemCreds.password || item.password || "",
+          apiToken: itemCreds.apiToken || item.apiToken || ""
+        };
+      });
+
+      resolve(fullList);
     });
   });
 }
@@ -1150,7 +1188,28 @@ async function getNasById(nasId) {
 }
 
 async function saveNasList(list) {
-  return new Promise(resolve => chrome.storage.sync.set({ nasList: list }, resolve));
+  const creds = await getStoredCredentials();
+  const sanitizedList = [];
+
+  for (const item of list) {
+    if (!item || !item.id) continue;
+    // Extract credentials to local storage
+    if (item.password !== undefined || item.apiToken !== undefined) {
+      creds[item.id] = {
+        password: item.password || "",
+        apiToken: item.apiToken || ""
+      };
+    }
+    // Strip sensitive fields from sync payload
+    const sanitized = { ...item };
+    delete sanitized.password;
+    delete sanitized.apiToken;
+    sanitizedList.push(sanitized);
+  }
+
+  await saveStoredCredentials(creds);
+  await new Promise(resolve => chrome.storage.sync.set({ nasList: sanitizedList }, resolve));
+  await updateContextMenu().catch(() => {});
 }
 
 async function addNas(nas) {
@@ -1173,7 +1232,13 @@ async function deleteNas(nasId) {
   const list = await getNasList();
   const filtered = list.filter(n => n.id !== nasId);
   await saveNasList(filtered);
-  // Clear session for this NAS
+
+  // Clear credentials and session for this NAS
+  const creds = await getStoredCredentials();
+  if (creds[nasId]) {
+    delete creds[nasId];
+    await saveStoredCredentials(creds);
+  }
   await removeSid(nasId);
 }
 
@@ -1272,6 +1337,28 @@ async function clearAllSids() {
   });
 }
 
+// ── Network Resilience & Retry Helpers ─────────────────────────────────────
+
+async function withRetry(fn, { maxRetries = 2, delayMs = 350, label = "Operation" } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn(attempt);
+    } catch (err) {
+      lastErr = err;
+      const isTransient = /Failed to fetch|NetworkError|ECONNRESET|ECONNREFUSED|timeout|socket hang up|AbortError/i.test(err.message);
+      if (attempt < maxRetries && isTransient) {
+        const wait = delayMs * Math.pow(2, attempt - 1);
+        dbg("WARN", `${label} transient error (attempt ${attempt}/${maxRetries}), retrying in ${wait}ms:`, err.message);
+        await new Promise(r => setTimeout(r, wait));
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
+
 // ── Synology API calls ─────────────────────────────────────────────────────
 
 async function nasFetch(label, url, options, timeoutMs = 20000) {
@@ -1280,25 +1367,27 @@ async function nasFetch(label, url, options, timeoutMs = 20000) {
     : "";
   dbg("INFO", `${label} → ${url.replace(/passwd=[^&]+/, "passwd=***")}`, safeBody);
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  let resp;
-  try {
-    resp = await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err.name === "AbortError") {
-      const errMsg = `timeout after ${timeoutMs}ms`;
-      dbg("ERROR", `${label} fetch timeout`, errMsg);
-      throw new Error(errMsg);
+  return await withRetry(async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    let resp;
+    try {
+      resp = await fetch(url, { ...options, signal: controller.signal });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        const errMsg = `timeout after ${timeoutMs}ms`;
+        dbg("ERROR", `${label} fetch timeout`, errMsg);
+        throw new Error(errMsg);
+      }
+      dbg("ERROR", `${label} fetch threw`, err.message);
+      throw err;
     }
-    dbg("ERROR", `${label} fetch threw`, err.message);
-    throw err;
-  }
-  clearTimeout(timeoutId);
-  dbg("INFO", `${label} ← HTTP ${resp.status} ${resp.statusText}`);
-  return resp;
+    clearTimeout(timeoutId);
+    dbg("INFO", `${label} ← HTTP ${resp.status} ${resp.statusText}`);
+    return resp;
+  }, { maxRetries: 2, delayMs: 400, label: label });
 }
 
 async function nasLogin(s) {
@@ -1563,6 +1652,7 @@ function isValidMagnetURI(url) {
 function isValidTorrentURL(url) {
   try {
     const u = new URL(url);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
     return /\.torrent(\?|$)/i.test(u.pathname);
   } catch {
     return false;
@@ -1570,15 +1660,18 @@ function isValidTorrentURL(url) {
 }
 
 async function synoAddDownload(s, nasId, uri, overrideDestination) {
+  const isMagnet = uri.startsWith("magnet:");
+  const isTorrent = !isMagnet && isValidTorrentURL(uri);
+
   // Secondary validation check
-  if (!isValidMagnetURI(uri) && !isValidTorrentURL(uri)) {
+  if (!isMagnet && !isTorrent) {
     dbg("ERROR", "Invalid URI rejected", uri.slice(0, 80));
     throw new Error("Invalid URI format (must be magnet link or .torrent URL)");
   }
 
   // If it's a .torrent URL, download and convert to magnet
   let finalUri = uri;
-  if (isValidTorrentURL(uri)) {
+  if (isTorrent) {
     dbg("INFO", "Converting .torrent URL to magnet", uri.slice(0, 80));
     try {
       const torrentBuffer = await downloadTorrentFile(uri);
@@ -1781,7 +1874,7 @@ async function initContextMenu() {
       chrome.contextMenus.create({
         id: "download-nexus-menu",
         title: "Download to…",
-        contexts: ["link"]
+        contexts: ["link", "selection"]
       }, () => {
         if (chrome.runtime.lastError) {
           dbg("ERROR", "initContextMenu", `Failed to create parent menu: ${chrome.runtime.lastError.message}`);
@@ -1811,13 +1904,13 @@ async function updateContextMenu() {
   const nasList = await getNasList();
   dbg("INFO", "updateContextMenu", `Found ${nasList.length} services`);
 
-  nasList.forEach((nas, idx) => {
+  nasList.forEach((nas) => {
     const id = `download-nexus-service-${nas.id}`;
     chrome.contextMenus.create({
       id,
       parentId: "download-nexus-menu",
       title: nas.name,
-      contexts: ["link"]
+      contexts: ["link", "selection"]
     }, () => {
       if (chrome.runtime.lastError) {
         dbg("ERROR", "createContextMenu", `Failed to create menu for ${nas.name}: ${chrome.runtime.lastError.message}`);
@@ -1833,12 +1926,30 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!info.menuItemId.startsWith("download-nexus-service-")) return;
 
   const nasId = info.menuItemId.replace("download-nexus-service-", "");
-  const url = info.linkUrl;
+  let url = info.linkUrl;
 
-  if (!url) return;
+  if (!url && info.selectionText) {
+    const text = info.selectionText.trim();
+    const magnetMatch = text.match(/magnet:\?[^\s"'<>]+/);
+    if (magnetMatch) {
+      url = magnetMatch[0];
+    } else if (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("ftp://")) {
+      url = text;
+    }
+  }
+
+  if (!url && info.srcUrl) {
+    url = info.srcUrl;
+  }
+
+  if (!url) {
+    dbg("WARN", "contextMenus.onClicked", "No valid URL found in context menu action");
+    return;
+  }
 
   try {
-    const result = await sendDownload(url, nasId);
+    dbg("INFO", "contextMenus.onClicked", `Sending ${url.slice(0, 80)} to NAS ${nasId}`);
+    await sendDownload(url, nasId);
     // Show success notification
     chrome.notifications.create({
       type: "basic",
@@ -1859,6 +1970,214 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     });
   }
 });
+
+// Auto-update context menu and icon state when services list changes in storage
+chrome.storage.onChanged?.addListener((changes, areaName) => {
+  if (areaName === "sync" && changes.nasList) {
+    updateContextMenu().catch(() => {});
+    checkActiveTasksAndUpdateIcon().catch(() => {});
+  }
+});
+
+// ── Toolbar Icon State Management ──────────────────────────────────────────
+
+const BASE_ICONS = {
+  "16": "icons/icon16.png",
+  "24": "icons/icon24.png",
+  "32": "icons/icon32.png",
+  "48": "icons/icon48.png",
+  "128": "icons/icon128.png"
+};
+
+const OFFLINE_ICONS = {
+  "16": "icons/icon16-offline.png",
+  "24": "icons/icon24-offline.png",
+  "32": "icons/icon32-offline.png",
+  "48": "icons/icon48-offline.png",
+  "128": "icons/icon128-offline.png"
+};
+
+const ICON_STATES = {
+  idle: {
+    path: BASE_ICONS,
+    defaultTitle: "Download Nexus"
+  },
+  active: {
+    path: BASE_ICONS,
+    defaultTitle: "Download Nexus: Downloading"
+  },
+  paused: {
+    path: BASE_ICONS,
+    defaultTitle: "Download Nexus: Paused / Waiting"
+  },
+  error: {
+    path: BASE_ICONS,
+    defaultTitle: "Download Nexus: Connection Error"
+  },
+  offline: {
+    path: OFFLINE_ICONS,
+    defaultTitle: "Download Nexus: Offline"
+  }
+};
+
+let currentIconState = "idle";
+
+function formatSpeed(bytesPerSec) {
+  if (!bytesPerSec || bytesPerSec <= 0) return "0 B/s";
+  const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+  const i = Math.min(Math.floor(Math.log(bytesPerSec) / Math.log(1024)), units.length - 1);
+  const val = (bytesPerSec / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0);
+  return `${val} ${units[i]}`;
+}
+
+async function updateExtensionIconState(state, details = {}) {
+  const stateConfig = ICON_STATES[state] || ICON_STATES.idle;
+  currentIconState = state;
+
+  const actionApi = (typeof chrome !== "undefined" && chrome.action) ? chrome.action : (typeof chrome !== "undefined" && chrome.browserAction ? chrome.browserAction : null);
+  if (!actionApi) return;
+
+  try {
+    // 1. Set state-specific icon
+    if (actionApi.setIcon) {
+      await new Promise(resolve => actionApi.setIcon({ path: stateConfig.path }, resolve));
+    }
+
+    // 2. Set native hanging badge (Play ▶, Pause II, Error !)
+    if (actionApi.setBadgeText) {
+      let badgeText = "";
+      let badgeColor = "#1a6fb5";
+
+      if (state === "active") {
+        badgeText = "▶";
+        badgeColor = "#16a34a"; // Green
+      } else if (state === "paused") {
+        badgeText = "II";
+        badgeColor = "#d97706"; // Orange / Amber
+      } else if (state === "error") {
+        badgeText = "!";
+        badgeColor = "#dc2626"; // Red
+      }
+
+      actionApi.setBadgeText({ text: badgeText }, () => chrome.runtime.lastError);
+      if (actionApi.setBadgeBackgroundColor) {
+        actionApi.setBadgeBackgroundColor({ color: badgeColor }, () => chrome.runtime.lastError);
+      }
+      if (badgeText && actionApi.setBadgeTextColor) {
+        actionApi.setBadgeTextColor({ color: "#ffffff" }, () => chrome.runtime.lastError);
+      }
+    }
+
+    // 3. Set clean tooltip title
+    let title = stateConfig.defaultTitle;
+    if (state === "active" && details.activeCount) {
+      title = `Download Nexus: ${details.activeCount} active`;
+    } else if (state === "paused" && details.pausedCount) {
+      title = `Download Nexus: ${details.pausedCount} paused/waiting`;
+    } else if (state === "idle") {
+      title = "Download Nexus: Idle";
+    } else if (state === "error" && details.errorMessage) {
+      title = `Download Nexus: ${details.errorMessage}`;
+    } else if (state === "offline") {
+      title = "Download Nexus: Offline";
+    }
+
+    if (actionApi.setTitle) {
+      actionApi.setTitle({ title }, () => chrome.runtime.lastError);
+    }
+  } catch (err) {
+    dbg("WARN", "updateExtensionIconState", err.message);
+  }
+}
+
+async function checkActiveTasksAndUpdateIcon() {
+  try {
+    const list = await getNasList();
+    if (!list || list.length === 0) {
+      await updateExtensionIconState("offline");
+      return;
+    }
+
+    let totalActive = 0;
+    let totalPaused = 0;
+    let totalError = 0;
+    let totalSpeedDown = 0;
+    let totalSpeedUp = 0;
+    let anyConnected = false;
+
+    // Check tasks across configured download services
+    for (const nas of list) {
+      try {
+        const adapter = getAdapter(nas.id, nas);
+        const tasks = await adapter.listTasks();
+        anyConnected = true;
+
+        for (const t of tasks) {
+          const status = (t.status || "").toLowerCase();
+          if (status === "downloading" || status === "active") {
+            totalActive++;
+            totalSpeedDown += (t.speed_down || t.downloadSpeed || 0);
+            totalSpeedUp += (t.speed_up || t.uploadSpeed || 0);
+          } else if (status === "paused" || status === "waiting" || status === "stalled" || status === "allocating" || status === "checking") {
+            totalPaused++;
+            totalSpeedDown += (t.speed_down || t.downloadSpeed || 0);
+            totalSpeedUp += (t.speed_up || t.uploadSpeed || 0);
+          } else if (status === "error") {
+            totalError++;
+          }
+        }
+      } catch (err) {
+        dbg("WARN", "checkActiveTasksAndUpdateIcon", `NAS ${nas.name || nas.id} poll failed: ${err.message}`);
+      }
+    }
+
+    if (!anyConnected && list.length > 0) {
+      await updateExtensionIconState("error", { errorMessage: "Unable to connect to download service" });
+    } else if (totalActive > 0) {
+      await updateExtensionIconState("active", { activeCount: totalActive, speedDown: totalSpeedDown, speedUp: totalSpeedUp });
+    } else if (totalPaused > 0) {
+      await updateExtensionIconState("paused", { pausedCount: totalPaused, speedDown: totalSpeedDown, speedUp: totalSpeedUp });
+    } else if (totalError > 0) {
+      await updateExtensionIconState("error", { errorMessage: `${totalError} download error(s)` });
+    } else {
+      await updateExtensionIconState("idle", { speedDown: totalSpeedDown, speedUp: totalSpeedUp });
+    }
+  } catch (err) {
+    dbg("ERROR", "checkActiveTasksAndUpdateIcon", err.message);
+  }
+}
+
+async function updateIconFromTaskList(tasks) {
+  if (!tasks || !Array.isArray(tasks)) return;
+  let totalActive = 0;
+  let totalPaused = 0;
+  let totalError = 0;
+  let totalSpeedDown = 0;
+  let totalSpeedUp = 0;
+
+  for (const t of tasks) {
+    const status = (t.status || "").toLowerCase();
+    if (status === "downloading" || status === "active") {
+      totalActive++;
+      totalSpeedDown += (t.speed_down || t.downloadSpeed || 0);
+      totalSpeedUp += (t.speed_up || t.uploadSpeed || 0);
+    } else if (status === "paused" || status === "waiting" || status === "stalled" || status === "allocating" || status === "checking" || status === "stopped") {
+      totalPaused++;
+    } else if (status === "error") {
+      totalError++;
+    }
+  }
+
+  if (totalActive > 0) {
+    await updateExtensionIconState("active", { activeCount: totalActive, speedDown: totalSpeedDown, speedUp: totalSpeedUp });
+  } else if (totalPaused > 0) {
+    await updateExtensionIconState("paused", { pausedCount: totalPaused });
+  } else if (totalError > 0) {
+    await updateExtensionIconState("error", { errorMessage: `${totalError} download error(s)` });
+  } else {
+    await updateExtensionIconState("idle");
+  }
+}
 
 // ── message listener ───────────────────────────────────────────────────────
 
@@ -1883,6 +2202,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       sendDownload(msg.url, msg.nasId).then(() => {
         dbg("INFO", "SEND_MAGNET", "Success");
         sendResponse({ ok: true, log: [...debugLog] });
+        checkActiveTasksAndUpdateIcon().catch(() => {});
       }).catch(e => {
         dbg("ERROR", "SEND_MAGNET", e.message);
         sendResponse({ ok: false, error: e.message, log: [...debugLog] });
@@ -1923,6 +2243,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const adapter = getAdapter(msg.nasId, s);
           const tasks = await adapter.listTasks();
           sendResponse({ ok: true, tasks });
+          // Instantly sync toolbar icon with the freshly fetched tasks in real-time
+          updateIconFromTaskList(tasks).catch(() => {});
         } catch (e) {
           sendResponse({ ok: false, error: e.message });
         }
@@ -1943,6 +2265,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const adapter = getAdapter(msg.nasId, s);
           await adapter.taskAction(msg.action, msg.ids);
           sendResponse({ ok: true });
+          setTimeout(() => checkActiveTasksAndUpdateIcon().catch(() => {}), 250);
         } catch (e) {
           sendResponse({ ok: false, error: e.message });
         }
@@ -1984,12 +2307,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
     }
     if (msg.type === "SET_WHITELIST") {
-      if (!Array.isArray(msg.domains)) {
-        dbg("ERROR", "SET_WHITELIST", "Invalid domains");
-        sendResponse({ ok: false, error: "Invalid domains parameter - must be array" });
+      const list = msg.list || msg.domains;
+      if (!Array.isArray(list)) {
+        dbg("ERROR", "SET_WHITELIST", "Invalid domains/list");
+        sendResponse({ ok: false, error: "Invalid parameter - must be array" });
         return true;
       }
-      setWhitelist(msg.domains)
+      setWhitelist(list)
+        .then(() => sendResponse({ ok: true }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
+      return true;
+    }
+    if (msg.type === "SAVE_NAS_LIST") {
+      if (!Array.isArray(msg.list)) {
+        dbg("ERROR", "SAVE_NAS_LIST", "Invalid list");
+        sendResponse({ ok: false, error: "Invalid list parameter - must be array" });
+        return true;
+      }
+      saveNasList(msg.list)
         .then(() => sendResponse({ ok: true }))
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
@@ -2065,6 +2400,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   } catch (err) {
     console.error('[Background] Failed to handle extension installation/update:', err);
   }
+
+  // Setup periodic polling alarm and initialize icon
+  chrome.alarms?.create("pollTaskStatus", { periodInMinutes: 0.5 });
+  checkActiveTasksAndUpdateIcon().catch(() => {});
 });
 
 chrome.runtime.onStartup?.addListener(async () => {
@@ -2075,4 +2414,42 @@ chrome.runtime.onStartup?.addListener(async () => {
   } catch (err) {
     console.error('[Background] Failed to re-inject content scripts on startup:', err);
   }
+
+  chrome.alarms?.create("pollTaskStatus", { periodInMinutes: 0.5 });
+  checkActiveTasksAndUpdateIcon().catch(() => {});
 });
+
+// Automatically ensure content scripts and context menus are initialized on service worker start/reload
+if (typeof chrome !== "undefined" && chrome.runtime) {
+  (async () => {
+    try {
+      await registerContentScripts();
+      await reinjectContentScripts();
+      await initContextMenu();
+    } catch (err) {
+      console.debug('[Background] Service worker boot init note:', err?.message || err);
+    }
+  })();
+}
+
+// Periodic alarm listener for status polling
+chrome.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name === "pollTaskStatus") {
+    checkActiveTasksAndUpdateIcon().catch(() => {});
+  }
+});
+
+// Export for unit tests
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    ICON_STATES,
+    formatSpeed,
+    updateExtensionIconState,
+    checkActiveTasksAndUpdateIcon,
+    getAdapter,
+    sendDownload,
+    synoAddDownload,
+    isValidMagnetURI,
+    isValidTorrentURL
+  };
+}

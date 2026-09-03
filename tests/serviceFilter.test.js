@@ -58,7 +58,7 @@ const ServiceFilter = {
         https: false,
         ftp: false
       },
-      aria2: {
+      jdownloader: {
         magnet: true,
         torrent: true,
         http: true,
@@ -94,7 +94,7 @@ const ServiceFilter = {
 describe('Service Filter', () => {
   describe('Protocol Support Matrix', () => {
     test('should define protocol support for all services', () => {
-      const services = ['synology', 'qbittorrent', 'transmission', 'deluge', 'aria2'];
+      const services = ['synology', 'qbittorrent', 'transmission', 'deluge', 'jdownloader'];
       const protocols = ['magnet', 'torrent', 'http', 'https', 'ftp'];
 
       services.forEach(service => {
@@ -106,7 +106,7 @@ describe('Service Filter', () => {
     });
 
     test('should support magnet and torrent on all services', () => {
-      const services = ['synology', 'qbittorrent', 'transmission', 'deluge', 'aria2'];
+      const services = ['synology', 'qbittorrent', 'transmission', 'deluge', 'jdownloader'];
 
       services.forEach(service => {
         assert(ServiceFilter.supportsProtocol(service, 'magnet') === true, `${service} should support magnet`);
@@ -114,8 +114,8 @@ describe('Service Filter', () => {
       });
     });
 
-    test('should support HTTP/HTTPS/FTP only on synology and aria2', () => {
-      const httpServices = ['synology', 'aria2'];
+    test('should support HTTP/HTTPS/FTP only on synology and jdownloader', () => {
+      const httpServices = ['synology', 'jdownloader'];
       const torrentOnlyServices = ['qbittorrent', 'transmission', 'deluge'];
       const protocols = ['http', 'https', 'ftp'];
 
@@ -202,14 +202,14 @@ describe('Service Filter', () => {
       const services = [
         { id: '1', type: 'synology', name: 'Synology' },
         { id: '2', type: 'qbittorrent', name: 'qBittorrent' },
-        { id: '3', type: 'aria2', name: 'Aria2' }
+        { id: '3', type: 'jdownloader', name: 'JDownloader' }
       ];
 
       const httpSupported = ServiceFilter.getServicesForProtocol(services, 'http');
 
-      assert(httpSupported.length === 2, 'Only Synology and Aria2 should support HTTP');
+      assert(httpSupported.length === 2, 'Only Synology and JDownloader should support HTTP');
       assert(httpSupported.some(s => s.type === 'synology'));
-      assert(httpSupported.some(s => s.type === 'aria2'));
+      assert(httpSupported.some(s => s.type === 'jdownloader'));
       assert(!httpSupported.some(s => s.type === 'qbittorrent'));
     });
 
@@ -219,7 +219,7 @@ describe('Service Filter', () => {
         { id: '2', type: 'qbittorrent' },
         { id: '3', type: 'transmission' },
         { id: '4', type: 'deluge' },
-        { id: '5', type: 'aria2' }
+        { id: '5', type: 'jdownloader' }
       ];
 
       const magnetSupported = ServiceFilter.getServicesForProtocol(services, 'magnet');
@@ -239,10 +239,10 @@ describe('Service Filter', () => {
       const services = [
         { id: '1', type: 'synology', name: 'Synology' },
         { id: '2', type: 'qbittorrent', name: 'qBittorrent' },
-        { id: '3', type: 'aria2', name: 'Aria2' }
+        { id: '3', type: 'jdownloader', name: 'JDownloader' }
       ];
 
-      // HTTP is supported by Synology and Aria2, but disabled by user
+      // HTTP is supported by Synology and JDownloader, but disabled by user
       const httpDisabled = ServiceFilter.getCompatibleServices(services, 'http', { http: false });
       assert(httpDisabled.length === 0, 'Should return empty when user disabled protocol');
 
@@ -254,7 +254,7 @@ describe('Service Filter', () => {
       const httpEnabled = ServiceFilter.getCompatibleServices(services, 'http', { http: true });
       assert(httpEnabled.length === 2, 'Should return only services that support HTTP');
       assert(httpEnabled.some(s => s.type === 'synology'));
-      assert(httpEnabled.some(s => s.type === 'aria2'));
+      assert(httpEnabled.some(s => s.type === 'jdownloader'));
     });
 
     test('should use default settings when not provided', () => {
@@ -288,7 +288,7 @@ describe('Service Filter', () => {
     test('should return false when protocol is disabled', () => {
       const services = [
         { id: '1', type: 'synology' },
-        { id: '2', type: 'aria2' }
+        { id: '2', type: 'jdownloader' }
       ];
 
       // HTTP is disabled by default
@@ -335,10 +335,10 @@ describe('Service Filter', () => {
       assert(compatible.length === 2, 'Both services support torrent');
     });
 
-    test('User has Synology and Aria2, disabled all protocols except magnet', () => {
+    test('User has Synology and JDownloader, disabled all protocols except magnet', () => {
       const services = [
         { id: '1', type: 'synology', name: 'NAS' },
-        { id: '2', type: 'aria2', name: 'Aria2' }
+        { id: '2', type: 'jdownloader', name: 'JDownloader' }
       ];
 
       const settings = {

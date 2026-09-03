@@ -12,6 +12,7 @@
   function isValidTorrentURL(url) {
     try {
       const u = new URL(url);
+      if (u.protocol !== "http:" && u.protocol !== "https:") return false;
       return /\.torrent(\?|$)/i.test(u.pathname);
     } catch {
       return false;
@@ -41,11 +42,8 @@
         return null;
       }
 
-      if (lower.endsWith(".torrent")) {
-        if (isValidTorrentURL(url)) {
-          return { type: "torrent", url };
-        }
-        return null;
+      if ((lower.startsWith("http://") || lower.startsWith("https://")) && isValidTorrentURL(url)) {
+        return { type: "torrent", url };
       }
 
       if (lower.startsWith("http://") || lower.startsWith("https://")) {

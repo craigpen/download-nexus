@@ -203,26 +203,49 @@ Examples:
     return;
   }
 
-  // Filter Download Nexus extension targets
-  const extensionTargets = targets.filter(
-    (t) =>
-      t.url?.includes('chrome-extension://') ||
-      t.title?.includes('Download Nexus') ||
-      t.title?.includes('NAS Download') ||
-      t.type === 'service_worker' ||
-      t.type === 'background_page'
+  // Find Download Nexus extension specifically by checking manifest
+  const candidateTargets = targets.filter(
+    (t) => (t.type === 'service_worker' || t.type === 'background_page') &&
+           t.webSocketDebuggerUrl &&
+           (t.url?.includes('chrome-extension://') || t.title?.includes('Download Nexus'))
   );
+
+  let primaryTarget = null;
+  const extensionTargets = [];
+
+  for (const t of candidateTargets) {
+    try {
+      const res = await sendCdpCommand(t.webSocketDebuggerUrl, 'Runtime.evaluate', {
+        expression: '({ name: (typeof chrome !== "undefined" && chrome?.i18n?.getMessage) ? (chrome.i18n.getMessage("extName") || chrome.runtime?.getManifest?.()?.name) : null, rawName: chrome?.runtime?.getManifest?.()?.name, id: chrome?.runtime?.id, version: chrome?.runtime?.getManifest?.()?.version })',
+        returnByValue: true
+      }, 1000);
+
+      const extInfo = res?.result?.value;
+      if (extInfo && (extInfo.name === 'Download Nexus' || extInfo.name === 'NAS Download Helper' || (extInfo.rawName === '__MSG_extName__' && t.url?.endsWith('/background.js') && !t.url.includes('/js/')))) {
+        primaryTarget = t;
+        extensionTargets.push({ ...t, manifest: extInfo });
+        break;
+      }
+    } catch {
+      // not accessible or not an extension
+    }
+  }
+
+  // If manifest search didn't match immediately, check for root background.js URL pattern
+  if (!primaryTarget) {
+    primaryTarget = candidateTargets.find(t => t.url?.match(/chrome-extension:\/\/[a-z0-9]+\/background\.js$/i));
+  }
 
   console.log(`\n========================================================`);
   console.log(`  Browser on Port ${options.port} (${version['User-Agent']?.split(' ')[0] || 'Chromium'})`);
-  console.log(`  Extension Targets: ${extensionTargets.length} found | Total Targets: ${targets.length}`);
+  console.log(`  Download Nexus Target: ${primaryTarget ? primaryTarget.url : 'Not Found'} | Total Targets: ${targets.length}`);
   console.log(`========================================================`);
 
   if (options.targets || (!options.storage && !options.logs && !options.listen && !options.eval && !options.reload)) {
     console.log(`\nActive Browser Targets:`);
     for (const t of targets) {
-      const isExt = extensionTargets.some(e => e.id === t.id);
-      const flag = isExt ? '[EXTENSION]' : '[PAGE]     ';
+      const isNexus = primaryTarget && primaryTarget.id === t.id;
+      const flag = isNexus ? '[DOWNLOAD-NEXUS]' : '[TARGET]        ';
       console.log(`  ${flag} ${t.type.padEnd(16)} ${(t.title || 'Untitled').substring(0, 35).padEnd(37)} ${t.url || ''}`);
     }
     if (!options.storage && !options.logs && !options.listen && !options.eval && !options.reload) {
@@ -231,10 +254,8 @@ Examples:
     }
   }
 
-  const primaryTarget = extensionTargets.find(t => t.type === 'service_worker' || t.type === 'background_page') || extensionTargets[0];
-
   if (!primaryTarget || !primaryTarget.webSocketDebuggerUrl) {
-    console.error(`[Inspector] No extension background target found with WebSocket debugging enabled.`);
+    console.error(`[Inspector] No Download Nexus background target found with WebSocket debugging enabled.`);
     return;
   }
 

@@ -96,59 +96,38 @@ class DelugeAdapter extends NasAdapter {
   }
 }
 
-class Aria2Adapter extends NasAdapter {
+class JDownloaderAdapter extends NasAdapter {
   async testConnection() {
     if (!this.config?.host || !this.config?.port) {
       throw new Error("Settings incomplete: missing host or port");
     }
-    // Verify RPC secret is configured
-    if (!this.config?.rpcSecret) {
-      throw new Error("Settings incomplete: missing RPC secret");
-    }
-    return { ok: true, version: "aria2" };
+    return { ok: true, version: "JDownloader 2" };
   }
-
   async listTasks() { return []; }
   async addDownload(uri) { return { ok: true }; }
   async taskAction(action, ids) { return { ok: true }; }
 
-  _statusString(status) {
-    const statusMap = {
-      "active": "downloading",
-      "waiting": "stalled",
-      "paused": "paused",
-      "error": "error",
-      "complete": "finished",
-      "removed": "finished"
-    };
-    return statusMap[status] || "stalled";
-  }
+  _displayStatus(item, isLinkCollector = false) {
+    if (isLinkCollector) return "stalled";
+    if (item.finished) return "finished";
+    if (item.skipped) return "paused";
 
-  _mapTask(t) {
-    const totalLength = Number(t.totalLength) || 0;
-    const completedLength = Number(t.completedLength) || 0;
-    const downloadSpeed = Number(t.downloadSpeed) || 0;
-    const uploadSpeed = Number(t.uploadSpeed) || 0;
-    const eta = Number(t.eta) || 0;
+    const s = String(item.status || "").toLowerCase();
+    const ext = String(item.extractionStatus || "").toLowerCase();
 
-    let title = t.name;
-    if (!title && t.files && t.files.length > 0) {
-      const filePath = t.files[0].path;
-      title = filePath ? filePath.split('/').pop() : "Unknown";
+    if (ext.includes("error") || s.includes("error") || s.includes("fail") || s.includes("defect") || s.includes("missing") || s.includes("crc")) {
+      return "error";
     }
-    title = title || "Unknown";
-
-    return {
-      id: t.gid,
-      title,
-      status: this._statusString(t.status),
-      progress: totalLength > 0 ? Math.round((completedLength / totalLength) * 100) : 0,
-      downloaded: completedLength,
-      size: totalLength,
-      speed_down: downloadSpeed,
-      speed_up: uploadSpeed,
-      eta: eta > 0 ? eta : 0
-    };
+    if (s.includes("pause") || s.includes("stop")) {
+      return "paused";
+    }
+    if (s.includes("wait") || s.includes("queue") || s.includes("captcha") || s.includes("reconnect") || s.includes("limit")) {
+      return "stalled";
+    }
+    if (item.running || (item.speed && item.speed > 0) || s.includes("download") || s.includes("start") || s.includes("connect") || ext.includes("running")) {
+      return "downloading";
+    }
+    return "downloading";
   }
 }
 
@@ -158,10 +137,19 @@ function getAdapter(nasId, config) {
     case "qbittorrent": return new QBittorrentAdapter(nasId, config);
     case "transmission": return new TransmissionAdapter(nasId, config);
     case "deluge": return new DelugeAdapter(nasId, config);
-    case "aria2": return new Aria2Adapter(nasId, config);
+    case "jdownloader": return new JDownloaderAdapter(nasId, config);
     default: return new SynologyAdapter(nasId, config);
   }
 }
+
+const JDOWNLOADER_CONFIG = {
+  type: 'jdownloader',
+  id: 'test-jd-1',
+  name: 'Local JDownloader',
+  host: '127.0.0.1',
+  port: 3128,
+  https: false
+};
 
 // Mock config for testing
 const SYNOLOGY_CONFIG = {
@@ -207,16 +195,6 @@ const DELUGE_CONFIG = {
   https: false,
   username: 'admin',  // Not used in auth, for reference only
   password: 'deluge'  // Only this is used for auth.login()
-};
-
-const ARIA2_CONFIG = {
-  type: 'aria2',
-  id: 'test-aria2-1',
-  name: 'Test Aria2',
-  host: 'localhost',
-  port: 6800,
-  https: false,
-  rpcSecret: 'P3TERX'
 };
 
 // Test Suite
@@ -591,161 +569,6 @@ describe('Device Adapters', () => {
     });
   });
 
-  describe('Aria2Adapter', () => {
-    test('should validate configuration on testConnection', async () => {
-      const adapter = new Aria2Adapter('test-id', ARIA2_CONFIG);
-      assert(adapter.config.host === 'localhost', 'Config should be set');
-      assert(adapter.config.port === 6800, 'Port should be set');
-      assert(adapter.config.rpcSecret === 'P3TERX', 'RPC secret should be set');
-    });
-
-    test('should reject incomplete configuration - missing host', async () => {
-      const incompleteConfig = { ...ARIA2_CONFIG, host: null };
-      const adapter = new Aria2Adapter('test-id', incompleteConfig);
-
-      try {
-        await adapter.testConnection();
-        assert.fail('Should throw for missing host');
-      } catch (e) {
-        assert(e.message.includes('incomplete'), 'Should mention incomplete settings');
-      }
-    });
-
-    test('should reject incomplete configuration - missing port', async () => {
-      const incompleteConfig = { ...ARIA2_CONFIG, port: null };
-      const adapter = new Aria2Adapter('test-id', incompleteConfig);
-
-      try {
-        await adapter.testConnection();
-        assert.fail('Should throw for missing port');
-      } catch (e) {
-        assert(e.message.includes('incomplete'), 'Should mention incomplete settings');
-      }
-    });
-
-    test('should reject incomplete configuration - missing RPC secret', async () => {
-      const incompleteConfig = { ...ARIA2_CONFIG, rpcSecret: null };
-      const adapter = new Aria2Adapter('test-id', incompleteConfig);
-
-      try {
-        await adapter.testConnection();
-        assert.fail('Should throw for missing RPC secret');
-      } catch (e) {
-        assert(e.message.includes('incomplete'), 'Should mention incomplete settings');
-      }
-    });
-
-    test('should map aria2 states to unified format', () => {
-      const adapter = new Aria2Adapter('test-id', ARIA2_CONFIG);
-
-      const stateTests = [
-        { input: 'active', expected: 'downloading' },
-        { input: 'waiting', expected: 'stalled' },
-        { input: 'paused', expected: 'paused' },
-        { input: 'error', expected: 'error' },
-        { input: 'complete', expected: 'finished' },
-        { input: 'removed', expected: 'finished' },
-        { input: 'unknown', expected: 'stalled' }  // Unknown defaults to stalled
-      ];
-
-      stateTests.forEach(test => {
-        const mapped = adapter._statusString(test.input);
-        assert(mapped === test.expected,
-          `State ${test.input} should map to ${test.expected}, got ${mapped}`);
-      });
-    });
-
-    test('should handle task data mapping correctly', () => {
-      const adapter = new Aria2Adapter('test-id', ARIA2_CONFIG);
-
-      const aria2Task = {
-        gid: 'abc123def456',
-        name: 'Ubuntu 20.04 LTS',
-        status: 'active',
-        totalLength: '1073741824',
-        completedLength: '536870912',
-        downloadSpeed: '5242880',
-        uploadSpeed: '1048576',
-        eta: '100',
-        files: [{ path: '/downloads/Ubuntu-20.04.iso' }]
-      };
-
-      const mapped = adapter._mapTask(aria2Task);
-
-      assert(mapped.id === 'abc123def456', 'ID should be gid');
-      assert(mapped.title === 'Ubuntu 20.04 LTS', 'Title should use name');
-      assert(mapped.status === 'downloading', 'Status should be mapped');
-      assert(mapped.progress === 50, 'Progress should be 50%');
-      assert(mapped.size === 1073741824, 'Size should be converted to number');
-      assert(mapped.downloaded === 536870912, 'Downloaded should be converted');
-      assert(mapped.speed_down === 5242880, 'Download speed should be converted');
-      assert(mapped.speed_up === 1048576, 'Upload speed should be converted');
-      assert(mapped.eta === 100, 'ETA should be converted');
-    });
-
-    test('should extract filename from files array when name is missing', () => {
-      const adapter = new Aria2Adapter('test-id', ARIA2_CONFIG);
-
-      const aria2Task = {
-        gid: 'xyz789',
-        name: '',  // Empty name
-        status: 'active',
-        totalLength: '1000000',
-        completedLength: '500000',
-        downloadSpeed: '1000000',
-        uploadSpeed: '100000',
-        eta: '1',
-        files: [{ path: '/tmp/downloads/my-movie.mp4' }]
-      };
-
-      const mapped = adapter._mapTask(aria2Task);
-
-      assert(mapped.title === 'my-movie.mp4', 'Should extract filename from path');
-    });
-
-    test('should handle tasks with no files array', () => {
-      const adapter = new Aria2Adapter('test-id', ARIA2_CONFIG);
-
-      const aria2Task = {
-        gid: 'no-files',
-        name: 'Named Task',
-        status: 'waiting',
-        totalLength: '1000000',
-        completedLength: '0',
-        downloadSpeed: '0',
-        uploadSpeed: '0',
-        eta: '0',
-        files: []
-      };
-
-      const mapped = adapter._mapTask(aria2Task);
-
-      assert(mapped.title === 'Named Task', 'Should use name when available');
-    });
-
-    test('should construct proper RPC URL', () => {
-      const httpConfig = { ...ARIA2_CONFIG, https: false };
-      const httpsConfig = { ...ARIA2_CONFIG, https: true };
-
-      const httpAdapter = new Aria2Adapter('test-id', httpConfig);
-      const httpsAdapter = new Aria2Adapter('test-id', httpsConfig);
-
-      // Both should have proper configuration
-      assert(httpAdapter.config.host === 'localhost', 'HTTP adapter should have host');
-      assert(httpsAdapter.config.host === 'localhost', 'HTTPS adapter should have host');
-    });
-
-    test('should use default RPC secret if not provided', () => {
-      const configNoSecret = { ...ARIA2_CONFIG };
-      delete configNoSecret.rpcSecret;
-
-      const adapter = new Aria2Adapter('test-id', configNoSecret);
-
-      // Should not throw on creation, but testConnection would fail
-      assert(adapter.config.rpcSecret === undefined, 'RPC secret should be undefined when not set');
-    });
-  });
-
   describe('Adapter Pattern', () => {
     test('should have consistent interface', () => {
       const methods = ['testConnection', 'listTasks', 'addDownload', 'taskAction'];
@@ -755,14 +578,12 @@ describe('Device Adapters', () => {
       const qbAdapter = new QBittorrentAdapter('id', QBITTORRENT_CONFIG);
       const transmissionAdapter = new TransmissionAdapter('id', TRANSMISSION_CONFIG);
       const delugeAdapter = new DelugeAdapter('id', DELUGE_CONFIG);
-      const aria2Adapter = new Aria2Adapter('id', ARIA2_CONFIG);
 
       methods.forEach(method => {
         assert(typeof synologyAdapter[method] === 'function', `SynologyAdapter should have ${method}`);
         assert(typeof qbAdapter[method] === 'function', `QBittorrentAdapter should have ${method}`);
         assert(typeof transmissionAdapter[method] === 'function', `TransmissionAdapter should have ${method}`);
         assert(typeof delugeAdapter[method] === 'function', `DelugeAdapter should have ${method}`);
-        assert(typeof aria2Adapter[method] === 'function', `Aria2Adapter should have ${method}`);
       });
     });
 
@@ -771,8 +592,7 @@ describe('Device Adapters', () => {
         synology: SYNOLOGY_CONFIG,
         qbittorrent: QBITTORRENT_CONFIG,
         transmission: TRANSMISSION_CONFIG,
-        deluge: DELUGE_CONFIG,
-        aria2: ARIA2_CONFIG
+        deluge: DELUGE_CONFIG
       };
 
       Object.entries(adapters).forEach(([type, config]) => {
@@ -888,6 +708,55 @@ describe('Device Adapters', () => {
       assert(paused[0].id === '3', 'Should be the paused download');
     });
   });
+
+  describe('JDownloader Adapter', () => {
+    test('should instantiate JDownloaderAdapter correctly', () => {
+      const adapter = getAdapter('test-jd', JDOWNLOADER_CONFIG);
+      assert(adapter instanceof JDownloaderAdapter, 'Should be an instance of JDownloaderAdapter');
+    });
+
+    test('should validate host and port on testConnection', async () => {
+      const adapter = getAdapter('test-jd', JDOWNLOADER_CONFIG);
+      const result = await adapter.testConnection();
+      assert(result.ok === true, 'Connection test should pass');
+      assert(result.version === 'JDownloader 2', 'Should return JDownloader 2 version string');
+    });
+
+    test('should reject incomplete config missing host or port', async () => {
+      const adapter = getAdapter('test-jd', { type: 'jdownloader' });
+      await assert.rejects(async () => {
+        await adapter.testConnection();
+      }, /Settings incomplete/);
+    });
+
+    test('should accept addDownload for any valid URL or magnet', async () => {
+      const adapter = getAdapter('test-jd', JDOWNLOADER_CONFIG);
+      const result = await adapter.addDownload('https://example.com/file.zip');
+      assert(result.ok === true, 'Should add download successfully');
+    });
+
+    test('should handle task actions (pause, resume, delete)', async () => {
+      const adapter = getAdapter('test-jd', JDOWNLOADER_CONFIG);
+      const pauseRes = await adapter.taskAction('pause', ['1']);
+      const resumeRes = await adapter.taskAction('resume', ['1']);
+      const deleteRes = await adapter.taskAction('delete', ['1']);
+      assert(pauseRes.ok === true, 'Pause action should succeed');
+      assert(resumeRes.ok === true, 'Resume action should succeed');
+      assert(deleteRes.ok === true, 'Delete action should succeed');
+    });
+
+    test('should map JDownloader states correctly', () => {
+      const adapter = getAdapter('test-jd', JDOWNLOADER_CONFIG);
+      assert(adapter._displayStatus({ running: true, speed: 1024 }) === 'downloading');
+      assert(adapter._displayStatus({ finished: true }) === 'finished');
+      assert(adapter._displayStatus({ skipped: true }) === 'paused');
+      assert(adapter._displayStatus({ status: 'Paused' }) === 'paused');
+      assert(adapter._displayStatus({ status: 'Waiting for slot' }) === 'stalled');
+      assert(adapter._displayStatus({ status: 'Plugin Defect' }) === 'error');
+      assert(adapter._displayStatus({ extractionStatus: 'ERROR' }) === 'error');
+      assert(adapter._displayStatus({}, true) === 'stalled'); // LinkCollector queue item
+    });
+  });
 });
 
 // Test runner (simple)
@@ -898,4 +767,4 @@ if (require.main === module) {
   console.log('  npm test -- tests/adapters.test.js');
 }
 
-module.exports = { SYNOLOGY_CONFIG, QBITTORRENT_CONFIG, TRANSMISSION_CONFIG, DELUGE_CONFIG, ARIA2_CONFIG };
+module.exports = { SYNOLOGY_CONFIG, QBITTORRENT_CONFIG, TRANSMISSION_CONFIG, DELUGE_CONFIG, JDOWNLOADER_CONFIG };
