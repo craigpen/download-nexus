@@ -62,7 +62,7 @@ fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest,
 console.log(`  ✓ manifest.json`);
 
 // Copy JavaScript files
-const jsFiles = ['background.js', 'content.js', 'popup.js', 'options.js'];
+const jsFiles = ['background.js', 'content.js', 'popup.js', 'options.js', 'crypto.js'];
 jsFiles.forEach(file => {
   const src = path.join(__dirname, '..', 'src', file);
   if (fs.existsSync(src)) {

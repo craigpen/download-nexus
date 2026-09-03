@@ -412,7 +412,18 @@ async function saveWhitelistSettings() {
 
 // ── Backup & Restore ───────────────────────────────────────────────────────
 
+let pendingRestoreData = null;
+
 async function exportConfig() {
+  const includeCreds = document.getElementById("backupIncludeCreds")?.checked;
+  const encPassword = document.getElementById("backupPasswordInput")?.value || "";
+
+  if (includeCreds && !encPassword.trim()) {
+    showToast("Please enter an encryption password for credentials.", "error");
+    document.getElementById("backupPasswordInput")?.focus();
+    return;
+  }
+
   try {
     const [nasResp, whiteResp, modeResp] = await Promise.all([
       sendMsg({ type: "GET_NAS_LIST" }),
@@ -420,13 +431,34 @@ async function exportConfig() {
       sendMsg({ type: "GET_WHITELIST_MODE" })
     ]);
 
+    const rawServices = nasResp?.list || [];
+
+    // Prepare readable services with blanked passwords/tokens
+    const safeServices = rawServices.map(s => ({
+      ...s,
+      password: "",
+      apiToken: ""
+    }));
+
     const backup = {
       version: "1.1.9",
       exportedAt: new Date().toISOString(),
-      services: (nasResp?.list || []).map(s => ({ ...s, password: "" })), // Exclude plaintext passwords for safety
+      services: safeServices,
       whitelist: whiteResp?.list || [],
       whitelistMode: modeResp?.mode || "all"
     };
+
+    // If user chose to include credentials, encrypt them into a separate envelope
+    if (includeCreds && encPassword.trim()) {
+      const credsMap = {};
+      rawServices.forEach(s => {
+        credsMap[s.id] = {
+          password: s.password || "",
+          apiToken: s.apiToken || ""
+        };
+      });
+      backup.encryptedCredentials = await encryptCredentials(credsMap, encPassword.trim());
+    }
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -435,15 +467,23 @@ async function exportConfig() {
     a.download = `download-nexus-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast("Configuration exported!");
+    showToast(includeCreds ? "Backup created with encrypted credentials!" : "Configuration backup created!");
   } catch (err) {
-    showToast("Export failed: " + err.message, "error");
+    showToast("Backup failed: " + err.message, "error");
   }
 }
 
 function importConfig() {
   const fileInput = document.getElementById("importFileInput");
   if (fileInput) fileInput.click();
+}
+
+function closeRestoreModal() {
+  const modal = document.getElementById("restoreModal");
+  if (modal) modal.classList.add("d-none");
+  pendingRestoreData = null;
+  const pwd = document.getElementById("restorePasswordInput");
+  if (pwd) pwd.value = "";
 }
 
 async function handleFileImport(e) {
@@ -458,22 +498,97 @@ async function handleFileImport(e) {
       throw new Error("Invalid backup file format: missing services array.");
     }
 
-    if (confirm(`Import ${data.services.length} services from "${file.name}"?`)) {
-      await sendMsg({ type: "SAVE_NAS_LIST", list: data.services });
-      if (data.whitelist && Array.isArray(data.whitelist)) {
-        await sendMsg({ type: "SET_WHITELIST", list: data.whitelist });
-      }
-      if (data.whitelistMode) {
-        await sendMsg({ type: "SET_WHITELIST_MODE", mode: data.whitelistMode });
-      }
-      await loadServices();
-      await loadWhitelistSettings();
-      showToast("Configuration imported successfully!");
+    pendingRestoreData = data;
+
+    // Open restore modal
+    const modal = document.getElementById("restoreModal");
+    const summaryText = document.getElementById("restoreSummaryText");
+    const encPrompt = document.getElementById("restoreEncryptedPrompt");
+    const plainPrompt = document.getElementById("restorePlainPrompt");
+    const settingsOnlyBtn = document.getElementById("restoreSettingsOnlyBtn");
+    const confirmBtn = document.getElementById("confirmRestoreBtn");
+    const pwdInput = document.getElementById("restorePasswordInput");
+
+    const srvCount = data.services.length;
+    const wlCount = (data.whitelist && Array.isArray(data.whitelist)) ? data.whitelist.length : 0;
+    if (summaryText) {
+      summaryText.textContent = `Found ${srvCount} service${srvCount !== 1 ? "s" : ""} and ${wlCount} whitelist rule${wlCount !== 1 ? "s" : ""} in "${file.name}".`;
     }
+
+    if (data.encryptedCredentials) {
+      if (encPrompt) encPrompt.classList.remove("d-none");
+      if (plainPrompt) plainPrompt.classList.add("d-none");
+      if (settingsOnlyBtn) settingsOnlyBtn.classList.remove("d-none");
+      if (confirmBtn) confirmBtn.textContent = "Unlock & Restore All";
+      if (pwdInput) {
+        pwdInput.value = "";
+        setTimeout(() => pwdInput.focus(), 100);
+      }
+    } else {
+      if (encPrompt) encPrompt.classList.add("d-none");
+      if (plainPrompt) plainPrompt.classList.remove("d-none");
+      if (settingsOnlyBtn) settingsOnlyBtn.classList.add("d-none");
+      if (confirmBtn) confirmBtn.textContent = "Restore All";
+    }
+
+    if (modal) modal.classList.remove("d-none");
   } catch (err) {
     showToast("Import failed: " + err.message, "error");
   } finally {
     e.target.value = "";
+  }
+}
+
+async function executeRestore(decrypt = true) {
+  if (!pendingRestoreData) return;
+
+  const data = pendingRestoreData;
+  let servicesToSave = data.services;
+
+  if (decrypt && data.encryptedCredentials) {
+    const pwd = document.getElementById("restorePasswordInput")?.value || "";
+    if (!pwd) {
+      showToast("Please enter the decryption password.", "error");
+      document.getElementById("restorePasswordInput")?.focus();
+      return;
+    }
+    try {
+      const credsMap = await decryptCredentials(data.encryptedCredentials, pwd);
+      // Merge decrypted credentials into services
+      servicesToSave = data.services.map(s => {
+        const creds = credsMap[s.id];
+        return {
+          ...s,
+          password: creds?.password || s.password || "",
+          apiToken: creds?.apiToken || s.apiToken || ""
+        };
+      });
+    } catch (err) {
+      showToast(err.message, "error");
+      return;
+    }
+  }
+
+  try {
+    await sendMsg({ type: "SAVE_NAS_LIST", list: servicesToSave });
+    if (data.whitelist && Array.isArray(data.whitelist)) {
+      await sendMsg({ type: "SET_WHITELIST", list: data.whitelist });
+    }
+    if (data.whitelistMode) {
+      await sendMsg({ type: "SET_WHITELIST_MODE", mode: data.whitelistMode });
+    }
+    await loadServices();
+    await loadWhitelistSettings();
+    closeRestoreModal();
+    if (decrypt && data.encryptedCredentials) {
+      showToast("Configuration and credentials restored successfully!");
+    } else if (!decrypt && data.encryptedCredentials) {
+      showToast("Settings restored (credentials skipped).");
+    } else {
+      showToast("Configuration restored successfully!");
+    }
+  } catch (err) {
+    showToast("Restore failed: " + err.message, "error");
   }
 }
 
@@ -517,4 +632,25 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("exportBtn")?.addEventListener("click", exportConfig);
   document.getElementById("importBtn")?.addEventListener("click", importConfig);
   document.getElementById("importFileInput")?.addEventListener("change", handleFileImport);
+
+  // Backup & Restore event listeners
+  const includeCredsCheck = document.getElementById("backupIncludeCreds");
+  const passwordWrap = document.getElementById("backupPasswordWrap");
+  const passwordInput = document.getElementById("backupPasswordInput");
+  if (includeCredsCheck && passwordWrap) {
+    includeCredsCheck.addEventListener("change", () => {
+      passwordWrap.classList.toggle("d-none", !includeCredsCheck.checked);
+      if (includeCredsCheck.checked && passwordInput) {
+        passwordInput.focus();
+      }
+    });
+  }
+
+  document.getElementById("closeRestoreModalBtn")?.addEventListener("click", closeRestoreModal);
+  document.getElementById("cancelRestoreBtn")?.addEventListener("click", closeRestoreModal);
+  document.getElementById("restoreSettingsOnlyBtn")?.addEventListener("click", () => executeRestore(false));
+  document.getElementById("confirmRestoreBtn")?.addEventListener("click", () => executeRestore(true));
+  document.getElementById("restorePasswordInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") executeRestore(true);
+  });
 });

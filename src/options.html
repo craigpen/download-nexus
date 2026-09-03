@@ -464,6 +464,96 @@
 
     #toast.success { border-color: var(--success); color: var(--success); }
     #toast.error { border-color: var(--error); color: var(--error); }
+
+    /* Modal Dialog */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 15, 29, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 460px;
+      padding: 24px;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: modalFadeIn .18s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .btn-icon-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 15px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .btn-icon-close:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .alert-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--primary-subtle);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-outline:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
   </style>
 </head>
 <body>
@@ -678,31 +768,43 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Export / Import Settings</h2>
-              <p class="card-desc">Backup your services and preferences or restore them onto another browser instance.</p>
+              <h2 class="card-title">Backup &amp; Restore</h2>
+              <p class="card-desc">Backup your services and rules or restore from an existing backup file.</p>
             </div>
           </div>
 
           <div class="backup-stack">
             <div class="backup-block">
-              <h4 class="backup-title">Export Configuration</h4>
-              <p class="hint backup-hint">Download a clean JSON backup file containing your configured download services and whitelist rules.</p>
-              <div>
+              <h4 class="backup-title">Create Backup</h4>
+              <p class="hint backup-hint">Download a JSON backup file containing your configured download services and whitelist rules.</p>
+              
+              <div class="checkbox-group mt-sm">
+                <input type="checkbox" id="backupIncludeCreds" />
+                <label for="backupIncludeCreds">Include credentials (protected with an encryption password)</label>
+              </div>
+
+              <div class="form-group mt-sm d-none" id="backupPasswordWrap">
+                <label for="backupPasswordInput">Encryption Password</label>
+                <input type="password" id="backupPasswordInput" placeholder="Choose an encryption password" autocomplete="new-password" />
+                <span class="hint">Passwords and tokens will be AES-256 encrypted. Service definitions and whitelist rules remain readable.</span>
+              </div>
+
+              <div class="mt-md">
                 <button class="btn btn-secondary" id="exportBtn">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Export Settings (JSON)
+                  Download Backup (.json)
                 </button>
               </div>
             </div>
 
             <div class="backup-block backup-divider">
-              <h4 class="backup-title">Import Configuration</h4>
-              <p class="hint backup-hint">Restore services and rules from a previously exported Download Nexus JSON backup file.</p>
+              <h4 class="backup-title">Restore from Backup</h4>
+              <p class="hint backup-hint">Restore services and rules from a previously exported Download Nexus backup file.</p>
               <input type="file" id="importFileInput" accept=".json" class="d-none" />
               <div>
                 <button class="btn btn-secondary" id="importBtn">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Choose File to Import...
+                  Select Backup File...
                 </button>
               </div>
             </div>
@@ -712,9 +814,44 @@
     </main>
   </div>
 
+  <!-- Restore Modal -->
+  <div class="modal-overlay d-none" id="restoreModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Restore Backup</h3>
+        <button class="btn-icon-close" id="closeRestoreModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="restoreSummaryText">Found 0 services in backup file.</p>
+        
+        <div id="restoreEncryptedPrompt" class="d-none">
+          <div class="alert-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>This backup contains AES-256 encrypted credentials.</span>
+          </div>
+          <div class="form-group mt-sm">
+            <label for="restorePasswordInput">Decryption Password</label>
+            <input type="password" id="restorePasswordInput" placeholder="Enter backup encryption password" />
+            <span class="hint">Enter the password used when creating this backup to restore credentials.</span>
+          </div>
+        </div>
+
+        <div id="restorePlainPrompt" class="d-none">
+          <p class="hint">Passwords were not included in this backup file and will remain empty for newly imported services.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelRestoreBtn">Cancel</button>
+        <button type="button" class="btn btn-outline d-none" id="restoreSettingsOnlyBtn">Restore Settings Only</button>
+        <button type="button" class="btn btn-primary" id="confirmRestoreBtn">Restore All</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Element -->
   <div id="toast">Settings Saved</div>
 
+  <script src="crypto.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
