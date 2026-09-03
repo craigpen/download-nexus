@@ -97,6 +97,8 @@ const ADAPTER_FEATURES = {
 
 let allTasks      = [];
 let filter        = "downloading";
+let serviceFilters = {}; // Track user-selected filter per NAS device
+const FILTER_PRIORITY = ["downloading", "seeding", "stalled", "error", "paused", "finished"];
 let pollTimer     = null;
 let currentDomain = null;
 let whitelistSet  = new Set();
@@ -218,6 +220,10 @@ function updateCounts() {
   for (const [k, v] of Object.entries(counts)) {
     const el = document.getElementById(`cnt-${k}`);
     if (el) el.textContent = v;
+    const tabBtn = document.querySelector(`#tabBar [data-filter="${k}"]`);
+    if (tabBtn) {
+      tabBtn.classList.toggle("tab-empty", v === 0);
+    }
   }
 
   // Total speeds (support both normalized and Synology formats)
@@ -557,6 +563,8 @@ function paintCachedTasks(nasId = currentNasId) {
   const cached = tasksCache[nasId];
   if (cached && Array.isArray(cached)) {
     allTasks = cached;
+    filter = getBestFilterForService(nasId, cached);
+    renderFilterTabs();
     showEl("speedBar", true);
     showEl("tabBar", true);
     updateCounts();
@@ -787,7 +795,6 @@ function renderNasTabs() {
       if (newNasId === currentNasId) return; // Already viewing this service
 
       currentNasId = newNasId;
-      filter = "downloading";
       selectedTaskIds.clear();
 
       // 1. Instantly update active styling on tabs
@@ -799,7 +806,8 @@ function renderNasTabs() {
       // 2. Instantly update Web UI launcher button for target service
       updateWebUiLauncher();
 
-      // 3. Instantly update filter tabs for target adapter type
+      // 3. Instantly pick best filter and update filter tabs for target adapter type
+      filter = getBestFilterForService(currentNasId, tasksCache[currentNasId] || []);
       renderFilterTabs();
 
       // 4. Synchronously paint from memory cache (0ms latency)
@@ -827,9 +835,53 @@ function renderNasTabs() {
   renderFilterTabs(); // Initial render based on current adapter
 }
 
-// Get the enabled tabs for the current adapter
-function getEnabledTabs() {
-  const device = nasList.find(n => n.id === currentNasId);
+// Load saved per-service filter selections from storage
+function loadServiceFilters() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(["serviceFilters"], res => {
+      if (res.serviceFilters && typeof res.serviceFilters === "object") {
+        serviceFilters = res.serviceFilters;
+      }
+      resolve();
+    });
+  });
+}
+
+// Get the best filter for a service based on priority and user memory
+function getBestFilterForService(nasId, tasks = tasksCache[nasId] || []) {
+  const enabledTabs = getEnabledTabs(nasId);
+
+  // Count tasks by status for this service
+  const counts = { downloading: 0, seeding: 0, paused: 0, stalled: 0, finished: 0, error: 0 };
+  if (Array.isArray(tasks)) {
+    for (const t of tasks) {
+      if (counts[t.status] !== undefined) counts[t.status]++;
+    }
+  }
+
+  // 1. Check if user explicitly selected a filter for this service previously
+  const remembered = serviceFilters[nasId];
+  if (remembered && enabledTabs.includes(remembered)) {
+    // If remembered filter currently has tasks, or if all enabled categories are empty (0 tasks), preserve user's choice
+    if (counts[remembered] > 0 || (Array.isArray(tasks) && tasks.length === 0)) {
+      return remembered;
+    }
+  }
+
+  // 2. Otherwise auto-select the highest priority non-empty filter supported by this adapter
+  for (const p of FILTER_PRIORITY) {
+    if (enabledTabs.includes(p) && counts[p] > 0) {
+      return p;
+    }
+  }
+
+  // 3. Fallback to downloading (or first enabled tab)
+  return enabledTabs.includes("downloading") ? "downloading" : (enabledTabs[0] || "downloading");
+}
+
+// Get the enabled tabs for the current or specified adapter
+function getEnabledTabs(nasId = currentNasId) {
+  const device = nasList.find(n => n.id === nasId);
   const adapterType = device?.type || "synology";
   const features = ADAPTER_FEATURES[adapterType];
   return features ? features.tabs : ADAPTER_FEATURES.synology.tabs;
@@ -849,6 +901,10 @@ function selectFilter(filterType) {
   const activeTab = document.querySelector(`[data-filter="${filterType}"]`);
   if (activeTab) activeTab.classList.add("active");
   filter = filterType;
+  if (currentNasId) {
+    serviceFilters[currentNasId] = filterType;
+    chrome.storage.local.set({ serviceFilters });
+  }
   selectedTaskIds.clear(); // Clear selection when switching filters
   renderTasks();
 }
@@ -1821,6 +1877,7 @@ async function checkAllDeviceConnections() {
 (async () => {
   await loadNasList();
   await loadAllCachedTasks();
+  await loadServiceFilters();
   checkAllDeviceConnections(); // Check all device statuses on open
   getCurrentDomain();
   loadWhitelist();
