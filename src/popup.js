@@ -1019,6 +1019,7 @@ function showSettings() {
   hideEl("mainHeaderControls");
   hideEl("gearIcon");
   showEl("backIcon", true);
+  showEl("openInTabBtn", true);
   document.getElementById("settingsBtn").title = "Back";
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   showNasListView();
@@ -1036,6 +1037,7 @@ async function showMainView() {
   showEl("mainHeaderControls", true);
   showEl("gearIcon", true);
   hideEl("backIcon");
+  hideEl("openInTabBtn");
   document.getElementById("settingsBtn").title = "Settings";
   paintCachedTasks();
   updateWhitelistUI();
@@ -1892,6 +1894,7 @@ function showAddDownloadView() {
   document.getElementById("headerTitle").textContent = "Add Downloads";
   hideEl("mainHeaderControls");
   hideEl("gearIcon");
+  hideEl("openInTabBtn");
   showEl("backIcon", true);
   document.getElementById("settingsBtn").title = "Back";
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
