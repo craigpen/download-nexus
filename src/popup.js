@@ -785,6 +785,21 @@ function renderNasTabs() {
   });
   showEl(nasTabBar, true);
 
+  if (!nasTabBar.dataset.wheelBound) {
+    nasTabBar.dataset.wheelBound = "true";
+    nasTabBar.addEventListener("wheel", (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        nasTabBar.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
+
+  const activeTab = nasTabBar.querySelector(".nas-tab-btn.active");
+  if (activeTab) {
+    activeTab.scrollIntoView({ behavior: "instant", inline: "nearest", block: "nearest" });
+  }
+
   nasTabBar.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
       const newNasId = tab.dataset.nasId;
@@ -798,6 +813,7 @@ function renderNasTabs() {
       nasTabBar.querySelectorAll(".tab").forEach(t => {
         t.classList.toggle("active", t.dataset.nasId === currentNasId);
       });
+      tab.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
 
       // 2. Instantly update Web UI launcher button for target service
       updateWebUiLauncher();

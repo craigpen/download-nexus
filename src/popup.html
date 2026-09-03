@@ -262,25 +262,79 @@
       background: var(--text-dim);
     }
 
-    /* NAS Tab Button Components */
+    /* ── NAS Tab Bar & Button Components ── */
+    #nasTabBar {
+      display: flex;
+      align-items: flex-end;
+      padding: 6px 10px 0;
+      gap: 2px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    #nasTabBar::-webkit-scrollbar {
+      display: none;
+    }
     .nas-tab-btn {
-      flex: 1;
+      flex: 0 1 auto;
       display: inline-flex;
       flex-direction: row;
       align-items: center;
-      justify-content: center;
-      gap: 4px;
-      min-width: 0;
-      padding: 7px 6px;
+      justify-content: flex-start;
+      gap: 5px;
+      min-width: 44px;
+      max-width: 130px;
+      padding: 6px 10px;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      background: var(--surface-hover);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      position: relative;
+      z-index: 1;
+      opacity: 0.85;
+      transition: all .15s ease;
+      user-select: none;
+      white-space: nowrap;
+      margin-bottom: -1px;
+    }
+    .nas-tab-btn:hover {
+      opacity: 1;
+      color: var(--text);
+      background: var(--surface);
+      z-index: 2;
+    }
+    .nas-tab-btn.active {
+      flex-shrink: 0;
+      max-width: none;
+      background: var(--surface);
+      color: var(--primary);
+      font-weight: 700;
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+      box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+      z-index: 3;
+      opacity: 1;
+      padding: 6px 12px;
     }
     .nas-tab-btn.tab-error {
       color: var(--error);
+      border-top-color: var(--error);
     }
     .nas-tab-title {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 100%;
+      text-align: left;
+    }
+    .nas-tab-btn.active .nas-tab-title {
+      overflow: visible;
+      text-overflow: clip;
     }
     .tab-warn-icon {
       display: inline-flex;
