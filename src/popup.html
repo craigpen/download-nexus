@@ -338,9 +338,9 @@
     .task {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 9px 12px;
-      margin: 4px 10px;
+      border-radius: 7px;
+      padding: 7px 10px;
+      margin: 3px 8px;
       transition: all .15s ease;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
@@ -354,7 +354,6 @@
       display: flex;
       align-items: center;
       gap: 7px;
-      margin-bottom: 6px;
     }
     .task-name {
       font-size: 12px;
@@ -368,15 +367,16 @@
     }
     .task-checkbox {
       cursor: pointer;
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
       flex-shrink: 0;
       accent-color: var(--primary);
     }
     .task-actions {
       display: flex;
-      gap: 4px;
+      gap: 3px;
       flex-shrink: 0;
+      margin-left: 2px;
     }
     .task-btn {
       background: var(--track-bg);
@@ -384,12 +384,13 @@
       border-radius: 4px;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 2px 6px;
-      font-size: 10px;
+      padding: 1px 5px;
+      font-size: 9.5px;
       transition: all .15s ease;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      line-height: 1.2;
     }
     .task-btn:hover {
       background: var(--surface-hover);
@@ -403,18 +404,13 @@
     }
 
     /* Progress Track & Fill */
-    .task-mid {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 6px;
-    }
     .progress-track {
-      flex: 1;
-      height: 5px;
+      width: 100%;
+      height: 3px;
       border-radius: 9999px;
       background: var(--track-bg);
       overflow: hidden;
+      margin: 5px 0;
     }
     .progress-fill {
       height: 100%;
@@ -430,29 +426,31 @@
     .progress-fill.fill-other       { background: var(--text-muted); }
 
     .progress-pct {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
-      min-width: 32px;
       text-align: right;
       color: var(--text-muted);
       font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
     }
 
     /* Bottom Info & Rate Badges */
     .task-bot {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       font-size: 10px;
       color: var(--text-muted);
     }
     .rate-pill {
       display: inline-flex;
       align-items: center;
-      gap: 3px;
-      padding: 1px 6px;
+      gap: 2px;
+      padding: 0 5px;
+      height: 16px;
+      line-height: 16px;
       border-radius: 4px;
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
@@ -466,10 +464,12 @@
     }
     .task-size {
       font-weight: 500;
+      font-size: 10px;
     }
     .task-eta {
       margin-left: auto;
       font-variant-numeric: tabular-nums;
+      font-size: 10px;
     }
 
     /* Status Dots */

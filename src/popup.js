@@ -447,6 +447,10 @@ function renderTasks() {
       name.className = "task-name";
       name.title = task.title;
       name.textContent = task.title;
+      const pctSpan = document.createElement("span");
+      pctSpan.className = "progress-pct";
+      pctSpan.textContent = `${pct}%`;
+
       const actions = document.createElement("div");
       actions.className = "task-actions";
       const pauseBtn = document.createElement("button");
@@ -469,21 +473,15 @@ function renderTasks() {
       top.appendChild(checkbox);
       top.appendChild(dot);
       top.appendChild(name);
+      top.appendChild(pctSpan);
       top.appendChild(actions);
 
-      const mid = document.createElement("div");
-      mid.className = "task-mid";
       const track = document.createElement("div");
       track.className = "progress-track";
       const fill = document.createElement("div");
       fill.className = `progress-fill fill-${statusClass(task.status).replace(/^s-/, "")}`;
       fill.style.width = `${pct}%`;
       track.appendChild(fill);
-      const pctSpan = document.createElement("span");
-      pctSpan.className = "progress-pct";
-      pctSpan.textContent = `${pct}%`;
-      mid.appendChild(track);
-      mid.appendChild(pctSpan);
 
       const bot = document.createElement("div");
       bot.className = "task-bot";
@@ -505,7 +503,7 @@ function renderTasks() {
       bot.appendChild(etaSpan);
 
       row.appendChild(top);
-      row.appendChild(mid);
+      row.appendChild(track);
       row.appendChild(bot);
 
       pauseBtn.addEventListener("click", () => taskAction("pause", [task.id]));
