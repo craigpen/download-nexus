@@ -297,24 +297,16 @@ describe('updateWhitelistModeVisibility()', () => {
     expect($('whitelistDomainsGroup').classList.contains('d-none')).toBe(true);
   });
 
-  test('shows the textarea and a whitelist label in whitelist mode', () => {
-    $('whitelistMode').value = 'whitelist';
+  test('shows the textarea and a whitelist label in restricted mode', () => {
+    $('whitelistMode').value = 'restricted';
     options.updateWhitelistModeVisibility();
 
     expect($('whitelistDomainsGroup').classList.contains('d-none')).toBe(false);
     expect($('whitelistDomainsLabel').textContent).toBe('Whitelisted Domains (One per line)');
   });
 
-  test('shows a blacklist label in blacklist mode', () => {
-    $('whitelistMode').value = 'blacklist';
-    options.updateWhitelistModeVisibility();
-
-    expect($('whitelistDomainsGroup').classList.contains('d-none')).toBe(false);
-    expect($('whitelistDomainsLabel').textContent).toBe('Blacklisted Domains (One per line)');
-  });
-
   test('toggling back to "all" re-hides the textarea', () => {
-    $('whitelistMode').value = 'whitelist';
+    $('whitelistMode').value = 'restricted';
     options.updateWhitelistModeVisibility();
     $('whitelistMode').value = 'all';
     options.updateWhitelistModeVisibility();
@@ -918,7 +910,7 @@ describe('whitelist settings', () => {
   test('loads the mode and domain list from the background', async () => {
     loadOptionsPage({
       respond: (m) => {
-        if (m.type === 'GET_WHITELIST_MODE') return { mode: 'whitelist' };
+        if (m.type === 'GET_WHITELIST_MODE') return { mode: 'restricted' };
         if (m.type === 'GET_WHITELIST') return { list: ['a.com', 'b.org'] };
         return { ok: true };
       }
@@ -926,7 +918,7 @@ describe('whitelist settings', () => {
 
     await options.loadWhitelistSettings();
 
-    expect($('whitelistMode').value).toBe('whitelist');
+    expect($('whitelistMode').value).toBe('restricted');
     expect($('whitelistDomains').value).toBe('a.com\nb.org');
     expect($('whitelistDomainsGroup').classList.contains('d-none')).toBe(false);
   });
@@ -948,12 +940,12 @@ describe('whitelist settings', () => {
   });
 
   test('saves the mode and the normalised domain list', async () => {
-    $('whitelistMode').value = 'blacklist';
+    $('whitelistMode').value = 'restricted';
     $('whitelistDomains').value = '  Example.COM  \n\nbad.org\n   \nMiXeD.Net';
 
     await options.saveWhitelistSettings();
 
-    expect(lastMessageOfType('SET_WHITELIST_MODE').mode).toBe('blacklist');
+    expect(lastMessageOfType('SET_WHITELIST_MODE').mode).toBe('restricted');
     expect(lastMessageOfType('SET_WHITELIST').list)
       .toEqual(['example.com', 'bad.org', 'mixed.net']);
   });
@@ -1005,7 +997,7 @@ describe('exportConfig()', () => {
       respond: (m) => {
         if (m.type === 'GET_NAS_LIST') return { list: services };
         if (m.type === 'GET_WHITELIST') return { list: ['x.com'] };
-        if (m.type === 'GET_WHITELIST_MODE') return { mode: 'whitelist' };
+        if (m.type === 'GET_WHITELIST_MODE') return { mode: 'restricted' };
         return { ok: true };
       }
     });
@@ -1018,7 +1010,7 @@ describe('exportConfig()', () => {
 
     expect(cap.json.services).toHaveLength(2);
     expect(cap.json.whitelist).toEqual(['x.com']);
-    expect(cap.json.whitelistMode).toBe('whitelist');
+    expect(cap.json.whitelistMode).toBe('restricted');
     expect(cap.json.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(cap.type).toBe('application/json');
   });
@@ -1240,14 +1232,14 @@ describe('executeRestore()', () => {
 
   test('restores services, whitelist and mode from a plain backup', async () => {
     options.__setPendingRestore({
-      services: SERVICES, whitelist: ['a.com'], whitelistMode: 'blacklist'
+      services: SERVICES, whitelist: ['a.com'], whitelistMode: 'restricted'
     });
 
     await options.executeRestore(false);
 
     expect(lastMessageOfType('SAVE_NAS_LIST').list).toHaveLength(2);
     expect(lastMessageOfType('SET_WHITELIST').list).toEqual(['a.com']);
-    expect(lastMessageOfType('SET_WHITELIST_MODE').mode).toBe('blacklist');
+    expect(lastMessageOfType('SET_WHITELIST_MODE').mode).toBe('restricted');
     expect($('toast').textContent).toContain('restored');
   });
 

@@ -390,9 +390,7 @@ function updateWhitelistModeVisibility() {
   } else {
     group.classList.remove("d-none");
     if (label) {
-      label.textContent = mode === "whitelist"
-        ? "Whitelisted Domains (One per line)"
-        : "Blacklisted Domains (One per line)";
+      label.textContent = "Whitelisted Domains (One per line)";
     }
   }
 }
