@@ -1504,6 +1504,25 @@ document.getElementById("testNasBtn").addEventListener("click", async () => {
 
 // ── settings: whitelist & domain routing ────────────────────────────────────
 
+function updateWhitelistModeVisibility() {
+  const select = document.getElementById("whitelistModeSelect");
+  const wrap = document.getElementById("whitelistDomainsWrap");
+  const label = document.getElementById("whitelistDomainsLabel");
+  if (!select || !wrap) return;
+
+  const mode = select.value;
+  if (mode === "all") {
+    wrap.classList.add("d-none");
+  } else {
+    wrap.classList.remove("d-none");
+    if (label) {
+      label.textContent = mode === "whitelist"
+        ? "Whitelisted Domains (One per line)"
+        : "Blacklisted Domains (One per line)";
+    }
+  }
+}
+
 async function renderWhitelistSettings() {
   const select = document.getElementById("whitelistModeSelect");
   const textarea = document.getElementById("whitelistTextarea");
@@ -1515,6 +1534,7 @@ async function renderWhitelistSettings() {
       send({ type: "GET_WHITELIST" })
     ]);
     select.value = modeResp?.mode || "all";
+    updateWhitelistModeVisibility();
     if (document.activeElement !== textarea) {
       textarea.value = (listResp?.list || []).join("\n");
     }
@@ -1522,6 +1542,8 @@ async function renderWhitelistSettings() {
     console.warn("Failed to load whitelist:", err);
   }
 }
+
+document.getElementById("whitelistModeSelect")?.addEventListener("change", updateWhitelistModeVisibility);
 
 async function saveWhitelistSettings() {
   const select = document.getElementById("whitelistModeSelect");
@@ -1593,8 +1615,9 @@ async function popupExportConfig() {
       send({ type: "GET_WHITELIST_MODE" })
     ]);
 
+    const manifest = chrome.runtime.getManifest();
     const backup = {
-      version: "1.1.9",
+      version: manifest.version,
       exportedAt: new Date().toISOString(),
       services: (nasResp?.list || []).map(s => ({ ...s, password: "", apiToken: "" })),
       whitelist: whiteResp?.list || [],

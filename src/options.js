@@ -378,6 +378,25 @@ async function saveCaptureSettings() {
 
 // ── Whitelist Settings ─────────────────────────────────────────────────────
 
+function updateWhitelistModeVisibility() {
+  const select = document.getElementById("whitelistMode");
+  const group = document.getElementById("whitelistDomainsGroup");
+  const label = document.getElementById("whitelistDomainsLabel");
+  if (!select || !group) return;
+
+  const mode = select.value;
+  if (mode === "all") {
+    group.classList.add("d-none");
+  } else {
+    group.classList.remove("d-none");
+    if (label) {
+      label.textContent = mode === "whitelist"
+        ? "Whitelisted Domains (One per line)"
+        : "Blacklisted Domains (One per line)";
+    }
+  }
+}
+
 async function loadWhitelistSettings() {
   try {
     const [modeResp, listResp] = await Promise.all([
@@ -386,11 +405,14 @@ async function loadWhitelistSettings() {
     ]);
 
     document.getElementById("whitelistMode").value = modeResp?.mode || "all";
+    updateWhitelistModeVisibility();
     document.getElementById("whitelistDomains").value = (listResp?.list || []).join("\n");
   } catch (err) {
     console.error("Failed to load whitelist:", err);
   }
 }
+
+document.getElementById("whitelistMode")?.addEventListener("change", updateWhitelistModeVisibility);
 
 async function saveWhitelistSettings() {
   const mode = document.getElementById("whitelistMode").value;
