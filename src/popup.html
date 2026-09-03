@@ -728,6 +728,13 @@
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
         </button>
+        <button class="icon-btn" id="openWebUiBtn" title="Open Web UI" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </button>
         <div class="dropdown" id="whitelistDropdown" style="display:none">
           <button class="icon-btn" id="whitelistBtn" title="Whitelist current domain">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -798,14 +805,13 @@
       </div>
     </div>
 
-    <div class="footer">
-      <div style="display:flex;gap:4px;flex-wrap:nowrap;min-width:0;overflow-x:auto">
+    <div class="footer" id="batchFooter" style="display:none">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap;min-width:0;align-items:center;width:100%">
         <button class="footer-btn" id="toggleSelectBtn" style="display:none" title="Toggle select all">✓ All</button>
         <button class="footer-btn" id="pauseAllBtn" style="display:none">⏸ (0)</button>
         <button class="footer-btn" id="resumeAllBtn" style="display:none">▶ (0)</button>
         <button class="footer-btn danger" id="removeAllBtn" style="display:none">✕ (0)</button>
       </div>
-      <button class="footer-btn primary" id="openDSBtn">Open Web ↗</button>
     </div>
   </div>
 

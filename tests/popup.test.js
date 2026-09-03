@@ -192,6 +192,60 @@ describe('Popup Data Rendering', () => {
       assert.strictEqual(totalUp, 300, 'Should aggregate upload speeds from both formats');
     });
   });
+
+  describe('Web UI Launcher URL Resolution', () => {
+    function getServiceWebUrl(service) {
+      if (!service || !service.host) return null;
+      const scheme = service.https ? "https" : "http";
+      const host = service.host;
+      const port = service.port;
+      if (service.type === "jdownloader") {
+        return null;
+      }
+      if (service.type === "transmission") {
+        return `${scheme}://${host}:${port}/transmission/web/`;
+      }
+      if (service.type === "synology") {
+        return `${scheme}://${host}:${port}`;
+      }
+      return `${scheme}://${host}:${port}/`;
+    }
+
+    test('should resolve Synology DSM URL correctly', () => {
+      const url = getServiceWebUrl({ type: 'synology', host: '192.168.1.10', port: 5000, https: false });
+      assert.strictEqual(url, 'http://192.168.1.10:5000');
+    });
+
+    test('should resolve qBittorrent WebUI URL with trailing slash', () => {
+      const url = getServiceWebUrl({ type: 'qbittorrent', host: '192.168.1.20', port: 8080, https: false });
+      assert.strictEqual(url, 'http://192.168.1.20:8080/');
+    });
+
+    test('should resolve Transmission WebUI URL with /transmission/web/ path', () => {
+      const url = getServiceWebUrl({ type: 'transmission', host: '192.168.1.30', port: 9091, https: false });
+      assert.strictEqual(url, 'http://192.168.1.30:9091/transmission/web/');
+    });
+
+    test('should resolve Deluge WebUI URL with trailing slash', () => {
+      const url = getServiceWebUrl({ type: 'deluge', host: '192.168.1.40', port: 8112, https: false });
+      assert.strictEqual(url, 'http://192.168.1.40:8112/');
+    });
+
+    test('should return null for JDownloader 2 (desktop app)', () => {
+      const url = getServiceWebUrl({ type: 'jdownloader', host: '127.0.0.1', port: 3128, https: false });
+      assert.strictEqual(url, null);
+    });
+
+    test('should handle HTTPS correctly', () => {
+      const url = getServiceWebUrl({ type: 'synology', host: 'nas.example.com', port: 5001, https: true });
+      assert.strictEqual(url, 'https://nas.example.com:5001');
+    });
+
+    test('should return null for invalid or missing service', () => {
+      assert.strictEqual(getServiceWebUrl(null), null);
+      assert.strictEqual(getServiceWebUrl({}), null);
+    });
+  });
 });
 
 module.exports = { fmtSpeed, fmt, fmtEta };
