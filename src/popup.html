@@ -667,6 +667,147 @@
       font-size: 10px;
     }
 
+    /* ── View Switching ── */
+    #mainView { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    #mainView.show { display: flex; }
+    #settingsView { display: none; overflow-y: auto; flex: 1; max-height: 520px; }
+    #settingsView.show { display: block; }
+    #addDownloadView { display: none; overflow-y: auto; flex: 1; max-height: 520px; padding: 14px; }
+    #addDownloadView.show { display: block; }
+
+    /* Top Bar in Settings View */
+    .settings-top-bar {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .btn-icon-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* Add Downloads View Elements */
+    .add-dl-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .form-control {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s ease;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+    }
+    textarea.form-control {
+      resize: vertical;
+      min-height: 72px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .capability-pill {
+      font-size: 10.5px;
+      color: var(--primary);
+      background: var(--primary-subtle);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-text-action {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+    }
+    .btn-text-action:hover {
+      text-decoration: underline;
+    }
+    .selected-files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+      max-height: 90px;
+      overflow-y: auto;
+    }
+    .file-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    .file-pill-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 320px;
+    }
+    .file-pill-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0 4px;
+    }
+    .file-pill-remove:hover {
+      color: var(--error);
+    }
+    .add-dl-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .hint {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
     /* ── Settings View ── */
     .settings-section {
       padding: 12px 14px;
@@ -886,6 +1027,12 @@
     <div class="header-right">
       <div id="mainHeaderControls" class="header-controls">
         <span class="status-msg" id="statusMsg"></span>
+        <button class="icon-btn" id="addDownloadBtn" title="Add Downloads">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="refreshBtn" title="Refresh">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
@@ -958,9 +1105,15 @@
     </div>
 
     <div class="error-container info-banner" id="noNasContainer">
-      <div class="error-text info-title">⚙️ No Service Configured</div>
+      <div class="error-text info-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        No Service Configured
+      </div>
       <div class="error-detail">Go to settings and add a download service to get started.</div>
-      <button class="retry-btn" id="configureBtn">⚙️ Open Settings</button>
+      <button class="retry-btn btn-icon-label" id="configureBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Open Settings
+      </button>
     </div>
 
     <div class="task-list" id="taskList">
@@ -980,6 +1133,16 @@
   </div>
 
   <div id="settingsView">
+    <div class="settings-top-bar">
+      <button type="button" class="footer-btn primary btn-block btn-icon-label" id="openInTabBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Open in Tab
+      </button>
+    </div>
     <div class="settings-section">
       <div class="settings-label">Download Services</div>
       <div id="settingsNasListWrap">
@@ -1107,6 +1270,55 @@
       </div>
       <input type="file" id="importFile" accept=".json" class="d-none" />
       <div id="importStatus" class="settings-status"></div>
+    </div>
+  </div>
+
+  <!-- Add Downloads View -->
+  <div id="addDownloadView">
+    <div class="add-dl-container">
+      <div class="form-group">
+        <label for="addDlServiceSelect">Target Service</label>
+        <select id="addDlServiceSelect" class="form-control"></select>
+        <div id="addDlCapabilityBadge" class="capability-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span id="addDlCapabilityText">Supports: Magnets &amp; .torrent files</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="label-row">
+          <label for="addDlUrls">Download URLs / Magnet Links</label>
+          <button type="button" class="btn-text-action" id="addDlPasteBtn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            Paste from Clipboard
+          </button>
+        </div>
+        <textarea id="addDlUrls" class="form-control" rows="4" placeholder="Paste magnet links or direct URLs (one per line)..."></textarea>
+      </div>
+
+      <div class="form-group" id="addDlTorrentSection">
+        <label>Local .torrent File(s)</label>
+        <input type="file" id="addDlTorrentInput" accept=".torrent" multiple class="d-none" />
+        <button type="button" class="footer-btn btn-block btn-icon-label" id="addDlChooseFilesBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Choose .torrent File(s)...
+        </button>
+        <div id="addDlFileList" class="selected-files-list d-none"></div>
+      </div>
+
+      <div class="form-group" id="addDlPathSection">
+        <label for="addDlPathInput">Save Path (Optional)</label>
+        <input type="text" id="addDlPathInput" class="form-control" placeholder="Default download directory" />
+        <span class="hint" id="addDlPathHint">Leave blank to use default download location.</span>
+      </div>
+
+      <div class="add-dl-actions">
+        <button type="button" class="footer-btn" id="addDlCancelBtn">Cancel</button>
+        <button type="button" class="footer-btn primary btn-icon-label" id="addDlSubmitBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Start Download
+        </button>
+      </div>
     </div>
   </div>
 

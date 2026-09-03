@@ -1013,6 +1013,7 @@ async function toggleWhitelist() {
 
 function showSettings() {
   document.getElementById("mainView").classList.remove("show");
+  document.getElementById("addDownloadView")?.classList.remove("show");
   document.getElementById("settingsView").classList.add("show");
   document.getElementById("headerTitle").textContent = "Settings";
   hideEl("mainHeaderControls");
@@ -1029,6 +1030,7 @@ function showSettings() {
 
 async function showMainView() {
   document.getElementById("settingsView").classList.remove("show");
+  document.getElementById("addDownloadView")?.classList.remove("show");
   document.getElementById("mainView").classList.add("show");
   document.getElementById("headerTitle").textContent = "Download Nexus";
   showEl("mainHeaderControls", true);
@@ -1797,7 +1799,20 @@ document.getElementById("toggleSelectBtn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("settingsBtn").addEventListener("click", () => {
+document.getElementById("settingsBtn")?.addEventListener("click", () => {
+  const isMain = document.getElementById("mainView").classList.contains("show");
+  if (isMain) {
+    showSettings();
+  } else {
+    showMainView();
+  }
+});
+
+document.getElementById("configureBtn")?.addEventListener("click", () => {
+  showSettings();
+});
+
+document.getElementById("openInTabBtn")?.addEventListener("click", () => {
   if (chrome.runtime.openOptionsPage) {
     chrome.runtime.openOptionsPage();
   } else {
@@ -1805,13 +1820,280 @@ document.getElementById("settingsBtn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("configureBtn").addEventListener("click", () => {
-  if (chrome.runtime.openOptionsPage) {
-    chrome.runtime.openOptionsPage();
+// ── Add Downloads View Handlers ─────────────────────────────────────────────
+
+let selectedTorrentFiles = [];
+
+const SERVICE_CAPABILITIES = {
+  synology: {
+    text: "Supports: Magnets, .torrent files, & direct web links",
+    allowTorrents: true,
+    pathHint: "Supports custom download destination."
+  },
+  qbittorrent: {
+    text: "Supports: Magnet links & .torrent files",
+    allowTorrents: true,
+    pathHint: "Supports custom save path."
+  },
+  transmission: {
+    text: "Supports: Magnet links & .torrent files",
+    allowTorrents: true,
+    pathHint: "Supports custom download directory."
+  },
+  deluge: {
+    text: "Supports: Magnet links & .torrent files",
+    allowTorrents: true,
+    pathHint: "Supports custom download location."
+  },
+  jdownloader: {
+    text: "Supports: Direct web & media links (HTTP/HTTPS/FTP)",
+    allowTorrents: false,
+    pathHint: "Supports custom package destination folder."
+  }
+};
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function updateAddDlServiceCapabilities() {
+  const select = document.getElementById("addDlServiceSelect");
+  const nasId = select?.value;
+  const nas = nasList.find(n => n.id === nasId);
+  const type = nas?.type || "synology";
+  const cap = SERVICE_CAPABILITIES[type] || SERVICE_CAPABILITIES.synology;
+
+  const capText = document.getElementById("addDlCapabilityText");
+  if (capText) capText.textContent = cap.text;
+
+  const torrentSection = document.getElementById("addDlTorrentSection");
+  if (torrentSection) {
+    torrentSection.classList.toggle("d-none", !cap.allowTorrents);
+  }
+
+  const pathHint = document.getElementById("addDlPathHint");
+  if (pathHint) {
+    pathHint.textContent = (nas?.destination ? `Default: ${nas.destination}. ` : "") + cap.pathHint;
+  }
+  const pathInput = document.getElementById("addDlPathInput");
+  if (pathInput && !pathInput.value && nas?.destination) {
+    pathInput.placeholder = nas.destination;
+  }
+}
+
+function showAddDownloadView() {
+  document.getElementById("mainView").classList.remove("show");
+  document.getElementById("settingsView").classList.remove("show");
+  document.getElementById("addDownloadView").classList.add("show");
+  document.getElementById("headerTitle").textContent = "Add Downloads";
+  hideEl("mainHeaderControls");
+  hideEl("gearIcon");
+  showEl("backIcon", true);
+  document.getElementById("settingsBtn").title = "Back";
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+  // Populate services dropdown
+  const select = document.getElementById("addDlServiceSelect");
+  if (select) {
+    select.innerHTML = "";
+    nasList.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = `${s.name} (${s.type})`;
+      if (s.id === currentNasId) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  updateAddDlServiceCapabilities();
+  setTimeout(() => document.getElementById("addDlUrls")?.focus(), 50);
+}
+
+function renderSelectedTorrentFiles() {
+  const container = document.getElementById("addDlFileList");
+  if (!container) return;
+
+  if (selectedTorrentFiles.length === 0) {
+    container.classList.add("d-none");
+    container.innerHTML = "";
+    return;
+  }
+
+  container.classList.remove("d-none");
+  container.innerHTML = "";
+  selectedTorrentFiles.forEach((file, index) => {
+    const pill = document.createElement("div");
+    pill.className = "file-pill";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "file-pill-name";
+    nameSpan.textContent = `${file.name} (${formatBytes(file.size)})`;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "file-pill-remove";
+    removeBtn.textContent = "✕";
+    removeBtn.title = "Remove";
+    removeBtn.addEventListener("click", () => {
+      selectedTorrentFiles.splice(index, 1);
+      renderSelectedTorrentFiles();
+    });
+
+    pill.appendChild(nameSpan);
+    pill.appendChild(removeBtn);
+    container.appendChild(pill);
+  });
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitAddDownloads() {
+  const select = document.getElementById("addDlServiceSelect");
+  const nasId = select?.value;
+  const nas = nasList.find(n => n.id === nasId);
+  if (!nas) {
+    setStatus("Please select a target service.", true);
+    return;
+  }
+
+  const urlsText = document.getElementById("addDlUrls")?.value || "";
+  const lines = urlsText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const destination = document.getElementById("addDlPathInput")?.value.trim() || undefined;
+
+  const cap = SERVICE_CAPABILITIES[nas.type] || SERVICE_CAPABILITIES.synology;
+
+  if (lines.length === 0 && selectedTorrentFiles.length === 0) {
+    setStatus("Enter at least 1 link or choose a .torrent file.", true);
+    return;
+  }
+
+  // Pre-validate links against target service capabilities
+  if (nas.type === "jdownloader") {
+    const magnet = lines.find(l => l.startsWith("magnet:"));
+    if (magnet) {
+      setStatus("JDownloader does not support magnet links.", true);
+      return;
+    }
+  } else if (["qbittorrent", "transmission", "deluge"].includes(nas.type)) {
+    const invalidUrl = lines.find(l => !l.startsWith("magnet:") && !l.toLowerCase().includes(".torrent"));
+    if (invalidUrl) {
+      setStatus(`${nas.name} only accepts torrents or magnets.`, true);
+      return;
+    }
+  }
+
+  const submitBtn = document.getElementById("addDlSubmitBtn");
+  if (submitBtn) submitBtn.disabled = true;
+  setStatus("Adding downloads...");
+
+  let successCount = 0;
+  let failCount = 0;
+
+  // 1. Process URLs
+  for (const url of lines) {
+    try {
+      const resp = await send({ type: "SEND_MAGNET", url, nasId, destination });
+      if (resp && resp.ok) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    } catch (err) {
+      failCount++;
+    }
+  }
+
+  // 2. Process .torrent files
+  if (cap.allowTorrents) {
+    for (const file of selectedTorrentFiles) {
+      try {
+        const base64 = await readFileAsBase64(file);
+        const parseResp = await send({ type: "PARSE_TORRENT_FILE", base64 });
+        if (parseResp && parseResp.ok && parseResp.magnet) {
+          const resp = await send({ type: "SEND_MAGNET", url: parseResp.magnet, nasId, destination });
+          if (resp && resp.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }
+  }
+
+  if (submitBtn) submitBtn.disabled = false;
+
+  // Reset form
+  const urlsArea = document.getElementById("addDlUrls");
+  if (urlsArea) urlsArea.value = "";
+  const pathInp = document.getElementById("addDlPathInput");
+  if (pathInp) pathInp.value = "";
+  selectedTorrentFiles = [];
+  renderSelectedTorrentFiles();
+
+  // Return to main view and refresh
+  currentNasId = nasId;
+  await showMainView();
+
+  if (failCount === 0) {
+    setStatus(`Added ${successCount} download${successCount !== 1 ? "s" : ""}!`);
   } else {
-    window.open(chrome.runtime.getURL("options.html"));
+    setStatus(`Added ${successCount} download${successCount !== 1 ? "s" : ""}, ${failCount} failed.`, true);
+  }
+}
+
+document.getElementById("addDownloadBtn")?.addEventListener("click", () => {
+  showAddDownloadView();
+});
+document.getElementById("addDlServiceSelect")?.addEventListener("change", updateAddDlServiceCapabilities);
+document.getElementById("addDlPasteBtn")?.addEventListener("click", async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text && text.trim()) {
+      const area = document.getElementById("addDlUrls");
+      if (area) {
+        area.value = (area.value ? area.value.trim() + "\n" : "") + text.trim();
+        area.focus();
+      }
+    }
+  } catch (err) {
+    console.warn("Clipboard access denied:", err);
   }
 });
+document.getElementById("addDlChooseFilesBtn")?.addEventListener("click", () => {
+  document.getElementById("addDlTorrentInput")?.click();
+});
+document.getElementById("addDlTorrentInput")?.addEventListener("change", (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length > 0) {
+    selectedTorrentFiles.push(...files);
+    renderSelectedTorrentFiles();
+  }
+  e.target.value = "";
+});
+document.getElementById("addDlCancelBtn")?.addEventListener("click", () => {
+  showMainView();
+});
+document.getElementById("addDlSubmitBtn")?.addEventListener("click", submitAddDownloads);
+
 document.getElementById("addNasBtn").addEventListener("click", addNewNas);
 document.getElementById("backToListBtn").addEventListener("click", showNasListView);
 

@@ -296,6 +296,9 @@ class QBittorrentAdapter extends NasAdapter {
 
     const formData = new FormData();
     formData.append("urls", finalUri);
+    if (destination) {
+      formData.append("savepath", destination);
+    }
     const resp = await this._fetch("/torrents/add", {
       method: "POST",
       body: formData
@@ -1790,7 +1793,7 @@ function extractFileName(uri) {
   } catch { return ""; }
 }
 
-async function sendDownload(uri, nasId = null) {
+async function sendDownload(uri, nasId = null, destination = null) {
   const list = await getNasList();
   if (!nasId && list.length > 0) nasId = list[0].id;
 
@@ -1804,7 +1807,7 @@ async function sendDownload(uri, nasId = null) {
 
   try {
     const adapter = getAdapter(nasId, s);
-    await adapter.addDownload(uri);
+    await adapter.addDownload(uri, destination);
     const displayName = isMagnet ? decodeName(uri) : extractFileName(uri);
     dbg("INFO", `Sent to ${s.name}`, displayName || uri.slice(0, 80));
   } catch (err) {
@@ -2199,7 +2202,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         return true;
       }
       dbg("INFO", "SEND_MAGNET handler START");
-      sendDownload(msg.url, msg.nasId).then(() => {
+      sendDownload(msg.url, msg.nasId, msg.destination).then(() => {
         dbg("INFO", "SEND_MAGNET", "Success");
         sendResponse({ ok: true, log: [...debugLog] });
         checkActiveTasksAndUpdateIcon().catch(() => {});
@@ -2207,6 +2210,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         dbg("ERROR", "SEND_MAGNET", e.message);
         sendResponse({ ok: false, error: e.message, log: [...debugLog] });
       });
+      return true;
+    }
+    if (msg.type === "PARSE_TORRENT_FILE") {
+      (async () => {
+        try {
+          const binary = atob(msg.base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          const magnet = await torrentToMagnet(bytes.buffer);
+          sendResponse({ ok: true, magnet });
+        } catch (err) {
+          sendResponse({ ok: false, error: err.message });
+        }
+      })();
       return true;
     }
     if (msg.type === "TEST_CONNECTION") {
