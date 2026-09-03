@@ -241,14 +241,55 @@
       color: var(--primary);
     }
 
+    /* Header Status Dot */
+    .header-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+      transition: background .2s ease;
+    }
+    .header-status-dot.ok {
+      background: var(--success);
+      box-shadow: 0 0 5px rgba(22, 163, 74, 0.4);
+    }
+    .header-status-dot.error {
+      background: var(--error);
+      box-shadow: 0 0 5px rgba(220, 38, 38, 0.4);
+    }
+    .header-status-dot.unknown {
+      background: var(--text-dim);
+    }
+
     /* NAS Tab Button Components */
     .nas-tab-btn {
       flex: 1;
-      display: flex;
-      flex-direction: column;
+      display: inline-flex;
+      flex-direction: row;
       align-items: center;
-      gap: 2px;
+      justify-content: center;
+      gap: 6px;
       min-width: 0;
+      padding: 7px 10px;
+    }
+    .nas-tab-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background .2s ease;
+    }
+    .nas-tab-dot.conn-ok {
+      background: var(--success);
+      box-shadow: 0 0 5px rgba(22, 163, 74, 0.4);
+    }
+    .nas-tab-dot.conn-error {
+      background: var(--error);
+      box-shadow: 0 0 5px rgba(220, 38, 38, 0.4);
+    }
+    .nas-tab-dot.conn-unknown {
+      background: var(--text-dim);
     }
     .nas-tab-title {
       white-space: nowrap;
@@ -256,14 +297,6 @@
       text-overflow: ellipsis;
       max-width: 100%;
     }
-    .nas-tab-status {
-      font-size: 9px;
-      font-weight: 500;
-      line-height: 1;
-    }
-    .nas-tab-status.conn-ok { color: var(--success); }
-    .nas-tab-status.conn-error { color: var(--error); }
-    .nas-tab-status.conn-unknown { color: var(--text-dim); }
 
     /* ── Main / Settings View Containers ── */
     #mainView, #settingsView {
@@ -839,7 +872,7 @@
     </div>
     <div class="header-right">
       <div id="mainHeaderControls" class="header-controls">
-        <span id="connStatus" class="d-none" title="Connection status">●</span>
+        <span id="connStatus" class="header-status-dot d-none" title="Connection status"></span>
         <span class="status-msg" id="statusMsg"></span>
         <button class="icon-btn" id="refreshBtn" title="Refresh">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
