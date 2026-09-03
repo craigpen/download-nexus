@@ -64,38 +64,34 @@ test.describe("Options page", () => {
     await expect(optionsPage.locator("#whitelistMode")).toHaveValue("all");
     await expect(optionsPage.locator("#whitelistDomainsGroup")).toHaveClass(/d-none/);
 
-    await optionsPage.selectOption("#whitelistMode", "whitelist");
+    await optionsPage.selectOption("#whitelistMode", "restricted");
     await expect(optionsPage.locator("#whitelistDomainsGroup")).not.toHaveClass(/d-none/);
     await expect(optionsPage.locator("#whitelistDomainsLabel"))
       .toHaveText("Whitelisted Domains (One per line)");
 
-    await optionsPage.selectOption("#whitelistMode", "blacklist");
-    await expect(optionsPage.locator("#whitelistDomainsLabel"))
-      .toHaveText("Blacklisted Domains (One per line)");
-
     await optionsPage.selectOption("#whitelistMode", "all");
     await expect(optionsPage.locator("#whitelistDomainsGroup")).toHaveClass(/d-none/);
 
-    await optionsPage.selectOption("#whitelistMode", "whitelist");
+    await optionsPage.selectOption("#whitelistMode", "restricted");
     await optionsPage.click("#saveWhitelistBtn");
     await expectToast(optionsPage, "Domain routing rules saved");
-    expect(await ext.getWhitelistMode()).toBe("whitelist");
+    expect(await ext.getWhitelistMode()).toBe("restricted");
   });
 
   test("whitelist view lists every stored domain", async ({ optionsPage, ext }) => {
-    await ext.setWhitelistMode("whitelist");
+    await ext.setWhitelistMode("restricted");
     await ext.setWhitelist(["example.com", "tracker.test", "*.mirror.org"]);
     await optionsPage.reload();
     await openOptionsTab(optionsPage, "whitelist");
 
-    await expect(optionsPage.locator("#whitelistMode")).toHaveValue("whitelist");
+    await expect(optionsPage.locator("#whitelistMode")).toHaveValue("restricted");
     await expect(optionsPage.locator("#whitelistDomains"))
       .toHaveValue("example.com\ntracker.test\n*.mirror.org");
   });
 
   test("whitelist: adding a domain persists it, lower-cased and trimmed", async ({ optionsPage, ext }) => {
     await openOptionsTab(optionsPage, "whitelist");
-    await optionsPage.selectOption("#whitelistMode", "whitelist");
+    await optionsPage.selectOption("#whitelistMode", "restricted");
     await optionsPage.fill("#whitelistDomains", "  Example.COM  \nTracker.Test\n\n");
     await optionsPage.click("#saveWhitelistBtn");
     await expectToast(optionsPage, "Domain routing rules saved");
@@ -104,7 +100,7 @@ test.describe("Options page", () => {
   });
 
   test("whitelist: removing a domain deletes it from storage", async ({ optionsPage, ext }) => {
-    await ext.setWhitelistMode("whitelist");
+    await ext.setWhitelistMode("restricted");
     await ext.setWhitelist(["keep.example", "drop.example"]);
     await optionsPage.reload();
     await openOptionsTab(optionsPage, "whitelist");

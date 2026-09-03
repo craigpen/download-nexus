@@ -29,20 +29,20 @@ test.describe("Data persistence", () => {
   });
 
   test("whitelist rules and routing mode persist across sessions", async ({ context, ext }) => {
-    await ext.setWhitelistMode("whitelist");
+    await ext.setWhitelistMode("restricted");
     await ext.setWhitelist(["alpha.example", "*.bravo.example"]);
 
     const page = await context.newPage();
     await page.goto(ext.optionsUrl);
     await openOptionsTab(page, "whitelist");
-    await expect(page.locator("#whitelistMode")).toHaveValue("whitelist");
+    await expect(page.locator("#whitelistMode")).toHaveValue("restricted");
     await expect(page.locator("#whitelistDomains")).toHaveValue("alpha.example\n*.bravo.example");
     await page.close();
 
     // Values are held in chrome.storage.sync, not in page memory.
     const sync = await ext.readStorage("sync", { whitelist: null, whitelistMode: null });
     expect(sync.whitelist).toEqual(["alpha.example", "*.bravo.example"]);
-    expect(sync.whitelistMode).toBe("whitelist");
+    expect(sync.whitelistMode).toBe("restricted");
   });
 
   test("credentials are held in local storage only, never in synced storage", async ({ ext }) => {

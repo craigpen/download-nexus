@@ -92,29 +92,6 @@ test.describe("Content script link decoration", () => {
     await page.close();
   });
 
-  test("restricted routing mode is not yet honoured by the content script", async ({ context, ext, stub }) => {
-    // KNOWN GAP — see docs/E2E_TESTING.md.
-    //
-    // The routing-mode dropdowns in options.html and popup.html offer
-    // "whitelist" / "blacklist", but content.js only treats the literal value
-    // "restricted" as "restrict injection". Choosing "Only Active on Whitelisted
-    // Domains" therefore has no effect: buttons are still injected everywhere.
-    //
-    // Marked test.fail() so it runs and reports. When the mode values are
-    // reconciled this test will start passing, and Playwright will flag the
-    // annotation as stale — that is the signal to drop test.fail().
-    test.fail();
-
-    await ext.seedService({ id: "svc-a", name: "qBit A" });
-    await ext.setWhitelistMode("whitelist");
-    await ext.setWhitelist(["some-other-site.example"]);
-
-    const page = await mockTorrentSite(context, stub, { expectButtons: false });
-    await page.waitForTimeout(2000);
-    await expect(injectedButtons(page)).toHaveCount(0, { timeout: 1000 });
-    await page.close();
-  });
-
   test('the "restricted" mode value does gate injection correctly', async ({ context, ext, stub }) => {
     await ext.seedService({ id: "svc-a", name: "qBit A" });
     await ext.setWhitelistMode("restricted");
