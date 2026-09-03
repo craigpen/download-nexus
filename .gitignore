@@ -27,6 +27,12 @@ build/
 *.tmp
 *.temp
 
+# Playwright E2E output
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
 # Local development notes
 MEMORY.md
 

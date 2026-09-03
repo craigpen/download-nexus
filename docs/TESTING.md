@@ -2,6 +2,11 @@
 
 Complete test suite for Download Nexus covering unit tests, integration tests, and adapter validation.
 
+> **Looking for browser-level tests?** The Playwright end-to-end suite — which
+> loads the built extension into a real browser and drives the popup, options
+> page and content script — lives in `tests/e2e/` and is documented separately in
+> **[E2E_TESTING.md](E2E_TESTING.md)**.
+
 ## Quick Start
 
 ```bash
@@ -13,6 +18,9 @@ npm test
 
 # Watch mode for development
 npm run test:watch
+
+# End-to-end tests in a real browser (no Docker required)
+npm run test:e2e
 ```
 
 ## Test Suites

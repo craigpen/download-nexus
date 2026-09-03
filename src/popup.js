@@ -742,8 +742,15 @@ function renderNasTabs() {
   updateWebUiLauncher();
   const nasTabBar = document.getElementById("nasTabBar");
 
+  // Status filter tabs are adapter-specific and must be rebuilt (with their
+  // click handlers) regardless of how many services exist. Without this, a
+  // single-service profile with a cold task cache keeps the static markup from
+  // popup.html, whose tabs have no listeners — the filters look right but do
+  // nothing until the cache warms up.
+  renderFilterTabs();
+
   if (nasList.length <= 1) {
-    // Hide tabs if only one or zero NAS
+    // Hide the service switcher if only one or zero services are configured
     hideEl(nasTabBar);
     return;
   }
@@ -831,8 +838,6 @@ function renderNasTabs() {
       refresh(currentNasId);
     });
   });
-
-  renderFilterTabs(); // Initial render based on current adapter
 }
 
 // Load saved per-service filter selections from storage

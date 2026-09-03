@@ -2331,6 +2331,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         .catch(err => sendResponse({ ok: false, error: err.message }));
       return true;
     }
+    if (msg.type === "GET_WHITELIST_MODE") {
+      // Both settings UIs call this on load to restore the saved routing mode.
+      getWhitelistMode()
+        .then(mode => sendResponse({ ok: true, mode }))
+        .catch(err => sendResponse({ ok: false, error: err.message }));
+      return true;
+    }
     if (msg.type === "ADD_WHITELIST") {
       if (!msg.domain || typeof msg.domain !== "string") {
         dbg("ERROR", "ADD_WHITELIST", "Invalid domain");

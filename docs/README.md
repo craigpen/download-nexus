@@ -7,7 +7,8 @@ Complete documentation for Download Nexus developers and users.
 ### For Developers
 
 - **[API Reference](API_REFERENCE.md)** - Official API docs for all supported download services
-- **[Testing Guide](TESTING.md)** - Comprehensive test setup and running tests
+- **[Testing Guide](TESTING.md)** - Unit and integration test setup
+- **[E2E Testing Guide](E2E_TESTING.md)** - Playwright end-to-end suite (real browser, real user flows)
 - **[Remote Debugging Guide](REMOTE_DEBUGGING.md)** - Browser CDP debugging port, live log streaming, and agent automation
 - **[Architecture](../README.md)** - Project structure and design decisions
 
@@ -66,11 +67,17 @@ Complete documentation for Download Nexus developers and users.
   background.test.js         # Background service unit tests
   popup.test.js              # Popup UI unit tests
   *-integration.test.js       # Service integration tests
+  /e2e                       # Playwright end-to-end suite
+    fixtures.js             # Extension loading + state seeding fixtures
+    helpers.js              # Navigation, form and assertion helpers
+    stub-server.js          # Local HTTP stub standing in for a download service
+    *.spec.js               # End-to-end specs
 
 /docs                 # Documentation
   README.md           # This file
   API_REFERENCE.md    # API documentation for all services
-  TESTING.md          # Testing guide and setup
+  TESTING.md          # Unit/integration testing guide
+  E2E_TESTING.md      # Playwright end-to-end testing guide
   REMOTE_DEBUGGING.md # Browser debugging and log streaming
 
 /dist                 # Build output (generated)
@@ -89,7 +96,12 @@ npm run test:integration       # qBittorrent
 npm run test:transmission      # Transmission
 npm run test:deluge            # Deluge
 
-# All tests
+# End-to-end tests (real browser, no Docker required)
+npm run test:e2e               # All Playwright projects
+npm run test:e2e:chrome        # Full suite on bundled Chromium
+npm run test:e2e:headed        # Watch it run
+
+# All Jest tests
 npm test
 ```
 

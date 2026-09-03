@@ -117,6 +117,17 @@ Right-click on any magnet link or torrent file in your browser to send it direct
 - **Firefox**: `npm run build:firefox` → `dist/firefox-mv3/`
 - **All targets**: `npm run build:all`
 
+### Running the Test Suites
+
+```bash
+npm run test:unit    # Jest unit tests (no Docker required)
+npm test             # All Jest tests (integration tests need Docker)
+npm run test:e2e     # Playwright end-to-end suite in a real browser
+```
+
+See [docs/TESTING.md](docs/TESTING.md) for the unit and integration suites, and
+[docs/E2E_TESTING.md](docs/E2E_TESTING.md) for the end-to-end suite.
+
 ### Testing with Download Clients
 
 The extension works with qBittorrent, Transmission, Deluge, JDownloader 2, and Synology NAS. To test:
