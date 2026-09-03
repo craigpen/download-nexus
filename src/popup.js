@@ -526,29 +526,47 @@ function renderTasks() {
   updateFooterButtons();
 }
 
-function loadCachedTasks(nasId) {
+// In-memory task cache across services: nasId -> Array of task objects
+const tasksCache = {};
+let activeRequestId = 0;
+
+function loadAllCachedTasks() {
   return new Promise(resolve => {
-    chrome.storage.local.get({ taskCache: {} }, r => resolve(r.taskCache[nasId] || null));
+    chrome.storage.local.get({ taskCache: {} }, r => {
+      const cache = r.taskCache || {};
+      for (const [id, data] of Object.entries(cache)) {
+        if (data && Array.isArray(data.tasks)) {
+          tasksCache[id] = data.tasks;
+        }
+      }
+      resolve(tasksCache);
+    });
   });
 }
 
 function saveCachedTasks(nasId, tasks) {
+  if (!nasId) return;
+  tasksCache[nasId] = tasks;
   chrome.storage.local.get({ taskCache: {} }, r => {
-    const cache = r.taskCache;
-    cache[nasId] = { tasks };
+    const cache = r.taskCache || {};
+    cache[nasId] = { tasks, timestamp: Date.now() };
     chrome.storage.local.set({ taskCache: cache });
   });
 }
 
-async function paintCachedTasks() {
-  if (!currentNasId) return;
-  const cached = await loadCachedTasks(currentNasId);
-  allTasks = cached?.tasks || [];
-  showEl("speedBar", true);
-  showEl("tabBar", true);
-  updateCounts();
-  renderTasks();
-  setStatus(cached ? "Showing cached data…" : "");
+function paintCachedTasks(nasId = currentNasId) {
+  if (!nasId) return false;
+  const cached = tasksCache[nasId];
+  if (cached && Array.isArray(cached)) {
+    allTasks = cached;
+    showEl("speedBar", true);
+    showEl("tabBar", true);
+    updateCounts();
+    renderTasks();
+    setStatus("Showing cached data…");
+    return true;
+  }
+  return false;
 }
 
 // ── data fetch ────────────────────────────────────────────────────────────
@@ -562,7 +580,12 @@ function setConnStatus(nasId, ok) {
       el.textContent = ok ? "● Connected" : "● Offline";
     }
   }
-  renderNasTabs(); // Update tabs with status
+  // Surgically update tab status indicator in place without DOM rebuild
+  const statusPill = document.querySelector(`.nas-tab-btn[data-nas-id="${nasId}"] .nas-tab-status`);
+  if (statusPill) {
+    statusPill.className = `nas-tab-status conn-${ok ? "ok" : "error"}`;
+    statusPill.textContent = ok ? "Connected" : "Offline";
+  }
 }
 
 function showError(title, detail) {
@@ -586,41 +609,46 @@ function hideError() {
   updatePopupHeaderIcon();
 }
 
-async function refresh() {
-  if (!currentNasId) return;
+async function refresh(targetNasId = currentNasId) {
+  if (!targetNasId) return;
+  const requestId = ++activeRequestId;
+  const reqNasId = targetNasId;
+
   try {
-    const resp = await send({ type: "LIST_TASKS", nasId: currentNasId });
-    console.log(`refresh: got ${resp.tasks?.length || 0} tasks from ${currentNasId}`);
+    const resp = await send({ type: "LIST_TASKS", nasId: reqNasId });
+    console.log(`refresh: got ${resp.tasks?.length || 0} tasks from ${reqNasId}`);
+
+    if (resp.ok && resp.tasks) {
+      saveCachedTasks(reqNasId, resp.tasks);
+      setConnStatus(reqNasId, true);
+    } else {
+      setConnStatus(reqNasId, false);
+    }
+
+    // Discard response if user has switched to another tab while request was in-flight
+    if (requestId !== activeRequestId || reqNasId !== currentNasId) {
+      return;
+    }
+
     if (!resp.ok) {
       console.error(`refresh: LIST_TASKS failed:`, resp.error);
-      setConnStatus(currentNasId, false);
       if (allTasks.length === 0) showError("⚠️ Failed to load tasks", resp.error || "Unknown error");
       setStatus(resp.error, true);
     } else {
-      setConnStatus(currentNasId, true);
       hideError();
       allTasks = resp.tasks;
-      console.log("refresh: allTasks updated to", allTasks.length, "tasks");
-      console.log("Popup received tasks:", resp.tasks.length, "tasks");
-      if (resp.tasks.length > 0) {
-        console.log("First task fields:", Object.keys(resp.tasks[0]));
-        console.log("First task data:", resp.tasks[0]);
-      }
-      saveCachedTasks(currentNasId, resp.tasks);
       showEl("speedBar", true);
       showEl("tabBar", true);
       updateCounts();
       renderTasks();
       setStatus("");
     }
-    // Also refresh connection status for all services
-    checkAllDeviceConnections();
   } catch (err) {
+    if (requestId !== activeRequestId || reqNasId !== currentNasId) return;
     console.error(`refresh: exception:`, err);
-    setConnStatus(currentNasId, false);
+    setConnStatus(reqNasId, false);
     if (allTasks.length === 0) showError("❌ Connection error", err.message);
     setStatus(err.message, true);
-    checkAllDeviceConnections();
   }
 }
 
@@ -748,39 +776,44 @@ function renderNasTabs() {
   showEl(nasTabBar, true);
 
   nasTabBar.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", async () => {
-      currentNasId = tab.dataset.nasId;
-      // Clear all state for the new service
-      allTasks = [];
+    tab.addEventListener("click", () => {
+      const newNasId = tab.dataset.nasId;
+      if (newNasId === currentNasId) return; // Already viewing this service
+
+      currentNasId = newNasId;
       filter = "downloading";
       selectedTaskIds.clear();
 
-      // Clear task rows to avoid showing ghost data from previous service
-      const taskList = document.getElementById("taskList");
-      if (taskList) {
-        taskList.querySelectorAll(".task").forEach(el => el.remove());
-        const emptyMsg = document.getElementById("emptyMsg");
-        if (emptyMsg) {
-          showEl(emptyMsg, true);
-          emptyMsg.innerHTML = '<span class="spinner"></span>';
+      // 1. Instantly update active styling on tabs
+      nasTabBar.querySelectorAll(".tab").forEach(t => {
+        t.classList.toggle("active", t.dataset.nasId === currentNasId);
+      });
+
+      // 2. Instantly update Web UI launcher button for target service
+      updateWebUiLauncher();
+
+      // 3. Instantly update filter tabs for target adapter type
+      renderFilterTabs();
+
+      // 4. Synchronously paint from memory cache (0ms latency)
+      const hasCache = paintCachedTasks(currentNasId);
+      if (!hasCache) {
+        // No cache yet for this service - show clean loading spinner without layout shift
+        allTasks = [];
+        const taskList = document.getElementById("taskList");
+        if (taskList) {
+          taskList.querySelectorAll(".task").forEach(el => el.remove());
+          const emptyMsg = document.getElementById("emptyMsg");
+          if (emptyMsg) {
+            showEl(emptyMsg, true);
+            emptyMsg.innerHTML = '<span class="spinner"></span>';
+          }
         }
+        updateCounts();
       }
 
-      // Update UI for new service
-      renderNasTabs();
-      renderFilterTabs(); // Render filter tabs based on new adapter
-
-      // Immediately clear all tab counts to prevent ghost data from previous service
-      ["cnt-downloading", "cnt-seeding", "cnt-paused", "cnt-stalled", "cnt-finished", "cnt-error"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = "0";
-      });
-      // Clear task count label
-      const taskCountLabel = document.getElementById("taskCountLabel");
-      if (taskCountLabel) taskCountLabel.textContent = "0 tasks";
-
-      await paintCachedTasks();
-      refresh();
+      // 5. Fetch fresh data in the background
+      refresh(currentNasId);
     });
   });
 
@@ -939,7 +972,7 @@ async function showMainView() {
   showEl("gearIcon", true);
   hideEl("backIcon");
   document.getElementById("settingsBtn").title = "Settings";
-  await paintCachedTasks();
+  paintCachedTasks();
   updateWhitelistUI();
   refresh();
   if (!pollTimer) pollTimer = setInterval(refresh, 5000);
@@ -1122,6 +1155,12 @@ function addNewNas() {
 }
 
 async function deleteNasDevice(nasId) {
+  delete tasksCache[nasId];
+  chrome.storage.local.get({ taskCache: {} }, r => {
+    const cache = r.taskCache || {};
+    delete cache[nasId];
+    chrome.storage.local.set({ taskCache: cache });
+  });
   await send({ type: "DELETE_NAS", nasId });
   if (currentNasId === nasId) currentNasId = null;
   await loadNasList();
@@ -1774,10 +1813,11 @@ async function checkAllDeviceConnections() {
 // Initial load + 5s poll while popup is open
 (async () => {
   await loadNasList();
+  await loadAllCachedTasks();
   checkAllDeviceConnections(); // Check all device statuses on open
   getCurrentDomain();
   loadWhitelist();
-  await paintCachedTasks();
+  paintCachedTasks();
   refresh();
   pollTimer = setInterval(refresh, 5000);
 })();
