@@ -1,11 +1,11 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
   qbittorrent:
     image: linuxserver/qbittorrent:latest
     container_name: qbittorrent
     ports:
-      - "8080:8080"
+      - "8088:8080"
     environment:
       - PUID=1000
       - PGID=1000
@@ -14,6 +14,12 @@ services:
       - /tmp/qbittorrent:/config
       - /tmp/qbittorrent/downloads:/downloads
     restart: unless-stopped
+    networks:
+      - dev-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.localhost`) || Host(`qbittorrent`)"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
 
   transmission:
     image: linuxserver/transmission:latest
@@ -28,6 +34,12 @@ services:
       - /tmp/transmission:/config
       - /tmp/transmission/downloads:/downloads
     restart: unless-stopped
+    networks:
+      - dev-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.transmission.rule=Host(`transmission.localhost`) || Host(`transmission`)"
+      - "traefik.http.services.transmission.loadbalancer.server.port=9091"
 
   deluge:
     image: linuxserver/deluge:latest
@@ -43,4 +55,14 @@ services:
       - /tmp/deluge-linuxserver:/config
       - /tmp/deluge-linuxserver/downloads:/downloads
     restart: unless-stopped
+    networks:
+      - dev-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.deluge.rule=Host(`deluge.localhost`) || Host(`deluge`)"
+      - "traefik.http.services.deluge.loadbalancer.server.port=8112"
 
+networks:
+  dev-net:
+    name: dev-net
+    external: true
